@@ -1,0 +1,6 @@
+node_modules/
+.env
+.env.*
+EventHub360_Backend_Submission/
+EventHub360_Backend_Submission.zip
+*.log
