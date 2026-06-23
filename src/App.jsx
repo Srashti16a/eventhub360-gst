@@ -1,13 +1,14 @@
 import React, { useState } from 'react';
-import GuestManagement from './GuestManagement/GuestManagement';
-import GuestGroups from './GuestGroups/GuestGroups';
-import GuestCategories from './GuestCategories/GuestCategories';
-import RSVPAnalytics from './RSVPAnalytics/RSVPAnalytics';
-import MagicLinks from './MagicLinks/MagicLinks';
-import Hotels from './Hotels/Hotels';
-import RoomAllocation from './RoomAllocation/RoomAllocation';
-import Transportation from './Transportation/Transportation';
-import Templates from './Templates/Templates';
+import GuestManagement from './pages/GuestManagement';
+import GuestGroups from './pages/GuestGroups';
+import GuestCategories from './pages/GuestCategories';
+import RSVPAnalytics from './pages/RSVPAnalytics';
+import MagicLinks from './pages/MagicLinks';
+import Hotels from './pages/Hotels';
+import RoomAllocation from './pages/RoomAllocation';
+import Transportation from './pages/Transportation';
+import Templates from './pages/Templates';
+
 
 // Sidebar Icons - SVG components matching premium design
 const TransportationIcon = () => (
