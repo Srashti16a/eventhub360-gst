@@ -33,6 +33,9 @@ app.use("/api/v1/communication-monitoring", communicationLogsRoutes);
 const guestReportingRoutes = require("./routes/guestReportingRoutes");
 app.use("/api/v1/guest-reporting", guestReportingRoutes);
 
+const transportationRoutes = require("./routes/transportationRoutes");
+app.use("/api/v1/transportation", transportationRoutes);
+
 app.get("/", async (req, res) => {
     try {
         const result = await pool.query("SELECT NOW()");
