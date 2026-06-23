@@ -18,6 +18,21 @@ app.use("/api/v1/analytics/rsvp", rsvpAnalyticsRoutes);
 const magicLinkRoutes = require("./routes/magicLinkRoutes");
 app.use("/api/v1/magic-links", magicLinkRoutes);
 
+const badgePrintingRoutes = require("./routes/badgePrintingRoutes");
+app.use("/api/v1/badge-printing", badgePrintingRoutes);
+
+const kioskRegistrationRoutes = require("./routes/kioskRegistrationRoutes");
+app.use("/api/v1/kiosk-registration", kioskRegistrationRoutes);
+
+const communicationCenterRoutes = require("./routes/communicationCenterRoutes");
+app.use("/api/v1/communication-center", communicationCenterRoutes);
+
+const communicationLogsRoutes = require("./routes/communicationLogsRoutes");
+app.use("/api/v1/communication-monitoring", communicationLogsRoutes);
+
+const guestReportingRoutes = require("./routes/guestReportingRoutes");
+app.use("/api/v1/guest-reporting", guestReportingRoutes);
+
 app.get("/", async (req, res) => {
     try {
         const result = await pool.query("SELECT NOW()");
