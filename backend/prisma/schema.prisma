@@ -1,0 +1,61 @@
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Event {
+  id        String   @id @default(uuid())
+  title     String
+  category  String   // e.g. "Corporate Gala", "Spring Wedding", "Charity Gala", "Product Launch"
+  date      DateTime
+  guests    Guest[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Hotel {
+  id        String   @id @default(uuid())
+  name      String
+  guests    Guest[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Table {
+  id        String   @id @default(uuid())
+  name      String   // e.g. "Table 1"
+  capacity  Int      @default(10)
+  guests    Guest[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Guest {
+  id              String   @id @default(uuid())
+  name            String
+  avatar          String
+  email           String
+  phone           String
+  status          String   // "CONFIRMED", "PENDING", "DECLINED"
+  isVip           Boolean  @default(false)
+  isSpeaker       Boolean  @default(false)
+  isBridalParty   Boolean  @default(false)
+  isPrimaryGuest  Boolean  @default(false)
+  
+  assignedHotelId String?
+  assignedHotel   Hotel?   @relation(fields: [assignedHotelId], references: [id])
+  
+  eventId         String
+  event           Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  
+  tableId         String?
+  table           Table?   @relation(fields: [tableId], references: [id])
+  seatNumber      Int?
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
