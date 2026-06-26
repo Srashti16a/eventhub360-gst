@@ -699,12 +699,7 @@ export default function GuestManagement() {
                 })}
               </div>
 
-              <div style={{ background: '#f8fafc', padding: '0.75rem', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)', fontSize: '0.725rem', color: 'var(--text-muted)', textAlign: 'left' }}>
-                <strong>API Endpoint Schema:</strong>
-                <code style={{ display: 'block', marginTop: '0.25rem', color: '#a61e22', fontFamily: 'monospace' }}>
-                  PATCH /api/v1/seating/&#123;id&#125; (Payload: &#123; table_no: string, seat_no: string &#125;)
-                </code>
-              </div>
+
             </div>
             <div className="modal-footer">
               <button type="button" className="btn-primary" onClick={() => setIsSeatingOpen(false)}>
@@ -751,7 +746,7 @@ export default function GuestManagement() {
               </div>
 
               <div style={{ background: '#fef3c7', border: '1px solid #fde68a', color: '#92400e', padding: '0.75rem', borderRadius: 'var(--radius-sm)', fontSize: '0.75rem' }}>
-                <strong>Important:</strong> Emails will include unique guest QR codes linked to the <code>guest_checkin.qr_code</code> table column.
+                <strong>Important:</strong> Emails will include unique guest QR codes for fast attendance tracking.
               </div>
             </div>
             <div className="modal-footer">

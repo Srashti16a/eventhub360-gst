@@ -156,12 +156,7 @@ export function BulkImportModal({ isOpen, onClose, onImportSuccess }) {
                 </button>
               </div>
 
-              <div style={{ background: '#f8fafc', padding: '0.875rem', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                <strong>API Endpoint Reference:</strong>
-                <code style={{ display: 'block', marginTop: '0.25rem', color: '#a61e22', fontFamily: 'monospace' }}>
-                  POST /api/v1/events/&#123;id&#125;/guests/import
-                </code>
-              </div>
+
 
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '0.5rem' }}>
                 <button type="button" className="btn-secondary" onClick={onClose} disabled={uploading}>
@@ -277,12 +272,7 @@ export function QRCodeModal({ isOpen, onClose, guest, onSimulateCheckin }) {
               </div>
             </div>
             
-            <div style={{ background: '#f8fafc', padding: '0.75rem', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)', fontSize: '0.7rem', color: 'var(--text-muted)', width: '100%', textAlign: 'left' }}>
-              <strong>API Operations:</strong>
-              <div style={{ fontFamily: 'monospace', color: '#a61e22', marginTop: '0.25rem' }}>
-                POST /api/v1/checkin (Payload: &#123; qr_code: 'QR_{guest.guest_id}' &#125;)
-              </div>
-            </div>
+
           </div>
         </div>
         <div className="modal-footer">
