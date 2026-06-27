@@ -674,7 +674,7 @@ export default function GuestManagement() {
             </div>
             <div className="modal-body" style={{ textAlign: 'center' }}>
               <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginBottom: '1.5rem' }}>
-                Drag and drop guests below onto tables to configure the layout. Operates on the <code>[seating]</code> table.
+                Drag and drop guests below onto tables to configure the layout.
               </p>
               
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem', marginBottom: '2rem' }}>

@@ -65,7 +65,7 @@ export default function GroupForm({ initialData, allGuests, onSubmit, onCancel }
       <div className="form-grid">
         <div className="form-grid-full" style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: '0.25rem', marginBottom: '0.25rem' }}>
           <h4 style={{ margin: 0, fontSize: '0.9rem', color: '#ff4d4f', fontFamily: 'var(--font-title)' }}>
-            [guest_group] Table Columns
+            Guest Group
           </h4>
         </div>
 
@@ -106,7 +106,7 @@ export default function GroupForm({ initialData, allGuests, onSubmit, onCancel }
         {/* External drawer configurations */}
         <div className="form-grid-full" style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: '0.25rem', marginTop: '1rem', marginBottom: '0.25rem' }}>
           <h4 style={{ margin: 0, fontSize: '0.9rem', color: '#ff4d4f', fontFamily: 'var(--font-title)' }}>
-            Segment, Status & Metrics (Relational Mappings)
+            Group Details & Status
           </h4>
         </div>
 

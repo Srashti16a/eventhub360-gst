@@ -118,7 +118,7 @@ export default function GuestForm({ initialData, onSubmit, onCancel, saving }) {
         {/* ================= GUEST TABLE DETAILS ================= */}
         <div className="form-grid-full" style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem', marginBottom: '0.25rem' }}>
           <h4 style={{ margin: 0, fontSize: '0.9rem', color: '#ff4d4f', fontFamily: 'var(--font-title)' }}>
-            [guest] Table Columns
+            Guest
           </h4>
         </div>
 
@@ -182,7 +182,7 @@ export default function GuestForm({ initialData, onSubmit, onCancel, saving }) {
         {/* ================= EVENT GUEST & GROUP DETAILS ================= */}
         <div className="form-grid-full" style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem', marginTop: '1rem', marginBottom: '0.25rem' }}>
           <h4 style={{ margin: 0, fontSize: '0.9rem', color: '#ff4d4f', fontFamily: 'var(--font-title)' }}>
-            [event_guest] & [guest_group] Table Columns
+            Guest Group
           </h4>
         </div>
 
@@ -242,7 +242,7 @@ export default function GuestForm({ initialData, onSubmit, onCancel, saving }) {
         {/* ================= RSVP DETAILS ================= */}
         <div className="form-grid-full" style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem', marginTop: '1rem', marginBottom: '0.25rem' }}>
           <h4 style={{ margin: 0, fontSize: '0.9rem', color: '#ff4d4f', fontFamily: 'var(--font-title)' }}>
-            [rsvp] Table Columns
+            RSVP
           </h4>
         </div>
 
@@ -290,7 +290,7 @@ export default function GuestForm({ initialData, onSubmit, onCancel, saving }) {
         {/* ================= SEATING DETAILS ================= */}
         <div className="form-grid-full" style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem', marginTop: '1rem', marginBottom: '0.25rem' }}>
           <h4 style={{ margin: 0, fontSize: '0.9rem', color: '#ff4d4f', fontFamily: 'var(--font-title)' }}>
-            [seating] Table Columns
+            Seating
           </h4>
         </div>
 
@@ -323,7 +323,7 @@ export default function GuestForm({ initialData, onSubmit, onCancel, saving }) {
         {/* ================= MEAL DETAILS ================= */}
         <div className="form-grid-full" style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem', marginTop: '1rem', marginBottom: '0.25rem' }}>
           <h4 style={{ margin: 0, fontSize: '0.9rem', color: '#ff4d4f', fontFamily: 'var(--font-title)' }}>
-            [meal_pref] Table Columns
+            Meal Preference
           </h4>
         </div>
 
@@ -343,7 +343,7 @@ export default function GuestForm({ initialData, onSubmit, onCancel, saving }) {
         {/* ================= EXTERNAL HOTEL DETAILS ================= */}
         <div className="form-grid-full" style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem', marginTop: '1rem', marginBottom: '0.25rem' }}>
           <h4 style={{ margin: 0, fontSize: '0.9rem', color: '#ff4d4f', fontFamily: 'var(--font-title)' }}>
-            External Relations (Visual Display helpers)
+            Hotel Accommodation
           </h4>
         </div>
 
