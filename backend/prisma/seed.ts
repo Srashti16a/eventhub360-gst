@@ -31,6 +31,15 @@ const avatars = [
 
 async function main() {
   console.log('Clearing database...');
+  await prisma.fleetAssignment.deleteMany();
+  await prisma.transferSchedule.deleteMany();
+  await prisma.fleetActivityLog.deleteMany();
+  await prisma.vehicleMaintenance.deleteMany();
+  await prisma.routeOptimizationLog.deleteMany();
+  await prisma.vehicle.deleteMany();
+  await prisma.driver.deleteMany();
+  await prisma.transportRoute.deleteMany();
+  await prisma.fleetAnalytics.deleteMany();
   await prisma.guest.deleteMany();
   await prisma.table.deleteMany();
   await prisma.hotel.deleteMany();
@@ -305,6 +314,68 @@ async function main() {
   console.log(`Pending:          ${finalPending} (Target: 315)`);
   console.log(`Declined:         ${finalDeclined} (Target: 41)`);
   console.log(`VIP Status:       ${finalVips} (Target: 42)`);
+
+  console.log('Creating transportation seed data...');
+  // 1. Create Drivers
+  const driver1 = await prisma.driver.create({ data: { fullName: 'James Whitaker', phoneNumber: '+1 (555) 019-2831', status: 'Active' } });
+  const driver2 = await prisma.driver.create({ data: { fullName: 'Sarah Jenkins', phoneNumber: '+1 (555) 021-9872', status: 'Resting' } });
+  const driver3 = await prisma.driver.create({ data: { fullName: "Michael O'Brien", phoneNumber: '+1 (555) 034-7711', status: 'On Break' } });
+  const driver4 = await prisma.driver.create({ data: { fullName: 'David Chen', phoneNumber: '+1 (555) 012-4433', status: 'Active' } });
+
+  // 2. Create Vehicles linked to Drivers
+  const vehicle1 = await prisma.vehicle.create({ data: { name: 'Mercedes V-Class (2024)', type: 'Van', licenseNumber: 'EH-092', capacity: 7, status: 'Available', driverId: driver1.id } });
+  const vehicle2 = await prisma.vehicle.create({ data: { name: 'Tesla Model X (White)', type: 'SUV', licenseNumber: 'EH-104', capacity: 5, status: 'Available', driverId: driver2.id } });
+  const vehicle3 = await prisma.vehicle.create({ data: { name: 'Sprinter Exec-Bus B12', type: 'Minibus', licenseNumber: 'EH-058', capacity: 15, status: 'Available', driverId: driver3.id } });
+  const vehicle4 = await prisma.vehicle.create({ data: { name: 'Executive Sedan S1', type: 'Sedan', licenseNumber: 'EH-112', capacity: 4, status: 'Available', driverId: driver4.id } });
+
+  // 3. Create Transport Routes
+  const route1 = await prisma.transportRoute.create({ data: { routeName: 'Airport ➔ Grand Hall', startLocation: 'Airport', endLocation: 'Grand Hall', distanceKm: 25.5, durationMins: 35, status: 'Active' } });
+  const route2 = await prisma.transportRoute.create({ data: { routeName: 'Terminal 1 ➔ Main Gate', startLocation: 'Terminal 1', endLocation: 'Main Gate', distanceKm: 8.2, durationMins: 15, status: 'Active' } });
+  const route3 = await prisma.transportRoute.create({ data: { routeName: 'Shuttle Loop C', startLocation: 'Hotel Area', endLocation: 'Convention Center', distanceKm: 3.5, durationMins: 10, status: 'Active' } });
+
+  // 4. Create Fleet Assignments
+  await prisma.fleetAssignment.create({ data: { vehicleId: vehicle1.id, driverId: driver1.id, eventId: eventGala.id, status: 'Active' } });
+  await prisma.fleetAssignment.create({ data: { vehicleId: vehicle4.id, driverId: driver4.id, eventId: eventGala.id, status: 'Active' } });
+
+  // 5. Create Transfer Schedules for Vips/Guests
+  const vipGuests = await prisma.guest.findMany({ where: { isVip: true }, take: 2 });
+  if (vipGuests.length >= 2) {
+    await prisma.transferSchedule.create({
+      data: {
+        guestId: vipGuests[0].id,
+        eventId: eventGala.id,
+        transferType: 'VIP Transport',
+        pickupLocation: 'Airport Terminal 2',
+        dropoffLocation: 'Four Seasons Room 402',
+        scheduledTime: new Date(Date.now() + 1200000), // in 20 mins
+        routeId: route1.id,
+        vehicleId: vehicle1.id,
+        driverId: driver1.id,
+        status: 'In Transit'
+      }
+    });
+
+    await prisma.transferSchedule.create({
+      data: {
+        guestId: vipGuests[1].id,
+        eventId: eventGala.id,
+        transferType: 'Airport Pickup',
+        pickupLocation: 'Airport Terminal 1',
+        dropoffLocation: 'Grand Hall Entrance',
+        scheduledTime: new Date(Date.now() + 3600000), // in 60 mins
+        routeId: route1.id,
+        vehicleId: vehicle2.id,
+        driverId: driver2.id,
+        status: 'Scheduled'
+      }
+    });
+  }
+
+  // 6. Create Fleet Activity Logs
+  await prisma.fleetActivityLog.create({ data: { activityType: 'Route Completed', severity: 'Info', message: 'Fleet 12 arrived at Venue A', vehicleId: vehicle1.id, driverId: driver1.id } });
+  await prisma.fleetActivityLog.create({ data: { activityType: 'Dispatch Alert', severity: 'Warning', message: 'New arrival scheduled for 15:30', vehicleId: vehicle2.id, driverId: driver2.id } });
+  await prisma.fleetActivityLog.create({ data: { activityType: 'Maintenance Alert', severity: 'Critical', message: 'Vehicle #240 fuel warning', vehicleId: vehicle3.id, driverId: driver3.id } });
+
   console.log('Seeding completed successfully!');
 }
 

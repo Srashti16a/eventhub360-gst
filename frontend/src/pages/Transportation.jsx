@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import './Transportation.css';
 import AllocationMatrix from '../components/Transportation/AllocationMatrix';
+import { getDrivers, getTransfers, getActivityLogs } from '../services/transportationService';
 
 // Initial Seed data for drivers & fleet
 const INITIAL_DRIVERS = [
@@ -119,6 +120,77 @@ export default function Transportation({ activeTab: propActiveTab }) {
   const [arrivals, setArrivals] = useState(INITIAL_ARRIVALS);
   const [departures, setDepartures] = useState(INITIAL_DEPARTURES);
   const [logs, setLogs] = useState(INITIAL_LOGS);
+
+  // Dynamic fetch on mount
+  useEffect(() => {
+    Promise.all([
+      getDrivers(),
+      getTransfers(),
+      getActivityLogs()
+    ])
+      .then(([driversRes, transfersRes, logsRes]) => {
+        if (driversRes.success && driversRes.data) {
+          const mappedDrivers = driversRes.data.map((d, index) => {
+            const assignedVehicle = d.vehicles && d.vehicles[0] ? d.vehicles[0] : null;
+            return {
+              id: d.id,
+              driverName: d.fullName,
+              driverId: assignedVehicle ? assignedVehicle.licenseNumber : `EH-${100 + index}`,
+              avatar: d.fullName.toLowerCase().includes('sarah') 
+                ? 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&auto=format&fit=crop&q=80'
+                : d.fullName.toLowerCase().includes('james')
+                ? 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&auto=format&fit=crop&q=80'
+                : d.fullName.toLowerCase().includes('michael')
+                ? 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100&auto=format&fit=crop&q=80'
+                : 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&auto=format&fit=crop&q=80',
+              vehicle: assignedVehicle ? `${assignedVehicle.name}` : 'Unassigned',
+              status: d.status,
+              route: d.status === 'Active' ? 'Airport ➔ Grand Hall' : '—'
+            };
+          });
+          setDrivers(mappedDrivers);
+        }
+
+        if (transfersRes.success && transfersRes.data) {
+          const arrs = transfersRes.data
+            .filter(t => t.transferType.toLowerCase().includes('pickup') || t.transferType.toLowerCase().includes('transport') || t.transferType.toLowerCase().includes('vip'))
+            .map(t => ({
+              id: t.id,
+              title: `${t.transferType} - ${t.guest ? t.guest.name : 'VIP Guest'}`,
+              time: new Date(t.scheduledTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+              detail: t.vehicle ? `${t.vehicle.name} • ${t.driver ? t.driver.fullName : 'TBD'}` : 'Unassigned',
+              eta: t.status === 'In Transit' ? '2 mins away' : 'In Transit',
+              status: t.status === 'In Transit' ? 'Near' : 'In-Transit'
+            }));
+          if (arrs.length > 0) setArrivals(arrs);
+
+          const deps = transfersRes.data
+            .filter(t => t.transferType.toLowerCase().includes('dropoff') || t.transferType.toLowerCase().includes('shuttle'))
+            .map(t => ({
+              id: t.id,
+              title: `${t.transferType}`,
+              time: new Date(t.scheduledTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+              detail: t.vehicle ? `${t.vehicle.name} • ${t.driver ? t.driver.fullName : 'TBD'}` : 'Unassigned',
+              capacity: 'Boarding',
+              eta: t.status,
+              status: t.status
+            }));
+          if (deps.length > 0) setDepartures(deps);
+        }
+
+        if (logsRes.success && logsRes.data) {
+          const mappedLogs = logsRes.data.map(l => ({
+            id: l.id,
+            title: l.activityType,
+            desc: l.message,
+            time: new Date(l.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            status: l.severity === 'Critical' ? 'red' : l.severity === 'Warning' ? 'orange' : 'green'
+          }));
+          setLogs(mappedLogs);
+        }
+      })
+      .catch(err => console.error("Error loading dynamic transportation data:", err));
+  }, []);
 
   // Search filter
   const [searchQuery, setSearchQuery] = useState('');

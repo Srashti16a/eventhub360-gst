@@ -8,13 +8,16 @@ generator client {
 }
 
 model Event {
-  id        String   @id @default(uuid())
-  title     String
-  category  String   // e.g. "Corporate Gala", "Spring Wedding", "Charity Gala", "Product Launch"
-  date      DateTime
-  guests    Guest[]
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id               String            @id @default(uuid())
+  title            String
+  category         String            // e.g. "Corporate Gala", "Spring Wedding", "Charity Gala", "Product Launch"
+  date             DateTime
+  guests           Guest[]
+  fleetAssignments FleetAssignment[]
+  transfers        TransferSchedule[]
+  fleetAnalytics   FleetAnalytics[]
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
 }
 
 model Hotel {
@@ -35,27 +38,159 @@ model Table {
 }
 
 model Guest {
-  id              String   @id @default(uuid())
+  id              String             @id @default(uuid())
   name            String
   avatar          String
   email           String
   phone           String
-  status          String   // "CONFIRMED", "PENDING", "DECLINED"
-  isVip           Boolean  @default(false)
-  isSpeaker       Boolean  @default(false)
-  isBridalParty   Boolean  @default(false)
-  isPrimaryGuest  Boolean  @default(false)
+  status          String             // "CONFIRMED", "PENDING", "DECLINED"
+  isVip           Boolean            @default(false)
+  isSpeaker       Boolean            @default(false)
+  isBridalParty   Boolean            @default(false)
+  isPrimaryGuest  Boolean            @default(false)
   
   assignedHotelId String?
-  assignedHotel   Hotel?   @relation(fields: [assignedHotelId], references: [id])
+  assignedHotel   Hotel?             @relation(fields: [assignedHotelId], references: [id])
   
   eventId         String
-  event           Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  event           Event              @relation(fields: [eventId], references: [id], onDelete: Cascade)
   
   tableId         String?
-  table           Table?   @relation(fields: [tableId], references: [id])
+  table           Table?             @relation(fields: [tableId], references: [id])
   seatNumber      Int?
   
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  transfers       TransferSchedule[]
+  
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+}
+
+model Driver {
+  id          String             @id @default(uuid())
+  fullName    String
+  phoneNumber String
+  status      String             @default("Available") // "Available", "Active", "Off Duty", "Resting", "On Break", "Offline"
+  vehicles    Vehicle[]
+  assignments FleetAssignment[]
+  transfers   TransferSchedule[]
+  activityLogs FleetActivityLog[]
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+}
+
+model Vehicle {
+  id            String                 @id @default(uuid())
+  name          String
+  type          String                 // e.g. "Sedan", "SUV", "Van", "Minibus"
+  licenseNumber String                 @unique
+  capacity      Int
+  status        String                 @default("Available") // "On Route", "Staged", "Maintenance", "Available"
+  driverId      String?
+  driver        Driver?                @relation(fields: [driverId], references: [id])
+  assignments   FleetAssignment[]
+  transfers     TransferSchedule[]
+  maintenances  VehicleMaintenance[]
+  activityLogs  FleetActivityLog[]
+  optimizations RouteOptimizationLog[]
+  createdAt     DateTime               @default(now())
+  updatedAt     DateTime               @updatedAt
+}
+
+model FleetAssignment {
+  id         String   @id @default(uuid())
+  vehicleId  String
+  vehicle    Vehicle  @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  driverId   String
+  driver     Driver   @relation(fields: [driverId], references: [id], onDelete: Cascade)
+  eventId    String
+  event      Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  status     String   @default("Active") // "Active", "Completed", "Cancelled"
+  assignedAt DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([eventId, vehicleId, driverId])
+}
+
+model TransportRoute {
+  id           String             @id @default(uuid())
+  routeName    String
+  startLocation String
+  endLocation   String
+  distanceKm   Float
+  durationMins Int
+  status       String             @default("Active") // "Active", "Inactive"
+  optimizedAt  DateTime?
+  transfers    TransferSchedule[]
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+}
+
+model TransferSchedule {
+  id              String          @id @default(uuid())
+  guestId         String
+  guest           Guest           @relation(fields: [guestId], references: [id], onDelete: Cascade)
+  eventId         String
+  event           Event           @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  transferType    String          // "Airport Pickup", "Airport Dropoff", "Hotel Transfer", "VIP Transport", "Other"
+  pickupLocation  String
+  dropoffLocation String
+  scheduledTime   DateTime
+  routeId         String?
+  route           TransportRoute? @relation(fields: [routeId], references: [id], onDelete: SetNull)
+  vehicleId       String?
+  vehicle         Vehicle?        @relation(fields: [vehicleId], references: [id], onDelete: SetNull)
+  driverId        String?
+  driver          Driver?         @relation(fields: [driverId], references: [id], onDelete: SetNull)
+  status          String          @default("Scheduled") // "Scheduled", "In Transit", "Completed", "Cancelled"
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+}
+
+model FleetActivityLog {
+  id           String   @id @default(uuid())
+  activityType String   // "Route Completed", "Dispatch Alert", "Maintenance Alert", "Assignment Update", "Driver Status Change", "Conflict Detected"
+  severity     String   @default("Info") // "Info", "Warning", "Critical"
+  message      String
+  vehicleId    String?
+  vehicle      Vehicle? @relation(fields: [vehicleId], references: [id], onDelete: SetNull)
+  driverId     String?
+  driver       Driver?  @relation(fields: [driverId], references: [id], onDelete: SetNull)
+  createdAt    DateTime @default(now())
+}
+
+model VehicleMaintenance {
+  id              String    @id @default(uuid())
+  vehicleId       String
+  vehicle         Vehicle   @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  maintenanceType String    // "Oil Change", "Tire Rotation", "Engine Repair", "Fuel Warning", "Routine Inspection", "Other"
+  description     String?
+  scheduledDate   DateTime
+  completedDate   DateTime?
+  status          String    @default("Scheduled") // "Scheduled", "In Progress", "Completed", "Cancelled"
+  cost            Float     @default(0.0)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+}
+
+model FleetAnalytics {
+  id               String   @id @default(uuid())
+  eventId          String
+  event            Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  totalVehicles    Int      @default(0)
+  activeDrivers    Int      @default(0)
+  onRouteVehicles  Int      @default(0)
+  efficiencyRating Float    @default(0.0)
+  recordedDate     DateTime @default(now())
+  createdAt        DateTime @default(now())
+
+  @@unique([eventId, recordedDate])
+}
+
+model RouteOptimizationLog {
+  id                 String   @id @default(uuid())
+  vehicleId          String
+  vehicle            Vehicle  @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  optimizationResult String   // Will store JSON serialized as string
+  generatedBy        String
+  createdAt          DateTime @default(now())
 }
