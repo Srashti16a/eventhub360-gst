@@ -23,9 +23,12 @@ const getRoomCapacity = (roomType) => {
 };
 
 export const INITIAL_ROOMS = [
-  // Floor 5
+  // ==========================================
+  // Grand Ballroom Hotel & Spa
+  // ==========================================
   {
     id: 501,
+    hotel: 'Grand Ballroom Hotel & Spa',
     floor: 5,
     roomNumber: '501',
     roomType: 'Executive Suite',
@@ -37,6 +40,7 @@ export const INITIAL_ROOMS = [
   },
   {
     id: 502,
+    hotel: 'Grand Ballroom Hotel & Spa',
     floor: 5,
     roomNumber: '502',
     roomType: 'King Deluxe',
@@ -52,6 +56,7 @@ export const INITIAL_ROOMS = [
   },
   {
     id: 503,
+    hotel: 'Grand Ballroom Hotel & Spa',
     floor: 5,
     roomNumber: '503',
     roomType: 'King Deluxe',
@@ -63,6 +68,7 @@ export const INITIAL_ROOMS = [
   },
   {
     id: 504,
+    hotel: 'Grand Ballroom Hotel & Spa',
     floor: 5,
     roomNumber: '504',
     roomType: 'Executive Suite',
@@ -74,6 +80,7 @@ export const INITIAL_ROOMS = [
   },
   {
     id: 505,
+    hotel: 'Grand Ballroom Hotel & Spa',
     floor: 5,
     roomNumber: '505',
     roomType: 'Executive Suite',
@@ -85,6 +92,7 @@ export const INITIAL_ROOMS = [
   },
   {
     id: 506,
+    hotel: 'Grand Ballroom Hotel & Spa',
     floor: 5,
     roomNumber: '506',
     roomType: 'King Deluxe',
@@ -94,10 +102,9 @@ export const INITIAL_ROOMS = [
     guests: [{ name: 'Eleanor Vance', category: 'VIP', initials: 'EV', isVip: true }],
     details: 'King Bed'
   },
-
-  // Floor 4
   {
     id: 401,
+    hotel: 'Grand Ballroom Hotel & Spa',
     floor: 4,
     roomNumber: '401',
     roomType: 'Standard King',
@@ -109,6 +116,7 @@ export const INITIAL_ROOMS = [
   },
   {
     id: 402,
+    hotel: 'Grand Ballroom Hotel & Spa',
     floor: 4,
     roomNumber: '402',
     roomType: 'Standard King',
@@ -120,6 +128,7 @@ export const INITIAL_ROOMS = [
   },
   {
     id: 403,
+    hotel: 'Grand Ballroom Hotel & Spa',
     floor: 4,
     roomNumber: '403',
     roomType: 'Standard Queen',
@@ -131,6 +140,7 @@ export const INITIAL_ROOMS = [
   },
   {
     id: 404,
+    hotel: 'Grand Ballroom Hotel & Spa',
     floor: 4,
     roomNumber: '404',
     roomType: 'Standard Queen',
@@ -142,6 +152,7 @@ export const INITIAL_ROOMS = [
   },
   {
     id: 405,
+    hotel: 'Grand Ballroom Hotel & Spa',
     floor: 4,
     roomNumber: '405',
     roomType: 'Standard King',
@@ -153,6 +164,7 @@ export const INITIAL_ROOMS = [
   },
   {
     id: 406,
+    hotel: 'Grand Ballroom Hotel & Spa',
     floor: 4,
     roomNumber: '406',
     roomType: 'Standard Queen',
@@ -161,7 +173,71 @@ export const INITIAL_ROOMS = [
     hasConflict: false,
     guests: [],
     details: 'Staff Hold Block'
-  }
+  },
+
+  // ==========================================
+  // Azure Heights Resort & Suites
+  // ==========================================
+  { id: 1501, hotel: 'Azure Heights Resort & Suites', floor: 5, roomNumber: '501', roomType: 'Executive Suite', status: 'Available', capacity: 4, hasConflict: false, guests: [], details: 'King Bed, Lake view' },
+  { id: 1502, hotel: 'Azure Heights Resort & Suites', floor: 5, roomNumber: '502', roomType: 'King Deluxe', status: 'Available', capacity: 2, hasConflict: false, guests: [], details: 'King Deluxe room' },
+  { id: 1503, hotel: 'Azure Heights Resort & Suites', floor: 5, roomNumber: '503', roomType: 'King Deluxe', status: 'Available', capacity: 2, hasConflict: false, guests: [], details: 'King Bed' },
+  { id: 1504, hotel: 'Azure Heights Resort & Suites', floor: 5, roomNumber: '504', roomType: 'Executive Suite', status: 'Reserved', capacity: 4, hasConflict: false, guests: [], details: 'Holding for Delegation...' },
+  { id: 1505, hotel: 'Azure Heights Resort & Suites', floor: 5, roomNumber: '505', roomType: 'Executive Suite', status: 'Available', capacity: 4, hasConflict: false, guests: [], details: 'Lake view Suite' },
+  { id: 1506, hotel: 'Azure Heights Resort & Suites', floor: 5, roomNumber: '506', roomType: 'King Deluxe', status: 'Available', capacity: 2, hasConflict: false, guests: [], details: 'King Bed' },
+  { id: 1401, hotel: 'Azure Heights Resort & Suites', floor: 4, roomNumber: '401', roomType: 'Standard King', status: 'Available', capacity: 2, hasConflict: false, guests: [], details: 'Standard King' },
+  { id: 1402, hotel: 'Azure Heights Resort & Suites', floor: 4, roomNumber: '402', roomType: 'Standard King', status: 'Available', capacity: 2, hasConflict: false, guests: [], details: 'Standard King' },
+  { id: 1403, hotel: 'Azure Heights Resort & Suites', floor: 4, roomNumber: '403', roomType: 'Standard Queen', status: 'Available', capacity: 2, hasConflict: false, guests: [], details: 'Double Queen' },
+  { id: 1404, hotel: 'Azure Heights Resort & Suites', floor: 4, roomNumber: '404', roomType: 'Standard Queen', status: 'Available', capacity: 2, hasConflict: false, guests: [], details: 'Double Queen' },
+  { id: 1405, hotel: 'Azure Heights Resort & Suites', floor: 4, roomNumber: '405', roomType: 'Standard King', status: 'Available', capacity: 2, hasConflict: false, guests: [], details: 'King Bed' },
+  { id: 1406, hotel: 'Azure Heights Resort & Suites', floor: 4, roomNumber: '406', roomType: 'Standard Queen', status: 'Reserved', capacity: 2, hasConflict: false, guests: [], details: 'Staff Hold Block' },
+
+  // ==========================================
+  // The Ritz-Central Executive
+  // ==========================================
+  { id: 2501, hotel: 'The Ritz-Central Executive', floor: 5, roomNumber: '501', roomType: 'Executive Suite', status: 'Available', capacity: 4, hasConflict: false, guests: [], details: 'King Bed, Lake view' },
+  { id: 2502, hotel: 'The Ritz-Central Executive', floor: 5, roomNumber: '502', roomType: 'King Deluxe', status: 'Available', capacity: 2, hasConflict: false, guests: [], details: 'King Deluxe room' },
+  { id: 2503, hotel: 'The Ritz-Central Executive', floor: 5, roomNumber: '503', roomType: 'King Deluxe', status: 'Available', capacity: 2, hasConflict: false, guests: [], details: 'King Bed' },
+  { id: 2504, hotel: 'The Ritz-Central Executive', floor: 5, roomNumber: '504', roomType: 'Executive Suite', status: 'Reserved', capacity: 4, hasConflict: false, guests: [], details: 'Holding for Delegation...' },
+  { id: 2505, hotel: 'The Ritz-Central Executive', floor: 5, roomNumber: '505', roomType: 'Executive Suite', status: 'Available', capacity: 4, hasConflict: false, guests: [], details: 'Lake view Suite' },
+  { id: 2506, hotel: 'The Ritz-Central Executive', floor: 5, roomNumber: '506', roomType: 'King Deluxe', status: 'Available', capacity: 2, hasConflict: false, guests: [], details: 'King Bed' },
+  { id: 2401, hotel: 'The Ritz-Central Executive', floor: 4, roomNumber: '401', roomType: 'Standard King', status: 'Available', capacity: 2, hasConflict: false, guests: [], details: 'Standard King' },
+  { id: 2402, hotel: 'The Ritz-Central Executive', floor: 4, roomNumber: '402', roomType: 'Standard King', status: 'Available', capacity: 2, hasConflict: false, guests: [], details: 'Standard King' },
+  { id: 2403, hotel: 'The Ritz-Central Executive', floor: 4, roomNumber: '403', roomType: 'Standard Queen', status: 'Available', capacity: 2, hasConflict: false, guests: [], details: 'Double Queen' },
+  { id: 2404, hotel: 'The Ritz-Central Executive', floor: 4, roomNumber: '404', roomType: 'Standard Queen', status: 'Available', capacity: 2, hasConflict: false, guests: [], details: 'Double Queen' },
+  { id: 2405, hotel: 'The Ritz-Central Executive', floor: 4, roomNumber: '405', roomType: 'Standard King', status: 'Available', capacity: 2, hasConflict: false, guests: [], details: 'King Bed' },
+  { id: 2406, hotel: 'The Ritz-Central Executive', floor: 4, roomNumber: '406', roomType: 'Standard Queen', status: 'Reserved', capacity: 2, hasConflict: false, guests: [], details: 'Staff Hold Block' },
+
+  // ==========================================
+  // Harbor View Boutique
+  // ==========================================
+  { id: 3501, hotel: 'Harbor View Boutique', floor: 5, roomNumber: '501', roomType: 'Executive Suite', status: 'Available', capacity: 4, hasConflict: false, guests: [], details: 'King Bed, Lake view' },
+  { id: 3502, hotel: 'Harbor View Boutique', floor: 5, roomNumber: '502', roomType: 'King Deluxe', status: 'Available', capacity: 2, hasConflict: false, guests: [], details: 'King Deluxe room' },
+  { id: 3503, hotel: 'Harbor View Boutique', floor: 5, roomNumber: '503', roomType: 'King Deluxe', status: 'Available', capacity: 2, hasConflict: false, guests: [], details: 'King Bed' },
+  { id: 3504, hotel: 'Harbor View Boutique', floor: 5, roomNumber: '504', roomType: 'Executive Suite', status: 'Reserved', capacity: 4, hasConflict: false, guests: [], details: 'Holding for Delegation...' },
+  { id: 3505, hotel: 'Harbor View Boutique', floor: 5, roomNumber: '505', roomType: 'Executive Suite', status: 'Available', capacity: 4, hasConflict: false, guests: [], details: 'Lake view Suite' },
+  { id: 3506, hotel: 'Harbor View Boutique', floor: 5, roomNumber: '506', roomType: 'King Deluxe', status: 'Available', capacity: 2, hasConflict: false, guests: [], details: 'King Bed' },
+  { id: 3401, hotel: 'Harbor View Boutique', floor: 4, roomNumber: '401', roomType: 'Standard King', status: 'Available', capacity: 2, hasConflict: false, guests: [], details: 'Standard King' },
+  { id: 3402, hotel: 'Harbor View Boutique', floor: 4, roomNumber: '402', roomType: 'Standard King', status: 'Available', capacity: 2, hasConflict: false, guests: [], details: 'Standard King' },
+  { id: 3403, hotel: 'Harbor View Boutique', floor: 4, roomNumber: '403', roomType: 'Standard Queen', status: 'Available', capacity: 2, hasConflict: false, guests: [], details: 'Double Queen' },
+  { id: 3404, hotel: 'Harbor View Boutique', floor: 4, roomNumber: '404', roomType: 'Standard Queen', status: 'Available', capacity: 2, hasConflict: false, guests: [], details: 'Double Queen' },
+  { id: 3405, hotel: 'Harbor View Boutique', floor: 4, roomNumber: '405', roomType: 'Standard King', status: 'Available', capacity: 2, hasConflict: false, guests: [], details: 'King Bed' },
+  { id: 3406, hotel: 'Harbor View Boutique', floor: 4, roomNumber: '406', roomType: 'Standard Queen', status: 'Reserved', capacity: 2, hasConflict: false, guests: [], details: 'Staff Hold Block' },
+
+  // ==========================================
+  // Summit Lodge Concierge
+  // ==========================================
+  { id: 4501, hotel: 'Summit Lodge Concierge', floor: 5, roomNumber: '501', roomType: 'Executive Suite', status: 'Available', capacity: 4, hasConflict: false, guests: [], details: 'King Bed, Lake view' },
+  { id: 4502, hotel: 'Summit Lodge Concierge', floor: 5, roomNumber: '502', roomType: 'King Deluxe', status: 'Available', capacity: 2, hasConflict: false, guests: [], details: 'King Deluxe room' },
+  { id: 4503, hotel: 'Summit Lodge Concierge', floor: 5, roomNumber: '503', roomType: 'King Deluxe', status: 'Available', capacity: 2, hasConflict: false, guests: [], details: 'King Bed' },
+  { id: 4504, hotel: 'Summit Lodge Concierge', floor: 5, roomNumber: '504', roomType: 'Executive Suite', status: 'Reserved', capacity: 4, hasConflict: false, guests: [], details: 'Holding for Delegation...' },
+  { id: 4505, hotel: 'Summit Lodge Concierge', floor: 5, roomNumber: '505', roomType: 'Executive Suite', status: 'Available', capacity: 4, hasConflict: false, guests: [], details: 'Lake view Suite' },
+  { id: 4506, hotel: 'Summit Lodge Concierge', floor: 5, roomNumber: '506', roomType: 'King Deluxe', status: 'Available', capacity: 2, hasConflict: false, guests: [], details: 'King Bed' },
+  { id: 4401, hotel: 'Summit Lodge Concierge', floor: 4, roomNumber: '401', roomType: 'Standard King', status: 'Available', capacity: 2, hasConflict: false, guests: [], details: 'Standard King' },
+  { id: 4402, hotel: 'Summit Lodge Concierge', floor: 4, roomNumber: '402', roomType: 'Standard King', status: 'Available', capacity: 2, hasConflict: false, guests: [], details: 'Standard King' },
+  { id: 4403, hotel: 'Summit Lodge Concierge', floor: 4, roomNumber: '403', roomType: 'Standard Queen', status: 'Available', capacity: 2, hasConflict: false, guests: [], details: 'Double Queen' },
+  { id: 4404, hotel: 'Summit Lodge Concierge', floor: 4, roomNumber: '404', roomType: 'Standard Queen', status: 'Available', capacity: 2, hasConflict: false, guests: [], details: 'Double Queen' },
+  { id: 4405, hotel: 'Summit Lodge Concierge', floor: 4, roomNumber: '405', roomType: 'Standard King', status: 'Available', capacity: 2, hasConflict: false, guests: [], details: 'King Bed' },
+  { id: 4406, hotel: 'Summit Lodge Concierge', floor: 4, roomNumber: '406', roomType: 'Standard Queen', status: 'Reserved', capacity: 2, hasConflict: false, guests: [], details: 'Staff Hold Block' }
 ];
 
 export default function RoomAllocation({
@@ -228,15 +304,20 @@ export default function RoomAllocation({
     'Summit Lodge Concierge'
   ];
 
+  // Filter rooms to only include the active hotel
+  const activeRooms = useMemo(() => {
+    return rooms.filter(r => (r.hotel || 'Grand Ballroom Hotel & Spa') === activeHotel);
+  }, [rooms, activeHotel]);
+
   // Dynamic calculations for stats metrics
   const statsMetrics = useMemo(() => {
-    const totalBlock = rooms.length;
+    const totalBlock = activeRooms.length;
     
     let assigned = 0;
     let availableCount = 0;
     let conflictRooms = 0;
 
-    rooms.forEach(r => {
+    activeRooms.forEach(r => {
       const hasGuests = r.guests && r.guests.length > 0;
       if (hasGuests) {
         assigned += 1;
@@ -257,13 +338,13 @@ export default function RoomAllocation({
       available: availableCount,
       conflicts: conflictRooms
     };
-  }, [rooms]);
+  }, [activeRooms]);
 
   // Unique floors list extracted dynamically from the dataset
   const uniqueFloors = useMemo(() => {
-    const floorsSet = new Set(rooms.map(r => r.floor));
+    const floorsSet = new Set(activeRooms.map(r => r.floor));
     return Array.from(floorsSet).sort((a, b) => b - a);
-  }, [rooms]);
+  }, [activeRooms]);
 
   // Search filter unassigned guests
   const filteredUnassigned = useMemo(() => {
@@ -532,8 +613,9 @@ export default function RoomAllocation({
 
     currentRooms = currentRooms.map(room => {
       const capacity = room.capacity !== undefined ? room.capacity : 2;
+      const roomHotel = room.hotel || 'Grand Ballroom Hotel & Spa';
       
-      if (room.status !== 'Reserved' && room.guests.length < capacity && currentUnassigned.length > 0) {
+      if (roomHotel === activeHotel && room.status !== 'Reserved' && room.guests.length < capacity && currentUnassigned.length > 0) {
         const updatedGuests = [...room.guests];
         
         while (updatedGuests.length < capacity && currentUnassigned.length > 0) {
@@ -732,7 +814,7 @@ export default function RoomAllocation({
             {/* Room grid sections */}
             <div className="floor-matrix-card">
               {uniqueFloors.map(floorNum => {
-                const floorRooms = rooms.filter(r => r.floor === floorNum);
+                const floorRooms = activeRooms.filter(r => r.floor === floorNum);
                 const suitesCount = floorRooms.filter(r => r.roomType.toLowerCase().includes('suite') || r.roomType.toLowerCase().includes('penthouse')).length;
                 const standardCount = floorRooms.length - suitesCount;
                 
@@ -1223,7 +1305,7 @@ export default function RoomAllocation({
               {(() => {
                 // Get all guests currently allocated to rooms
                 const allocatedGuestsList = [];
-                rooms.forEach(room => {
+                activeRooms.forEach(room => {
                   if (room.guests && room.guests.length > 0) {
                     room.guests.forEach(g => {
                       allocatedGuestsList.push({

@@ -196,7 +196,13 @@ export default function App() {
   const [isBookRoomOpen, setIsBookRoomOpen] = useState(false);
   const [rooms, setRooms] = useState(() => {
     const saved = localStorage.getItem('eh360_rooms');
-    return saved ? JSON.parse(saved) : INITIAL_ROOMS;
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      if (Array.isArray(parsed) && parsed.length >= 60) {
+        return parsed;
+      }
+    }
+    return INITIAL_ROOMS;
   });
   const [unassignedGuests, setUnassignedGuests] = useState(() => {
     const saved = localStorage.getItem('eh360_unassigned_guests');
