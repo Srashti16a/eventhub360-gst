@@ -189,6 +189,17 @@ export default function RoomAllocation() {
   const [isConflictPopupOpen, setIsConflictPopupOpen] = useState(false);
   const [selectedRoomForConflict, setSelectedRoomForConflict] = useState(null);
 
+  // Check-In and History modals state
+  const [isCheckInWorkflowOpen, setIsCheckInWorkflowOpen] = useState(false);
+  const [checkInSearch, setCheckInSearch] = useState('');
+  
+  const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
+  const [historyLog, setHistoryLog] = useState([
+    { id: 1, time: '10:15 AM', text: 'System initialized room blocks for Grand Ballroom Hotel & Spa.' },
+    { id: 2, time: '10:20 AM', text: 'Pre-existing capacity conflict detected in Room 502 (3 guests assigned, capacity 2).' },
+    { id: 3, time: '10:30 AM', text: 'Room 504 placed on hold for international delegation block.' }
+  ]);
+
   // Notification Toast State
   const [toastMessage, setToastMessage] = useState('');
 
@@ -308,7 +319,7 @@ export default function RoomAllocation() {
 
     const capacity = targetRoom.capacity !== undefined ? targetRoom.capacity : 2;
     if (targetRoom.guests.length >= capacity) {
-      alert("Maximum room capacity reached.");
+      setToastMessage("Error: Maximum room capacity reached.");
       setIsAssignPopupOpen(false);
       return;
     }
@@ -341,6 +352,12 @@ export default function RoomAllocation() {
     setSelectedRoomForAssign(null);
     setSelectedGuestForAssignId('');
     setSelectedUnassignedGuest(null);
+
+    const logMsg = `Assigned ${assignedGuest.name} to Room ${targetRoom.roomNumber}.`;
+    setHistoryLog(prev => [
+      { id: Date.now(), time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }), text: logMsg },
+      ...prev
+    ]);
 
     setToastMessage(`Successfully assigned ${assignedGuest.name} to Room ${targetRoom.roomNumber}!`);
   };
@@ -375,6 +392,13 @@ export default function RoomAllocation() {
     setIsConflictPopupOpen(false);
     setSelectedRoomForDetail(null);
     setSelectedRoomForConflict(null);
+
+    const names = room.guests ? room.guests.map(g => g.name).join(', ') : '';
+    const logMsg = `Unassigned ${names} from Room ${room.roomNumber}.`;
+    setHistoryLog(prev => [
+      { id: Date.now(), time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }), text: logMsg },
+      ...prev
+    ]);
 
     setToastMessage(`Room ${room.roomNumber} is now vacant & available.`);
   };
@@ -428,6 +452,12 @@ export default function RoomAllocation() {
       setSelectedRoomForDetail(updatedRoom);
     }
 
+    const logMsg = `Removed ${guestName} from Room ${room.roomNumber}.`;
+    setHistoryLog(prev => [
+      { id: Date.now(), time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }), text: logMsg },
+      ...prev
+    ]);
+
     setToastMessage(`${guestToMove.name} returned to unassigned panel.`);
   };
 
@@ -463,6 +493,13 @@ export default function RoomAllocation() {
 
     setIsConflictPopupOpen(false);
     setSelectedRoomForConflict(null);
+
+    const logMsg = `Resolved capacity conflict in Room ${room.roomNumber} by moving ${guestToMoveName} back to unassigned list.`;
+    setHistoryLog(prev => [
+      { id: Date.now(), time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }), text: logMsg },
+      ...prev
+    ]);
+
     setToastMessage(`${guestToMove.name} returned to unassigned panel. Conflict resolved!`);
   };
 
@@ -522,6 +559,13 @@ export default function RoomAllocation() {
     setRooms(currentRooms);
     setUnassignedGuests(currentUnassigned);
     setSelectedUnassignedGuest(null);
+
+    const logMsg = `Initiated Auto-Assign sweep: allocated ${assignedCount} guests successfully.`;
+    setHistoryLog(prev => [
+      { id: Date.now(), time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }), text: logMsg },
+      ...prev
+    ]);
+
     setToastMessage(`Success: Auto-assigned ${assignedCount} guests matching room rules!`);
   };
 
@@ -566,21 +610,21 @@ export default function RoomAllocation() {
 
         <div className="matrix-top-actions">
           {/* Header Action Buttons */}
-          <button type="button" className="matrix-icon-btn" title="View History" onClick={() => alert('Opening allocation history log...')}>
+          <button type="button" className="matrix-icon-btn" title="View History" onClick={() => setIsHistoryModalOpen(true)}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
               <path d="M12 8v4l3 3" />
               <circle cx="12" cy="12" r="9" />
             </svg>
           </button>
 
-          <button type="button" className="matrix-icon-btn" title="Notifications" onClick={() => alert('No new allocation alerts.')}>
+          <button type="button" className="matrix-icon-btn" title="Notifications" onClick={() => setToastMessage('System Log: No new allocation alerts.')}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
               <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
               <path d="M13.73 21a2 2 0 0 1-3.46 0" />
             </svg>
           </button>
 
-          <button type="button" className="btn-pill-checkin" onClick={() => alert('Initiating check-in terminal sweep...')}>
+          <button type="button" className="btn-pill-checkin" onClick={() => setIsCheckInWorkflowOpen(true)}>
             Check-In
           </button>
         </div>
@@ -1056,6 +1100,230 @@ export default function RoomAllocation() {
 
       {/* Floating toast notification */}
       {toastMessage && <div className="toast-msg">{toastMessage}</div>}
+
+      {/* 4. Allocation History Modal */}
+      {isHistoryModalOpen && (
+        <div className="alloc-popup-overlay" onClick={() => setIsHistoryModalOpen(false)}>
+          <div className="alloc-popup-box" onClick={e => e.stopPropagation()} style={{ width: '450px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+              <div>
+                <h3 className="alloc-popup-title" style={{ fontSize: '1.2rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <span>⏳</span> Allocation Activity Log
+                </h3>
+                <span style={{ fontSize: '0.75rem', color: '#64748b' }}>Real-time change logs for the current session</span>
+              </div>
+              <button 
+                type="button" 
+                style={{ background: 'none', border: 'none', fontSize: '1.25rem', cursor: 'pointer', color: '#94a3b8' }}
+                onClick={() => setIsHistoryModalOpen(false)}
+              >
+                ×
+              </button>
+            </div>
+
+            <div style={{ 
+              maxHeight: '300px', 
+              overflowY: 'auto', 
+              display: 'flex', 
+              flexDirection: 'column', 
+              gap: '0.75rem',
+              paddingRight: '4px',
+              marginBottom: '1.5rem'
+            }}>
+              {historyLog.length === 0 ? (
+                <div style={{ padding: '2rem', textAlign: 'center', color: '#94a3b8', fontSize: '0.85rem' }}>
+                  No activity logged yet.
+                </div>
+              ) : (
+                historyLog.map(log => (
+                  <div key={log.id} style={{ 
+                    display: 'flex', 
+                    gap: '0.75rem', 
+                    fontSize: '0.8rem', 
+                    padding: '0.6rem 0.75rem', 
+                    backgroundColor: '#f8fafc', 
+                    borderRadius: '6px', 
+                    border: '1px solid #e2e8f0',
+                    lineHeight: '1.4'
+                  }}>
+                    <span style={{ fontWeight: '700', color: '#ff4d4f', whiteSpace: 'nowrap' }}>{log.time}</span>
+                    <span style={{ color: '#334155' }}>{log.text}</span>
+                  </div>
+                ))
+              )}
+            </div>
+
+            <div className="alloc-popup-actions">
+              <button type="button" className="btn-popup-cancel" style={{ width: '100%' }} onClick={() => setIsHistoryModalOpen(false)}>Done</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 5. Check-In Workflow Modal */}
+      {isCheckInWorkflowOpen && (
+        <div className="alloc-popup-overlay" onClick={() => setIsCheckInWorkflowOpen(false)}>
+          <div className="alloc-popup-box" onClick={e => e.stopPropagation()} style={{ width: '500px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+              <div>
+                <h3 className="alloc-popup-title" style={{ fontSize: '1.2rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <span>🛎️</span> Guest Check-In Workflow
+                </h3>
+                <span style={{ fontSize: '0.75rem', color: '#64748b' }}>Manage real-time check-in statuses and digital passes</span>
+              </div>
+              <button 
+                type="button" 
+                style={{ background: 'none', border: 'none', fontSize: '1.25rem', cursor: 'pointer', color: '#94a3b8' }}
+                onClick={() => setIsCheckInWorkflowOpen(false)}
+              >
+                ×
+              </button>
+            </div>
+
+            {/* Modal Search bar */}
+            <div style={{ position: 'relative', marginBottom: '1rem' }}>
+              <span style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', fontSize: '0.9rem' }}>🔍</span>
+              <input
+                type="text"
+                placeholder="Search occupied room guests..."
+                style={{
+                  width: '100%',
+                  padding: '0.5rem 0.75rem 0.5rem 2.25rem',
+                  fontSize: '0.825rem',
+                  border: '1px solid #e2e8f0',
+                  borderRadius: '6px',
+                  boxSizing: 'border-box',
+                  outline: 'none'
+                }}
+                value={checkInSearch}
+                onChange={(e) => setCheckInSearch(e.target.value)}
+              />
+            </div>
+
+            <div style={{ 
+              maxHeight: '320px', 
+              overflowY: 'auto', 
+              display: 'flex', 
+              flexDirection: 'column', 
+              gap: '0.6rem',
+              paddingRight: '4px',
+              marginBottom: '1.5rem'
+            }}>
+              {(() => {
+                // Get all guests currently allocated to rooms
+                const allocatedGuestsList = [];
+                rooms.forEach(room => {
+                  if (room.guests && room.guests.length > 0) {
+                    room.guests.forEach(g => {
+                      allocatedGuestsList.push({
+                        ...g,
+                        roomNumber: room.roomNumber,
+                        roomId: room.id
+                      });
+                    });
+                  }
+                });
+
+                const filtered = allocatedGuestsList.filter(g => 
+                  g.name.toLowerCase().includes(checkInSearch.toLowerCase()) ||
+                  g.category.toLowerCase().includes(checkInSearch.toLowerCase()) ||
+                  g.roomNumber.includes(checkInSearch)
+                );
+
+                if (filtered.length === 0) {
+                  return (
+                    <div style={{ padding: '2.5rem', textAlign: 'center', color: '#94a3b8', fontSize: '0.85rem' }}>
+                      No allocated guests found matching the search.
+                    </div>
+                  );
+                }
+
+                return filtered.map((g, idx) => {
+                  const isCheckedIn = g.checkedIn === true;
+                  return (
+                    <div key={idx} style={{ 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      justifyContent: 'space-between', 
+                      padding: '0.75rem', 
+                      backgroundColor: '#f8fafc', 
+                      borderRadius: '8px', 
+                      border: '1px solid #e2e8f0' 
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                        <div className="room-guest-avatar" style={{ width: '36px', height: '36px', fontSize: '0.85rem' }}>
+                          {g.initials}
+                        </div>
+                        <div>
+                          <strong style={{ fontSize: '0.85rem', color: '#1e293b', display: 'block' }}>{g.name}</strong>
+                          <span style={{ fontSize: '0.7rem', color: '#64748b' }}>
+                            Room {g.roomNumber} • <span className={`role-badge ${g.category.toLowerCase()}`} style={{ fontSize: '0.6rem', padding: '0.1rem 0.35rem' }}>{g.category}</span>
+                          </span>
+                        </div>
+                      </div>
+
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <span style={{ 
+                          fontSize: '0.7rem', 
+                          fontWeight: '700', 
+                          padding: '0.25rem 0.5rem', 
+                          borderRadius: '4px',
+                          backgroundColor: isCheckedIn ? '#d1fae5' : '#fef3c7',
+                          color: isCheckedIn ? '#065f46' : '#92400e',
+                          textTransform: 'uppercase'
+                        }}>
+                          {isCheckedIn ? 'Checked In' : 'Pending'}
+                        </span>
+                        
+                        <button
+                          type="button"
+                          className="btn-popup-confirm"
+                          style={{
+                            padding: '0.3rem 0.6rem',
+                            fontSize: '0.7rem',
+                            backgroundColor: isCheckedIn ? '#64748b' : '#10b981'
+                          }}
+                          onClick={() => {
+                            // Toggle checkin status
+                            setRooms(prev => prev.map(r => {
+                              if (r.id === g.roomId) {
+                                return {
+                                  ...r,
+                                  guests: r.guests.map(guest => {
+                                    if (guest.name === g.name) {
+                                      return { ...guest, checkedIn: !isCheckedIn };
+                                    }
+                                    return guest;
+                                  })
+                                };
+                              }
+                              return r;
+                            }));
+                            
+                            const newLog = {
+                              id: Date.now(),
+                              time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                              text: `${isCheckedIn ? 'Cancelled check-in for' : 'Completed check-in for'} ${g.name} (Room ${g.roomNumber}).`
+                            };
+                            setHistoryLog(prev => [newLog, ...prev]);
+                            setToastMessage(`${g.name} is now ${isCheckedIn ? 'Pending Check-In' : 'Checked In'}!`);
+                          }}
+                        >
+                          {isCheckedIn ? 'Undo' : 'Check In'}
+                        </button>
+                      </div>
+                    </div>
+                  );
+                });
+              })()}
+            </div>
+
+            <div className="alloc-popup-actions">
+              <button type="button" className="btn-popup-cancel" style={{ width: '100%' }} onClick={() => setIsCheckInWorkflowOpen(false)}>Done</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
