@@ -1,8 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 
-export default function RecentResponses({ responses, searchQuery, setSearchQuery, onViewAllGuests }) {
+export default function RecentResponses({ responses, searchQuery, setSearchQuery, onViewAllGuests, onDeleteGuest, onEditGuestStatus }) {
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [activeMenuId, setActiveMenuId] = useState(null);
+  const [actionModal, setActionModal] = useState(null); // 'view', 'edit', null
+  const [activeGuest, setActiveGuest] = useState(null);
+  const [editStatus, setEditStatus] = useState('');
   const menuRef = useRef(null);
 
   // Close dropdown when clicking outside
@@ -15,6 +18,26 @@ export default function RecentResponses({ responses, searchQuery, setSearchQuery
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [menuRef]);
+
+  const handleDeleteClick = (id) => {
+    setActiveMenuId(null);
+    if (window.confirm('Are you sure you want to delete this guest?')) {
+      onDeleteGuest(id);
+    }
+  };
+
+  const handleEditClick = (guest) => {
+    setActiveMenuId(null);
+    setActiveGuest(guest);
+    setEditStatus(guest.status);
+    setActionModal('edit');
+  };
+
+  const handleViewClick = (guest) => {
+    setActiveMenuId(null);
+    setActiveGuest(guest);
+    setActionModal('view');
+  };
 
   const getStatusClass = (status) => {
     switch (status?.toLowerCase()) {
@@ -157,9 +180,9 @@ export default function RecentResponses({ responses, searchQuery, setSearchQuery
                         marginRight: '8px'
                       }}
                     >
-                      <button style={{ display: 'block', width: '100%', textAlign: 'left', padding: '0.4rem 1rem', fontSize: '0.8rem', background: 'none', border: 'none', cursor: 'pointer', color: '#1e293b' }} onClick={() => setActiveMenuId(null)}>View Details</button>
-                      <button style={{ display: 'block', width: '100%', textAlign: 'left', padding: '0.4rem 1rem', fontSize: '0.8rem', background: 'none', border: 'none', cursor: 'pointer', color: '#1e293b' }} onClick={() => setActiveMenuId(null)}>Edit RSVP</button>
-                      <button style={{ display: 'block', width: '100%', textAlign: 'left', padding: '0.4rem 1rem', fontSize: '0.8rem', background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444' }} onClick={() => setActiveMenuId(null)}>Delete</button>
+                      <button style={{ display: 'block', width: '100%', textAlign: 'left', padding: '0.4rem 1rem', fontSize: '0.8rem', background: 'none', border: 'none', cursor: 'pointer', color: '#1e293b' }} onClick={() => handleViewClick(row)}>View Details</button>
+                      <button style={{ display: 'block', width: '100%', textAlign: 'left', padding: '0.4rem 1rem', fontSize: '0.8rem', background: 'none', border: 'none', cursor: 'pointer', color: '#1e293b' }} onClick={() => handleEditClick(row)}>Edit RSVP</button>
+                      <button style={{ display: 'block', width: '100%', textAlign: 'left', padding: '0.4rem 1rem', fontSize: '0.8rem', background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444' }} onClick={() => handleDeleteClick(row.id)}>Delete</button>
                     </div>
                   )}
                 </td>
@@ -180,6 +203,52 @@ export default function RecentResponses({ responses, searchQuery, setSearchQuery
           View All Guests
         </span>
       </div>
+
+      {/* View Details Modal */}
+      {actionModal === 'view' && activeGuest && (
+        <div className="modal-overlay" onClick={() => setActionModal(null)}>
+          <div className="modal-container" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '400px', padding: '1.5rem' }}>
+            <h2 style={{ marginBottom: '1.5rem', fontSize: '1.2rem', color: '#1e293b' }}>Guest Details</h2>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', fontSize: '0.9rem', color: '#475569' }}>
+              <div><strong>Name:</strong> {activeGuest.name}</div>
+              <div><strong>Email:</strong> {activeGuest.email}</div>
+              <div><strong>Category:</strong> {activeGuest.category}</div>
+              <div><strong>RSVP Status:</strong> {activeGuest.status}</div>
+              <div><strong>Response Date:</strong> {activeGuest.responseDate}</div>
+            </div>
+            <button className="btn-primary" style={{ marginTop: '1.5rem', width: '100%' }} onClick={() => setActionModal(null)}>Close</button>
+          </div>
+        </div>
+      )}
+
+      {/* Edit RSVP Modal */}
+      {actionModal === 'edit' && activeGuest && (
+        <div className="modal-overlay" onClick={() => setActionModal(null)}>
+          <div className="modal-container" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '400px', padding: '1.5rem' }}>
+            <h2 style={{ marginBottom: '1.5rem', fontSize: '1.2rem', color: '#1e293b' }}>Edit RSVP Status</h2>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '1.5rem' }}>
+              <label style={{ fontSize: '0.9rem', color: '#475569', fontWeight: '500' }}>Status for {activeGuest.name}</label>
+              <select 
+                className="dropdown-styled" 
+                value={editStatus} 
+                onChange={(e) => setEditStatus(e.target.value)}
+                style={{ padding: '0.5rem', width: '100%' }}
+              >
+                <option value="Pending">Pending</option>
+                <option value="Accepted">Accepted</option>
+                <option value="Declined">Declined</option>
+              </select>
+            </div>
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
+              <button className="btn-secondary" style={{ flex: 1 }} onClick={() => setActionModal(null)}>Cancel</button>
+              <button className="btn-primary" style={{ flex: 1 }} onClick={() => {
+                onEditGuestStatus(activeGuest.id, editStatus);
+                setActionModal(null);
+              }}>Save Changes</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

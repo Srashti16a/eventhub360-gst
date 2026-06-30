@@ -12,8 +12,7 @@ export default function RSVPAnalytics({ onViewAllGuests }) {
   // Fetch real stats from backend
   const [stats, setStats] = useState({ total: 0, accepted: 0, declined: 0, pending: 0 });
 
-  useEffect(() => {
-    // Fetch stats
+  const fetchData = () => {
     fetch('/api/dashboard/stats')
       .then(r => r.json())
       .then(res => {
@@ -28,7 +27,6 @@ export default function RSVPAnalytics({ onViewAllGuests }) {
       })
       .catch(err => console.error('Error fetching RSVP stats:', err));
 
-    // Fetch full guest list for category breakdown and recent responses
     fetch('/api/guests')
       .then(r => r.json())
       .then(res => {
@@ -37,7 +35,46 @@ export default function RSVPAnalytics({ onViewAllGuests }) {
         }
       })
       .catch(err => console.error('Error fetching guests:', err));
+  };
+
+  useEffect(() => {
+    fetchData();
   }, []);
+
+  const handleDeleteGuest = async (id) => {
+    try {
+      const res = await fetch(`/api/guests/${id}`, { method: 'DELETE' });
+      const data = await res.json();
+      if (data.success) {
+        fetchData();
+      } else {
+        alert('Failed to delete guest: ' + (data.error?.message || 'Unknown error'));
+      }
+    } catch (err) {
+      console.error('Error deleting guest:', err);
+      alert('Network error while deleting guest.');
+    }
+  };
+
+  const handleEditGuestStatus = async (id, newStatus) => {
+    try {
+      const dbStatus = newStatus === 'Accepted' ? 'CONFIRMED' : newStatus === 'Declined' ? 'DECLINED' : 'PENDING';
+      const res = await fetch(`/api/guests/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: dbStatus })
+      });
+      const data = await res.json();
+      if (data.success) {
+        fetchData();
+      } else {
+        alert('Failed to update guest: ' + (data.error?.message || 'Unknown error'));
+      }
+    } catch (err) {
+      console.error('Error updating guest:', err);
+      alert('Network error while updating guest.');
+    }
+  };
 
   // Compute Category Breakdown dynamically
   const categoryCounts = useMemo(() => {
@@ -149,6 +186,8 @@ export default function RSVPAnalytics({ onViewAllGuests }) {
         searchQuery={searchQuery}
         setSearchQuery={setSearchQuery}
         onViewAllGuests={onViewAllGuests}
+        onDeleteGuest={handleDeleteGuest}
+        onEditGuestStatus={handleEditGuestStatus}
       />
     </div>
   );
