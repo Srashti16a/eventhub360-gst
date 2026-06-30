@@ -17,6 +17,11 @@ const INITIAL_UNASSIGNED = [
   { id: 'u12', name: 'Danny Pink', category: 'Attendee', dates: 'Oct 15 - Oct 17', request: 'Low Floor preferred', avatar: null }
 ];
 
+// Configurable room capacity fallback helper
+const getRoomCapacity = (roomType) => {
+  return 2;
+};
+
 // Initial seed data for rooms
 const INITIAL_ROOMS = [
   // Floor 5
@@ -25,8 +30,10 @@ const INITIAL_ROOMS = [
     floor: 5,
     roomNumber: '501',
     roomType: 'Executive Suite',
-    status: 'Occupied', // Occupied, Available, Conflict, Reserved
-    guest: { name: 'Amara Okafor', category: 'Speaker', initials: 'AO', isVip: true },
+    status: 'Occupied',
+    capacity: 4,
+    hasConflict: false,
+    guests: [{ name: 'Amara Okafor', category: 'Speaker', initials: 'AO', isVip: true }],
     details: 'King Bed, Lake view'
   },
   {
@@ -34,12 +41,15 @@ const INITIAL_ROOMS = [
     floor: 5,
     roomNumber: '502',
     roomType: 'King Deluxe',
-    status: 'Conflict',
+    status: 'Occupied',
+    capacity: 2,
+    hasConflict: true,
     guests: [
-      { name: 'Marcus Thorne', category: 'VIP', initials: 'MT' },
-      { name: 'Sienna Miller', category: 'Speaker', initials: 'SM' }
+      { name: 'Marcus Thorne', category: 'VIP', initials: 'MT', isVip: true },
+      { name: 'Sienna Miller', category: 'Speaker', initials: 'SM', isVip: false },
+      { name: 'David Tennant', category: 'Attendee', initials: 'DT', isVip: false }
     ],
-    details: 'Double Booking Detected'
+    details: 'Maximum room capacity reached.'
   },
   {
     id: 503,
@@ -47,7 +57,9 @@ const INITIAL_ROOMS = [
     roomNumber: '503',
     roomType: 'King Deluxe',
     status: 'Available',
-    guest: null,
+    capacity: 2,
+    hasConflict: false,
+    guests: [],
     details: 'King Bed'
   },
   {
@@ -56,6 +68,9 @@ const INITIAL_ROOMS = [
     roomNumber: '504',
     roomType: 'Executive Suite',
     status: 'Reserved',
+    capacity: 4,
+    hasConflict: false,
+    guests: [],
     details: 'Holding for Delegation...'
   },
   {
@@ -64,7 +79,9 @@ const INITIAL_ROOMS = [
     roomNumber: '505',
     roomType: 'Executive Suite',
     status: 'Available',
-    guest: null,
+    capacity: 4,
+    hasConflict: false,
+    guests: [],
     details: 'Lake view Suite'
   },
   {
@@ -73,7 +90,9 @@ const INITIAL_ROOMS = [
     roomNumber: '506',
     roomType: 'King Deluxe',
     status: 'Occupied',
-    guest: { name: 'Eleanor Vance', category: 'VIP', initials: 'EV', isVip: true },
+    capacity: 2,
+    hasConflict: false,
+    guests: [{ name: 'Eleanor Vance', category: 'VIP', initials: 'EV', isVip: true }],
     details: 'King Bed'
   },
 
@@ -84,7 +103,9 @@ const INITIAL_ROOMS = [
     roomNumber: '401',
     roomType: 'Standard King',
     status: 'Occupied',
-    guest: { name: 'Jameson Blake', category: 'Attendee', initials: 'JB' },
+    capacity: 2,
+    hasConflict: false,
+    guests: [{ name: 'Jameson Blake', category: 'Attendee', initials: 'JB', isVip: false }],
     details: 'Standard King'
   },
   {
@@ -93,7 +114,9 @@ const INITIAL_ROOMS = [
     roomNumber: '402',
     roomType: 'Standard King',
     status: 'Occupied',
-    guest: { name: 'Sarah K. Lee', category: 'Media', initials: 'SK' },
+    capacity: 2,
+    hasConflict: false,
+    guests: [{ name: 'Sarah K. Lee', category: 'Media', initials: 'SK', isVip: false }],
     details: 'Standard King'
   },
   {
@@ -102,7 +125,9 @@ const INITIAL_ROOMS = [
     roomNumber: '403',
     roomType: 'Standard Queen',
     status: 'Available',
-    guest: null,
+    capacity: 2,
+    hasConflict: false,
+    guests: [],
     details: 'Double Queen'
   },
   {
@@ -111,7 +136,9 @@ const INITIAL_ROOMS = [
     roomNumber: '404',
     roomType: 'Standard Queen',
     status: 'Available',
-    guest: null,
+    capacity: 2,
+    hasConflict: false,
+    guests: [],
     details: 'Double Queen'
   },
   {
@@ -120,7 +147,9 @@ const INITIAL_ROOMS = [
     roomNumber: '405',
     roomType: 'Standard King',
     status: 'Available',
-    guest: null,
+    capacity: 2,
+    hasConflict: false,
+    guests: [],
     details: 'King Bed'
   },
   {
@@ -129,6 +158,9 @@ const INITIAL_ROOMS = [
     roomNumber: '406',
     roomType: 'Standard Queen',
     status: 'Reserved',
+    capacity: 2,
+    hasConflict: false,
+    guests: [],
     details: 'Staff Hold Block'
   }
 ];
@@ -178,29 +210,39 @@ export default function RoomAllocation() {
 
   // Dynamic calculations for stats metrics
   const statsMetrics = useMemo(() => {
-    const totalBlock = 120;
+    const totalBlock = rooms.length;
     
-    // Calculate occupied rooms count
     let assigned = 0;
-    rooms.forEach(r => {
-      if (r.status === 'Occupied') assigned += 1;
-      if (r.status === 'Conflict') assigned += r.guests ? r.guests.length : 2; // double booking count
-    });
-    // scale to matching baseline numbers e.g. base of 84
-    const baseAssigned = Math.max(84, 80 + assigned);
-    const assignedPercentage = ((baseAssigned / totalBlock) * 100).toFixed(0);
+    let availableCount = 0;
+    let conflictRooms = 0;
 
-    const availableCount = Math.max(0, totalBlock - baseAssigned);
-    
-    const conflictRooms = rooms.filter(r => r.status === 'Conflict').length;
+    rooms.forEach(r => {
+      const hasGuests = r.guests && r.guests.length > 0;
+      if (hasGuests) {
+        assigned += 1;
+      } else {
+        availableCount += 1;
+      }
+      if (r.hasConflict) {
+        conflictRooms += 1;
+      }
+    });
+
+    const assignedPercentage = totalBlock > 0 ? ((assigned / totalBlock) * 100).toFixed(0) : '0';
 
     return {
       totalBlock,
-      assigned: baseAssigned,
+      assigned,
       assignedPercentage,
       available: availableCount,
       conflicts: conflictRooms
     };
+  }, [rooms]);
+
+  // Unique floors list extracted dynamically from the dataset
+  const uniqueFloors = useMemo(() => {
+    const floorsSet = new Set(rooms.map(r => r.floor));
+    return Array.from(floorsSet).sort((a, b) => b - a);
   }, [rooms]);
 
   // Search filter unassigned guests
@@ -224,44 +266,72 @@ export default function RoomAllocation() {
 
   // Open Room Selection for allocation
   const handleRoomClick = (room) => {
-    if (room.status === 'Available') {
-      setSelectedRoomForAssign(room);
-      setSelectedGuestForAssignId(selectedUnassignedGuest ? selectedUnassignedGuest.id : (unassignedGuests[0]?.id || ''));
-      setIsAssignPopupOpen(true);
-    } else if (room.status === 'Occupied') {
-      setSelectedRoomForDetail(room);
-      setIsDetailPopupOpen(true);
-    } else if (room.status === 'Conflict') {
+    if (room.hasConflict) {
       setSelectedRoomForConflict(room);
       setIsConflictPopupOpen(true);
-    } else {
+      return;
+    }
+
+    if (room.status === 'Reserved') {
       setToastMessage(`Room ${room.roomNumber} is currently on hold.`);
+      return;
+    }
+
+    const currentOccupancy = room.guests ? room.guests.length : 0;
+    const capacity = room.capacity !== undefined ? room.capacity : 2;
+
+    if (currentOccupancy >= capacity) {
+      setSelectedRoomForDetail(room);
+      setIsDetailPopupOpen(true);
+    } else {
+      if (currentOccupancy > 0) {
+        setSelectedRoomForDetail(room);
+        setIsDetailPopupOpen(true);
+      } else {
+        setSelectedRoomForAssign(room);
+        setSelectedGuestForAssignId(selectedUnassignedGuest ? selectedUnassignedGuest.id : (unassignedGuests[0]?.id || ''));
+        setIsAssignPopupOpen(true);
+      }
     }
   };
 
   // Confirm Allocation Form Submit
   const handleConfirmAssign = (e) => {
     e.preventDefault();
-    if (!selectedGuestForAssignId) return;
+    if (!selectedGuestForAssignId || !selectedRoomForAssign) return;
 
     const assignedGuest = unassignedGuests.find(g => g.id === selectedGuestForAssignId);
     if (!assignedGuest) return;
 
-    // Update Room status to Occupied
-    setRooms(prev => prev.map(r => 
-      r.id === selectedRoomForAssign.id 
-        ? {
-            ...r,
-            status: 'Occupied',
-            guest: {
-              name: assignedGuest.name,
-              category: assignedGuest.category,
-              initials: assignedGuest.name.split(' ').map(n => n[0]).join(''),
-              isVip: assignedGuest.category === 'Speaker' || assignedGuest.category === 'Sponsor'
-            }
-          }
-        : r
-    ));
+    const targetRoom = rooms.find(r => r.id === selectedRoomForAssign.id);
+    if (!targetRoom) return;
+
+    const capacity = targetRoom.capacity !== undefined ? targetRoom.capacity : 2;
+    if (targetRoom.guests.length >= capacity) {
+      alert("Maximum room capacity reached.");
+      setIsAssignPopupOpen(false);
+      return;
+    }
+
+    const newGuest = {
+      name: assignedGuest.name,
+      category: assignedGuest.category,
+      initials: assignedGuest.name.split(' ').map(n => n[0]).join(''),
+      isVip: assignedGuest.category === 'Speaker' || assignedGuest.category === 'Sponsor'
+    };
+
+    setRooms(prev => prev.map(r => {
+      if (r.id === targetRoom.id) {
+        const updatedGuests = [...r.guests, newGuest];
+        return {
+          ...r,
+          status: 'Occupied',
+          hasConflict: updatedGuests.length > capacity,
+          guests: updatedGuests
+        };
+      }
+      return r;
+    }));
 
     // Remove from unassigned list
     setUnassignedGuests(prev => prev.filter(g => g.id !== selectedGuestForAssignId));
@@ -272,30 +342,21 @@ export default function RoomAllocation() {
     setSelectedGuestForAssignId('');
     setSelectedUnassignedGuest(null);
 
-    setToastMessage(`Successfully assigned ${assignedGuest.name} to Room ${selectedRoomForAssign.roomNumber}!`);
+    setToastMessage(`Successfully assigned ${assignedGuest.name} to Room ${targetRoom.roomNumber}!`);
   };
 
   // Unassign Guest handler
   const handleUnassignGuest = (room) => {
     let releasedGuests = [];
 
-    if (room.status === 'Occupied' && room.guest) {
-      releasedGuests.push({
-        id: `u-${Date.now()}`,
-        name: room.guest.name,
-        category: room.guest.category || 'Attendee',
-        dates: 'Oct 12 - Oct 15',
-        request: room.guest.isVip ? 'VIP Allocation Release' : 'No Special Requests',
-        avatar: null
-      });
-    } else if (room.status === 'Conflict' && room.guests) {
+    if (room.guests && room.guests.length > 0) {
       room.guests.forEach((g, idx) => {
         releasedGuests.push({
           id: `u-${Date.now()}-${idx}`,
           name: g.name,
           category: g.category || 'Attendee',
           dates: 'Oct 12 - Oct 15',
-          request: 'Conflict Resolution Release',
+          request: g.isVip ? 'VIP Allocation Release' : 'No Special Requests',
           avatar: null
         });
       });
@@ -306,7 +367,7 @@ export default function RoomAllocation() {
 
     // Reset room status to Available
     setRooms(prev => prev.map(r => 
-      r.id === room.id ? { ...r, status: 'Available', guest: null, guests: null } : r
+      r.id === room.id ? { ...r, status: 'Available', hasConflict: false, guests: [] } : r
     ));
 
     // Close popups
@@ -318,24 +379,71 @@ export default function RoomAllocation() {
     setToastMessage(`Room ${room.roomNumber} is now vacant & available.`);
   };
 
+  // Unassign single guest from detail popup list
+  const handleUnassignSingleGuest = (room, guestName) => {
+    const guestToMove = room.guests.find(g => g.name === guestName);
+    const remainingGuests = room.guests.filter(g => g.name !== guestName);
+    const capacity = room.capacity !== undefined ? room.capacity : 2;
+
+    setRooms(prev => prev.map(r => {
+      if (r.id === room.id) {
+        let newStatus = 'Available';
+        if (remainingGuests.length > 0) {
+          newStatus = r.status === 'Reserved' ? 'Reserved' : 'Occupied';
+        }
+        return {
+          ...r,
+          status: newStatus,
+          hasConflict: remainingGuests.length > capacity,
+          guests: remainingGuests
+        };
+      }
+      return r;
+    }));
+
+    // Send the guest back to unassigned
+    setUnassignedGuests(prev => [
+      {
+        id: `u-${Date.now()}`,
+        name: guestToMove.name,
+        category: guestToMove.category || 'Attendee',
+        dates: 'Oct 12 - Oct 15',
+        request: 'Guest Release',
+        avatar: null
+      },
+      ...prev
+    ]);
+
+    const updatedRoom = {
+      ...room,
+      guests: remainingGuests,
+      status: remainingGuests.length > 0 ? (room.status === 'Reserved' ? 'Reserved' : 'Occupied') : 'Available',
+      hasConflict: remainingGuests.length > capacity
+    };
+    
+    if (remainingGuests.length === 0) {
+      setIsDetailPopupOpen(false);
+      setSelectedRoomForDetail(null);
+    } else {
+      setSelectedRoomForDetail(updatedRoom);
+    }
+
+    setToastMessage(`${guestToMove.name} returned to unassigned panel.`);
+  };
+
   // Move one guest to resolve double booking
   const handleResolveConflictMoveOne = (room, guestToMoveName) => {
     const guestToMove = room.guests.find(g => g.name === guestToMoveName);
-    const guestToStay = room.guests.find(g => g.name !== guestToMoveName);
+    const remainingGuests = room.guests.filter(g => g.name !== guestToMoveName);
+    const capacity = room.capacity !== undefined ? room.capacity : 2;
 
-    // Keep staying guest in room, change status to Occupied
     setRooms(prev => prev.map(r => 
       r.id === room.id 
         ? {
             ...r,
-            status: 'Occupied',
-            guest: {
-              name: guestToStay.name,
-              category: guestToStay.category,
-              initials: guestToStay.initials,
-              isVip: guestToStay.category === 'Speaker' || guestToStay.category === 'VIP'
-            },
-            guests: null
+            status: remainingGuests.length > 0 ? (r.status === 'Reserved' ? 'Reserved' : 'Occupied') : 'Available',
+            hasConflict: remainingGuests.length > capacity,
+            guests: remainingGuests
           }
         : r
     ));
@@ -374,32 +482,38 @@ export default function RoomAllocation() {
     let currentRooms = [...rooms];
     let assignedCount = 0;
 
-    // Loop rooms and allocate if room is Available
     currentRooms = currentRooms.map(room => {
-      if (room.status === 'Available' && currentUnassigned.length > 0) {
-        // Find best match: VIPs/Speakers on Floor 5, Attendees on Floor 4
-        let matchIndex = -1;
-        if (room.floor === 5) {
-          matchIndex = currentUnassigned.findIndex(g => g.category === 'Speaker' || g.category === 'Sponsor');
-        }
-        // Fallback to first available guest if no exact type match
-        if (matchIndex === -1) {
-          matchIndex = 0;
-        }
+      const capacity = room.capacity !== undefined ? room.capacity : 2;
+      
+      if (room.status !== 'Reserved' && room.guests.length < capacity && currentUnassigned.length > 0) {
+        const updatedGuests = [...room.guests];
+        
+        while (updatedGuests.length < capacity && currentUnassigned.length > 0) {
+          let matchIndex = -1;
+          if (room.floor === 5) {
+            matchIndex = currentUnassigned.findIndex(g => g.category === 'Speaker' || g.category === 'Sponsor');
+          }
+          if (matchIndex === -1) {
+            matchIndex = 0;
+          }
 
-        const matchGuest = currentUnassigned[matchIndex];
-        currentUnassigned.splice(matchIndex, 1);
-        assignedCount += 1;
+          const matchGuest = currentUnassigned[matchIndex];
+          currentUnassigned.splice(matchIndex, 1);
+          assignedCount += 1;
 
-        return {
-          ...room,
-          status: 'Occupied',
-          guest: {
+          updatedGuests.push({
             name: matchGuest.name,
             category: matchGuest.category,
             initials: matchGuest.name.split(' ').map(n => n[0]).join(''),
             isVip: matchGuest.category === 'Speaker' || matchGuest.category === 'Sponsor'
-          }
+          });
+        }
+
+        return {
+          ...room,
+          status: 'Occupied',
+          hasConflict: updatedGuests.length > capacity,
+          guests: updatedGuests
         };
       }
       return room;
@@ -523,7 +637,7 @@ export default function RoomAllocation() {
                 <div className="matrix-stat-label">Total Block</div>
                 <div className="matrix-stat-val-group">
                   <span className="matrix-stat-val">{statsMetrics.totalBlock}</span>
-                  <span className="matrix-stat-sub">Rooms</span>
+                  <span className="matrix-stat-sub">Rooms (Active Subset)</span>
                 </div>
               </div>
 
@@ -562,142 +676,103 @@ export default function RoomAllocation() {
 
             {/* Room grid sections */}
             <div className="floor-matrix-card">
-              {/* Floor 5 */}
-              <div className="floor-section">
-                <div className="floor-header">
-                  <span className="floor-title">Floor 5</span>
-                  <span className="floor-subtitle">12 Suites • 4 Standard</span>
-                </div>
+              {uniqueFloors.map(floorNum => {
+                const floorRooms = rooms.filter(r => r.floor === floorNum);
+                const suitesCount = floorRooms.filter(r => r.roomType.toLowerCase().includes('suite') || r.roomType.toLowerCase().includes('penthouse')).length;
+                const standardCount = floorRooms.length - suitesCount;
+                
+                const subtitle = suitesCount > 0 
+                  ? `${suitesCount} Suites • ${standardCount} Standard`
+                  : `${standardCount} Standard Rooms`;
 
-                <div className="floor-rooms-grid">
-                  {rooms.filter(r => r.floor === 5).map(room => {
-                    const highlighted = isRoomHighlighted(room);
-                    return (
-                      <div 
-                        key={room.id} 
-                        className={`room-card ${room.status.toLowerCase()} ${highlighted ? 'highlighted' : ''}`}
-                        onClick={() => handleRoomClick(room)}
-                        style={{
-                          border: highlighted ? '2px solid #ff4d4f' : undefined,
-                          backgroundColor: highlighted ? '#fff8f6' : undefined
-                        }}
-                      >
-                        {room.status === 'Available' ? (
-                          <>
-                            <div className="room-card-plus">+</div>
-                            <div className="room-available-text">
-                              {room.roomNumber} - Available
-                              <span>{room.details}</span>
-                            </div>
-                          </>
-                        ) : room.status === 'Reserved' ? (
-                          <>
-                            <div className="room-card-top">
-                              <span className="room-number">{room.roomNumber}</span>
-                              <span className="reserved-badge">RESERVED</span>
-                            </div>
-                            <div className="room-desc">{room.roomType}</div>
-                            <div className="reserved-text">{room.details}</div>
-                          </>
-                        ) : room.status === 'Conflict' ? (
-                          <>
-                            <div className="room-card-top">
-                              <span className="room-number">{room.roomNumber}</span>
-                              <span className="conflict-warning-badge">⚠️</span>
-                            </div>
-                            <div className="room-desc">{room.roomType}</div>
-                            <div className="conflict-inner-card">
-                              <span>⚠️ Double Booking Detected</span>
-                            </div>
-                          </>
-                        ) : (
-                          // Occupied
-                          <>
-                            <div className="room-card-top">
-                              <span className="room-number">
-                                {room.roomNumber}
-                                {room.guest.isVip && <span className="vip-badge-tag">VIP</span>}
-                              </span>
-                              {room.guest.isVip && <span className="vip-star-badge">★</span>}
-                            </div>
-                            <div className="room-desc">{room.roomType}</div>
-                            <div className="room-guest-row">
-                              <div className="room-guest-avatar">
-                                {room.guest.initials}
-                              </div>
-                              <div className="room-guest-info">
-                                <span className="room-guest-name">{room.guest.name}</span>
-                                <span className="room-guest-role">{room.guest.category}</span>
-                              </div>
-                            </div>
-                          </>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
+                return (
+                  <div key={floorNum} className="floor-section">
+                    <div className="floor-header">
+                      <span className="floor-title">Floor {floorNum}</span>
+                      <span className="floor-subtitle">{subtitle}</span>
+                    </div>
 
-              {/* Floor 4 */}
-              <div className="floor-section">
-                <div className="floor-header">
-                  <span className="floor-title">Floor 4</span>
-                  <span className="floor-subtitle">16 Standard Rooms</span>
-                </div>
-
-                <div className="floor-rooms-grid">
-                  {rooms.filter(r => r.floor === 4).map(room => {
-                    const highlighted = isRoomHighlighted(room);
-                    return (
-                      <div 
-                        key={room.id} 
-                        className={`room-card ${room.status.toLowerCase()} ${highlighted ? 'highlighted' : ''}`}
-                        onClick={() => handleRoomClick(room)}
-                        style={{
-                          border: highlighted ? '2px solid #ff4d4f' : undefined,
-                          backgroundColor: highlighted ? '#fff8f6' : undefined
-                        }}
-                      >
-                        {room.status === 'Available' ? (
-                          <>
-                            <div className="room-card-plus">+</div>
-                            <div className="room-available-text">
-                              {room.roomNumber} - Available
-                              <span>{room.details}</span>
-                            </div>
-                          </>
-                        ) : room.status === 'Reserved' ? (
-                          <>
-                            <div className="room-card-top">
-                              <span className="room-number">{room.roomNumber}</span>
-                              <span className="reserved-badge">HOLD</span>
-                            </div>
-                            <div className="room-desc">{room.roomType}</div>
-                            <div className="reserved-text">{room.details}</div>
-                          </>
-                        ) : (
-                          // Occupied
-                          <>
-                            <div className="room-card-top">
-                              <span className="room-number">{room.roomNumber}</span>
-                            </div>
-                            <div className="room-desc">{room.roomType}</div>
-                            <div className="room-guest-row">
-                              <div className="room-guest-avatar">
-                                {room.guest.initials}
-                              </div>
-                              <div className="room-guest-info">
-                                <span className="room-guest-name">{room.guest.name}</span>
-                                <span className="room-guest-role">{room.guest.category}</span>
-                              </div>
-                            </div>
-                          </>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
+                    <div className="floor-rooms-grid">
+                      {floorRooms.map(room => {
+                        const highlighted = isRoomHighlighted(room);
+                        return (
+                          <div 
+                            key={room.id} 
+                            className={`room-card ${room.status.toLowerCase()} ${room.hasConflict ? 'conflict' : ''} ${highlighted ? 'highlighted' : ''}`}
+                            onClick={() => handleRoomClick(room)}
+                            style={{
+                              border: highlighted ? '2px solid #ff4d4f' : undefined,
+                              backgroundColor: highlighted ? '#fff8f6' : undefined
+                            }}
+                          >
+                            {room.status === 'Available' && !room.hasConflict ? (
+                              <>
+                                <div className="room-card-plus">+</div>
+                                <div className="room-available-text">
+                                  {room.roomNumber} - Available
+                                  <span>{room.details}</span>
+                                </div>
+                              </>
+                            ) : room.status === 'Reserved' && !room.hasConflict ? (
+                              <>
+                                <div className="room-card-top">
+                                  <span className="room-number">{room.roomNumber}</span>
+                                  <span className="reserved-badge">{room.floor === 4 ? 'HOLD' : 'RESERVED'}</span>
+                                </div>
+                                <div className="room-desc">{room.roomType}</div>
+                                <div className="reserved-text">{room.details}</div>
+                              </>
+                            ) : room.hasConflict ? (
+                              <>
+                                <div className="room-card-top">
+                                  <span className="room-number">{room.roomNumber}</span>
+                                  <span className="conflict-warning-badge">⚠️</span>
+                                </div>
+                                <div className="room-desc">{room.roomType}</div>
+                                <div className="conflict-inner-card">
+                                  <span>⚠️ Maximum room capacity reached.</span>
+                                </div>
+                              </>
+                            ) : (
+                              // Occupied
+                              <>
+                                <div className="room-card-top">
+                                  <span className="room-number">
+                                    {room.roomNumber}
+                                    {room.guests.some(g => g.isVip) && <span className="vip-badge-tag">VIP</span>}
+                                  </span>
+                                  {room.guests.some(g => g.isVip) && <span className="vip-star-badge">★</span>}
+                                </div>
+                                <div className="room-desc">{room.roomType}</div>
+                                {room.guests.length > 0 && (() => {
+                                  const firstGuest = room.guests[0];
+                                  const guestLabel = room.guests.length > 1 
+                                    ? `${firstGuest.name} (+${room.guests.length - 1})`
+                                    : firstGuest.name;
+                                  const roleLabel = room.guests.length > 1
+                                    ? `${room.guests.length} Guests`
+                                    : firstGuest.category;
+                                  return (
+                                    <div className="room-guest-row">
+                                      <div className="room-guest-avatar">
+                                        {firstGuest.initials}
+                                      </div>
+                                      <div className="room-guest-info">
+                                        <span className="room-guest-name">{guestLabel}</span>
+                                        <span className="room-guest-role">{roleLabel}</span>
+                                      </div>
+                                    </div>
+                                  );
+                                })()}
+                              </>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
 
               {/* Legend Panel */}
               <div className="matrix-legend-row">
@@ -861,20 +936,35 @@ export default function RoomAllocation() {
               <div>
                 <h3 className="alloc-popup-title" style={{ fontSize: '1.15rem' }}>Room {selectedRoomForDetail.roomNumber}</h3>
                 <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#ff4d4f', textTransform: 'uppercase' }}>{selectedRoomForDetail.roomType}</span>
+                <span style={{ display: 'block', fontSize: '0.7rem', color: '#64748b', marginTop: '0.25rem' }}>
+                  Capacity: {selectedRoomForDetail.capacity !== undefined ? selectedRoomForDetail.capacity : 2} occupants
+                </span>
               </div>
               <span className="legend-square occupied" style={{ width: '18px', height: '18px' }}></span>
             </div>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', backgroundColor: '#f8fafc', padding: '0.75rem', borderRadius: '8px', marginBottom: '1rem', border: '1px solid #e2e8f0' }}>
-              <div className="room-guest-avatar" style={{ width: '38px', height: '38px', fontSize: '0.95rem' }}>
-                {selectedRoomForDetail.guest.initials}
-              </div>
-              <div>
-                <strong style={{ fontSize: '0.9rem', color: '#1e293b', display: 'block' }}>{selectedRoomForDetail.guest.name}</strong>
-                <span className={`role-badge ${selectedRoomForDetail.guest.category.toLowerCase()}`} style={{ display: 'inline-block', marginTop: '0.15rem' }}>
-                  {selectedRoomForDetail.guest.category}
-                </span>
-              </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '1rem' }}>
+              {selectedRoomForDetail.guests && selectedRoomForDetail.guests.map((g, idx) => (
+                <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', backgroundColor: '#f8fafc', padding: '0.75rem', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                  <div className="room-guest-avatar" style={{ width: '38px', height: '38px', fontSize: '0.95rem' }}>
+                    {g.initials}
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <strong style={{ fontSize: '0.9rem', color: '#1e293b', display: 'block' }}>{g.name}</strong>
+                    <span className={`role-badge ${g.category.toLowerCase()}`} style={{ display: 'inline-block', marginTop: '0.15rem' }}>
+                      {g.category}
+                    </span>
+                  </div>
+                  <button 
+                    type="button" 
+                    className="btn-popup-confirm" 
+                    style={{ padding: '0.25rem 0.6rem', fontSize: '0.7rem', backgroundColor: '#ef4444' }}
+                    onClick={() => handleUnassignSingleGuest(selectedRoomForDetail, g.name)}
+                  >
+                    Remove
+                  </button>
+                </div>
+              ))}
             </div>
 
             <div style={{ fontSize: '0.75rem', color: '#64748b', display: 'flex', flexDirection: 'column', gap: '0.35rem', marginBottom: '1.25rem' }}>
@@ -884,13 +974,27 @@ export default function RoomAllocation() {
 
             <div className="alloc-popup-actions">
               <button type="button" className="btn-popup-cancel" onClick={() => setIsDetailPopupOpen(false)}>Close</button>
+              {selectedRoomForDetail.guests.length < (selectedRoomForDetail.capacity !== undefined ? selectedRoomForDetail.capacity : 2) && (
+                <button 
+                  type="button" 
+                  className="btn-popup-confirm" 
+                  onClick={() => {
+                    setIsDetailPopupOpen(false);
+                    setSelectedRoomForAssign(selectedRoomForDetail);
+                    setSelectedGuestForAssignId(selectedUnassignedGuest ? selectedUnassignedGuest.id : (unassignedGuests[0]?.id || ''));
+                    setIsAssignPopupOpen(true);
+                  }}
+                >
+                  Add Guest
+                </button>
+              )}
               <button 
                 type="button" 
                 className="btn-popup-confirm" 
                 style={{ backgroundColor: '#dc2626' }}
                 onClick={() => handleUnassignGuest(selectedRoomForDetail)}
               >
-                Unassign Guest
+                Unassign All
               </button>
             </div>
           </div>
@@ -904,12 +1008,14 @@ export default function RoomAllocation() {
             <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', marginBottom: '0.75rem' }}>
               <span style={{ fontSize: '1.5rem' }}>⚠️</span>
               <div>
-                <h3 className="alloc-popup-title" style={{ color: '#b91c1c' }}>Double Booking: Room {selectedRoomForConflict.roomNumber}</h3>
-                <span style={{ fontSize: '0.7rem', color: '#7f1d1d', fontWeight: 600 }}>Multiple guests assigned to same room block!</span>
+                <h3 className="alloc-popup-title" style={{ color: '#b91c1c' }}>Capacity Conflict: Room {selectedRoomForConflict.roomNumber}</h3>
+                <span style={{ fontSize: '0.7rem', color: '#7f1d1d', fontWeight: 600 }}>Maximum room capacity reached.</span>
               </div>
             </div>
 
-            <p style={{ fontSize: '0.75rem', color: '#64748b', marginBottom: '1rem' }}>Two occupants are currently allocated to {selectedRoomForConflict.roomType}. Select one to remove in order to resolve the conflict:</p>
+            <p style={{ fontSize: '0.75rem', color: '#64748b', marginBottom: '1rem' }}>
+              Multiple occupants exceed the maximum capacity of {selectedRoomForConflict.capacity !== undefined ? selectedRoomForConflict.capacity : 2} guests for this room type. Select a guest to remove to resolve the conflict:
+            </p>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '1.25rem' }}>
               {selectedRoomForConflict.guests.map((g, idx) => (
