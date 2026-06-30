@@ -189,7 +189,7 @@ export default function Hotels({ isBookRoomOpen, setIsBookRoomOpen }) {
   const [formErrors, setFormErrors] = useState({});
 
   // VIP Quick view (Assign toggle/status indicator dots helper)
-  const [vipFilterOnly, setVipFilterOnly] = useState(false);
+  const [showAllVips, setShowAllVips] = useState(false);
 
   // Utility to format dates for visual presentation: 'Oct 14, 2023'
   const formatDateString = (dateStr) => {
@@ -256,12 +256,9 @@ export default function Hotels({ isBookRoomOpen, setIsBookRoomOpen }) {
       // Status Dropdown match
       const matchesStatus = selectedStatus === 'All Status' || item.status === selectedStatus;
 
-      // VIP only toggle
-      const matchesVip = !vipFilterOnly || item.roomType === 'Suite' || item.roomType === 'Penthouse';
-
-      return matchesSearch && matchesHotel && matchesRoomType && matchesStatus && matchesVip;
+      return matchesSearch && matchesHotel && matchesRoomType && matchesStatus;
     });
-  }, [allocations, searchQuery, selectedHotel, selectedRoomType, selectedStatus, vipFilterOnly]);
+  }, [allocations, searchQuery, selectedHotel, selectedRoomType, selectedStatus]);
 
   // Pagination slice
   const paginatedAllocations = useMemo(() => {
@@ -271,10 +268,9 @@ export default function Hotels({ isBookRoomOpen, setIsBookRoomOpen }) {
 
   const totalPages = Math.ceil(filteredAllocations.length / itemsPerPage) || 1;
 
-  // Handle page resets when filtering
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, selectedHotel, selectedRoomType, selectedStatus, vipFilterOnly]);
+  }, [searchQuery, selectedHotel, selectedRoomType, selectedStatus]);
 
   // Export report as CSV file
   const handleExportCSV = () => {
@@ -386,10 +382,9 @@ export default function Hotels({ isBookRoomOpen, setIsBookRoomOpen }) {
 
   // VIP Quick selection profiles (Top list matching visual design)
   const vipAllocationsList = useMemo(() => {
-    return allocations
-      .filter(a => a.roomType === 'Suite' || a.roomType === 'Penthouse')
-      .slice(0, 3);
-  }, [allocations]);
+    const list = allocations.filter(a => a.roomType === 'Suite' || a.roomType === 'Penthouse');
+    return showAllVips ? list : list.slice(0, 3);
+  }, [allocations, showAllVips]);
 
   return (
     <div className="hotels-container">
@@ -517,15 +512,6 @@ export default function Hotels({ isBookRoomOpen, setIsBookRoomOpen }) {
                 <path d="M6 12 12 2l6 10-6 10z" />
               </svg>
             </div>
-            {/* Slide Toggle Slider */}
-            <label className="switch-toggle" title="Toggle VIP filter only">
-              <input 
-                type="checkbox" 
-                checked={vipFilterOnly} 
-                onChange={(e) => setVipFilterOnly(e.target.checked)} 
-              />
-              <span className="switch-slider"></span>
-            </label>
           </div>
           <div className="metric-card-body">
             <h3>VIP Suites Booked</h3>
@@ -581,12 +567,9 @@ export default function Hotels({ isBookRoomOpen, setIsBookRoomOpen }) {
             <h2>VIP Allocations</h2>
             <span 
               className="vip-view-all" 
-              onClick={() => {
-                setVipFilterOnly(!vipFilterOnly);
-                setSelectedRoomType(vipFilterOnly ? 'Room Type' : 'Suite');
-              }}
+              onClick={() => setShowAllVips(!showAllVips)}
             >
-              {vipFilterOnly ? 'Show All' : 'View All'}
+              {showAllVips ? 'Show Less' : 'View All'}
             </span>
           </div>
 
