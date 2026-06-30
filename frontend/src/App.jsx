@@ -194,8 +194,14 @@ export default function App() {
   const [isAccommodationDropdownOpen, setIsAccommodationDropdownOpen] = useState(true);
   const [isTransportationDropdownOpen, setIsTransportationDropdownOpen] = useState(true);
   const [isBookRoomOpen, setIsBookRoomOpen] = useState(false);
-  const [rooms, setRooms] = useState(INITIAL_ROOMS);
-  const [unassignedGuests, setUnassignedGuests] = useState(INITIAL_UNASSIGNED);
+  const [rooms, setRooms] = useState(() => {
+    const saved = localStorage.getItem('eh360_rooms');
+    return saved ? JSON.parse(saved) : INITIAL_ROOMS;
+  });
+  const [unassignedGuests, setUnassignedGuests] = useState(() => {
+    const saved = localStorage.getItem('eh360_unassigned_guests');
+    return saved ? JSON.parse(saved) : INITIAL_UNASSIGNED;
+  });
 
   const handleGuestsClick = () => {
     setIsGuestsDropdownOpen(!isGuestsDropdownOpen);

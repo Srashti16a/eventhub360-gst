@@ -514,7 +514,9 @@ export default function RoomAllocation({
 
   // Save changes handler
   const handleSaveMatrix = () => {
-    setToastMessage('Success: Allocation changes stored in server repository.');
+    localStorage.setItem('eh360_rooms', JSON.stringify(rooms));
+    localStorage.setItem('eh360_unassigned_guests', JSON.stringify(unassignedGuests));
+    setToastMessage('Room allocation updated successfully.');
   };
 
   // Intelligent Auto-Assign logic simulator
