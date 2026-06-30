@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import './RoomAllocation.css';
 
 // Initial seed data for unassigned guests
-const INITIAL_UNASSIGNED = [
+export const INITIAL_UNASSIGNED = [
   { id: 'u1', name: 'Dr. Marcus Vance', category: 'Speaker', dates: 'Oct 12 - Oct 15', request: 'High Floor', avatar: null },
   { id: 'u2', name: 'Elena Rodriguez', category: 'Sponsor', dates: 'Oct 12 - Oct 18', request: 'Near Elevator', avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=100&auto=format&fit=crop&q=80' },
   { id: 'u3', name: 'David Chen', category: 'Attendee', dates: 'Oct 13 - Oct 15', request: 'No Special Requests', avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&auto=format&fit=crop&q=80' },
@@ -22,8 +22,7 @@ const getRoomCapacity = (roomType) => {
   return 2;
 };
 
-// Initial seed data for rooms
-const INITIAL_ROOMS = [
+export const INITIAL_ROOMS = [
   // Floor 5
   {
     id: 501,
@@ -165,10 +164,20 @@ const INITIAL_ROOMS = [
   }
 ];
 
-export default function RoomAllocation() {
+export default function RoomAllocation({
+  rooms: propRooms,
+  setRooms: propSetRooms,
+  unassignedGuests: propUnassignedGuests,
+  setUnassignedGuests: propSetUnassignedGuests
+}) {
   const [activeSubTab, setActiveSubTab] = useState('Floor Plan'); // 'Floor Plan', 'Analytics', 'Reports'
-  const [unassignedGuests, setUnassignedGuests] = useState(INITIAL_UNASSIGNED);
-  const [rooms, setRooms] = useState(INITIAL_ROOMS);
+  const [localRooms, setLocalRooms] = useState(INITIAL_ROOMS);
+  const [localUnassigned, setLocalUnassigned] = useState(INITIAL_UNASSIGNED);
+
+  const rooms = propRooms !== undefined ? propRooms : localRooms;
+  const setRooms = propSetRooms !== undefined ? propSetRooms : setLocalRooms;
+  const unassignedGuests = propUnassignedGuests !== undefined ? propUnassignedGuests : localUnassigned;
+  const setUnassignedGuests = propSetUnassignedGuests !== undefined ? propSetUnassignedGuests : setLocalUnassigned;
   const [activeHotel, setActiveHotel] = useState('Grand Ballroom Hotel & Spa');
   const [isHotelDropdownOpen, setIsHotelDropdownOpen] = useState(false);
 

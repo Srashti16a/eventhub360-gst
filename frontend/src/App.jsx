@@ -5,7 +5,7 @@ import GuestCategories from './pages/GuestCategories';
 import RSVPAnalytics from './pages/RSVPAnalytics';
 import MagicLinks from './pages/MagicLinks';
 import Hotels from './pages/Hotels';
-import RoomAllocation from './pages/RoomAllocation';
+import RoomAllocation, { INITIAL_ROOMS, INITIAL_UNASSIGNED } from './pages/RoomAllocation';
 import Transportation from './pages/Transportation';
 import Templates from './pages/Templates';
 
@@ -194,6 +194,8 @@ export default function App() {
   const [isAccommodationDropdownOpen, setIsAccommodationDropdownOpen] = useState(true);
   const [isTransportationDropdownOpen, setIsTransportationDropdownOpen] = useState(true);
   const [isBookRoomOpen, setIsBookRoomOpen] = useState(false);
+  const [rooms, setRooms] = useState(INITIAL_ROOMS);
+  const [unassignedGuests, setUnassignedGuests] = useState(INITIAL_UNASSIGNED);
 
   const handleGuestsClick = () => {
     setIsGuestsDropdownOpen(!isGuestsDropdownOpen);
@@ -676,7 +678,12 @@ export default function App() {
           ) : activeView === 'magic_links' ? (
             <MagicLinks />
           ) : activeView === 'room_allocation' ? (
-            <RoomAllocation />
+            <RoomAllocation 
+              rooms={rooms}
+              setRooms={setRooms}
+              unassignedGuests={unassignedGuests}
+              setUnassignedGuests={setUnassignedGuests}
+            />
           ) : activeView === 'hotels' ? (
             <Hotels isBookRoomOpen={isBookRoomOpen} setIsBookRoomOpen={setIsBookRoomOpen} />
           ) : activeView === 'transportation' ? (
