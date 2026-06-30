@@ -147,12 +147,10 @@ export function BulkImportModal({ isOpen, onClose, onImportSuccess }) {
                   }}
                   onClick={(e) => {
                     e.stopPropagation();
-                    const sampleCsvText = "Name,Email,Phone,Status,EventCategory\nAlice Cooper,alice.c@example.com,1112223333,CONFIRMED,Corporate Gala\nBob Marley,bob.m@example.com,4445556666,PENDING,Corporate Gala\n";
-                    const file = new File([sampleCsvText], "test-import.csv", { type: "text/csv" });
-                    setFileSelected(file);
+                    document.getElementById('csvFileInput').click();
                   }}
                 >
-                  Or click here to load a sample CSV for testing
+                  Or click here to choose a file or list
                 </button>
               </div>
 
