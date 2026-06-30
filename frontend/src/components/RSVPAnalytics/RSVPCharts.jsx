@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 
-export default function RSVPCharts() {
+export default function RSVPCharts({ stats = { total: 0, accepted: 0, declined: 0, pending: 0 } }) {
   const [trendView, setTrendView] = useState('weekly'); // 'weekly' or 'monthly'
 
   // Weekly and Monthly mock wave paths for SVG
@@ -10,6 +10,23 @@ export default function RSVPCharts() {
   const monthlyPath = "M 30 100 Q 110 60 190 85 T 350 40 T 510 80 T 670 20";
   const monthlyAreaPath = `${monthlyPath} L 670 140 L 30 140 Z`;
 
+  // Calculate dynamic heights for the mini bar chart
+  const conversionRate = stats.total ? (stats.accepted / stats.total) * 100 : 0;
+  
+  // We'll generate a mock "trend" that leads up to the current conversion rate
+  const generateTrendBars = () => {
+    const bars = [];
+    const maxVal = Math.max(conversionRate, 20); // ensure some height
+    for (let i = 0; i < 9; i++) {
+      // Create a nice ascending curve that ends at the current conversion rate
+      const val = Math.min(100, Math.max(15, (conversionRate * 0.4) + (i * (conversionRate * 0.6) / 8)));
+      bars.push(val);
+    }
+    return bars;
+  };
+
+  const dynamicBars = generateTrendBars();
+
   return (
     <div className="rsvp-charts-grid">
       {/* RSVP Conversion Rate (Left Card) */}
@@ -18,7 +35,7 @@ export default function RSVPCharts() {
         <p>Percentage of invitees who have responded to date.</p>
         
         <div className="conversion-value-row">
-          <span className="conversion-val">67.5%</span>
+          <span className="conversion-val">{conversionRate.toFixed(1)}%</span>
           <span className="stat-trend-badge positive" style={{ fontSize: '0.75rem', padding: '0.15rem 0.4rem' }}>
             ▲ +5.4%
           </span>
@@ -26,7 +43,7 @@ export default function RSVPCharts() {
 
         {/* Dynamic Column Chart */}
         <div className="conv-bar-chart">
-          {[20, 28, 25, 38, 48, 44, 75, 90, 80].map((h, idx) => (
+          {dynamicBars.map((h, idx) => (
             <div
               key={idx}
               className="conv-bar-col"

@@ -43,11 +43,12 @@
   to { opacity: 1; transform: translateY(0); }
 }
 
-/* Header */
 .rsvp-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  flex-wrap: wrap;
+  gap: 1.5rem;
   margin-bottom: 2rem;
 }
 

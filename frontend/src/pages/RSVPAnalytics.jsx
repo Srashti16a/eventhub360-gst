@@ -5,35 +5,15 @@ import RSVPCharts from '../components/RSVPAnalytics/RSVPCharts';
 import CategoryTimeline from '../components/RSVPAnalytics/CategoryTimeline';
 import RecentResponses from '../components/RSVPAnalytics/RecentResponses';
 
-const INITIAL_RESPONSES = [
-  { id: 1, name: 'Jonathan Doe', email: 'jonathan.d@globaltech.com', category: 'Sponsor', status: 'Accepted', responseDate: 'May 12, 2024', avatarUrl: null },
-  { id: 2, name: 'Sarah Jenkins', email: 's.jenkins@creative.co', category: 'VIP', status: 'Declined', responseDate: 'May 11, 2024', avatarUrl: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&auto=format&fit=crop&q=80' },
-  { id: 3, name: 'Michael Kim', email: 'm.kim@financesolutions.org', category: 'Staff', status: 'Pending', responseDate: 'Invitation Sent', avatarUrl: null }
-];
-
-const INITIAL_TIMELINE = [
-  { id: 1, guestName: 'Sophia Loren', actionText: 'accepted the invitation', timeAgo: '2 minutes ago', category: 'VIP', status: 'accepted' },
-  { id: 2, guestName: 'Marcus Chen', actionText: 'declined the invitation', timeAgo: '14 minutes ago', category: 'Speaker', status: 'declined' },
-  { id: 3, guestName: 'Elena Rodriguez', actionText: 'accepted the invitation', timeAgo: '42 minutes ago', category: 'Sponsor', status: 'accepted' },
-  { id: 4, guestName: 'James Wilson', actionText: 'opened the invitation email', timeAgo: '1 hour ago', category: 'Staff', status: 'opened' }
-];
-
-const CATEGORY_BREAKDOWN = [
-  { name: 'VIP', count: 124 },
-  { name: 'Speaker', count: 42 },
-  { name: 'Sponsor', count: 88 },
-  { name: 'Media', count: 15 },
-  { name: 'Staff', count: 60 }
-];
-
 export default function RSVPAnalytics({ onViewAllGuests }) {
-  const [responses, setResponses] = useState(INITIAL_RESPONSES);
-  const [timeline, setTimeline] = useState(INITIAL_TIMELINE);
-
+  const [guests, setGuests] = useState([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  
   // Fetch real stats from backend
   const [stats, setStats] = useState({ total: 0, accepted: 0, declined: 0, pending: 0 });
 
   useEffect(() => {
+    // Fetch stats
     fetch('/api/dashboard/stats')
       .then(r => r.json())
       .then(res => {
@@ -47,7 +27,63 @@ export default function RSVPAnalytics({ onViewAllGuests }) {
         }
       })
       .catch(err => console.error('Error fetching RSVP stats:', err));
+
+    // Fetch full guest list for category breakdown and recent responses
+    fetch('/api/guests')
+      .then(r => r.json())
+      .then(res => {
+        if (res.success && res.data) {
+          setGuests(res.data);
+        }
+      })
+      .catch(err => console.error('Error fetching guests:', err));
   }, []);
+
+  // Compute Category Breakdown dynamically
+  const categoryCounts = useMemo(() => {
+    if (!guests.length) return [];
+    const counts = {};
+    guests.forEach(g => {
+      const cat = g.category || 'Standard';
+      counts[cat] = (counts[cat] || 0) + 1;
+    });
+    return Object.entries(counts)
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 5); // top 5 categories
+  }, [guests]);
+
+  // Compute Recent Responses dynamically
+  const recentResponses = useMemo(() => {
+    return [...guests]
+      .sort((a, b) => new Date(b.updatedAt || b.createdAt) - new Date(a.updatedAt || a.createdAt))
+      .slice(0, 10)
+      .map(g => ({
+        id: g.id,
+        name: g.name,
+        email: g.email,
+        category: g.category || 'Standard',
+        status: (g.status === 'CONFIRMED' ? 'Accepted' : g.status === 'DECLINED' ? 'Declined' : 'Pending'),
+        responseDate: new Date(g.updatedAt || g.createdAt).toLocaleDateString(),
+        avatarUrl: null
+      }));
+  }, [guests]);
+
+  // Compute Timeline dynamically
+  const timelineEvents = useMemo(() => {
+    return [...guests]
+      .filter(g => g.status === 'CONFIRMED' || g.status === 'DECLINED')
+      .sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt))
+      .slice(0, 5)
+      .map((g, idx) => ({
+        id: g.id || idx,
+        guestName: g.name,
+        actionText: g.status === 'CONFIRMED' ? 'accepted the invitation' : 'declined the invitation',
+        timeAgo: new Date(g.updatedAt).toLocaleDateString(),
+        category: g.category || 'Standard',
+        status: g.status === 'CONFIRMED' ? 'accepted' : 'declined'
+      }));
+  }, [guests]);
 
   // CSV Report exporter
   const handleExportReport = () => {
@@ -57,7 +93,7 @@ export default function RSVPAnalytics({ onViewAllGuests }) {
       `"Accepted Responses","${stats.accepted}","+8.4%"`,
       `"Declined Responses","${stats.declined}","-2.1%"`,
       `"Pending RSVPs","${stats.pending}","-0.5%"`,
-      `"Conversion Rate","67.5%","+5.4%"`
+      `"Conversion Rate","${stats.total ? ((stats.accepted/stats.total)*100).toFixed(1) : 0}%","+5.4%"`
     ].join('\n');
 
     const blob = new Blob([headers + rows], { type: 'text/csv;charset=utf-8;' });
@@ -86,7 +122,7 @@ export default function RSVPAnalytics({ onViewAllGuests }) {
         <button
           type="button"
           className="btn-secondary"
-          style={{ borderColor: 'var(--border-hover)', color: '#b45309', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+          style={{ borderColor: 'var(--border-hover)', color: '#b45309', display: 'flex', alignItems: 'center', gap: '0.5rem', whiteSpace: 'nowrap' }}
           onClick={handleExportReport}
         >
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" style={{ width: '16px', height: '16px' }}>
@@ -100,17 +136,19 @@ export default function RSVPAnalytics({ onViewAllGuests }) {
       <RSVPStats stats={stats} />
 
       {/* Conversion Rate columns and line charts */}
-      <RSVPCharts />
+      <RSVPCharts stats={stats} />
 
       {/* Category breakdown bar ratios and timelines */}
       <CategoryTimeline
-        categoryCounts={CATEGORY_BREAKDOWN}
-        timelineEvents={timeline}
+        categoryCounts={categoryCounts}
+        timelineEvents={timelineEvents}
       />
 
       {/* Bottom recent responses */}
       <RecentResponses
-        responses={responses}
+        responses={recentResponses}
+        searchQuery={searchQuery}
+        setSearchQuery={setSearchQuery}
         onViewAllGuests={onViewAllGuests}
       />
     </div>
