@@ -53,11 +53,10 @@ export default function RSVPAnalytics({ onViewAllGuests }) {
       .slice(0, 5); // top 5 categories
   }, [guests]);
 
-  // Compute Recent Responses dynamically
-  const recentResponses = useMemo(() => {
+  // Compute all responses mapped to the table format
+  const allResponses = useMemo(() => {
     return [...guests]
       .sort((a, b) => new Date(b.updatedAt || b.createdAt) - new Date(a.updatedAt || a.createdAt))
-      .slice(0, 10)
       .map(g => ({
         id: g.id,
         name: g.name,
@@ -146,7 +145,7 @@ export default function RSVPAnalytics({ onViewAllGuests }) {
 
       {/* Bottom recent responses */}
       <RecentResponses
-        responses={recentResponses}
+        responses={allResponses}
         searchQuery={searchQuery}
         setSearchQuery={setSearchQuery}
         onViewAllGuests={onViewAllGuests}

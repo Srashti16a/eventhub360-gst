@@ -36,6 +36,8 @@ export default function RecentResponses({ responses, searchQuery, setSearchQuery
     return matchesCat && matchesSearch;
   });
 
+  const displayedResponses = filteredResponses.slice(0, 10);
+
   return (
     <div className="recent-responses-card">
       <div className="recent-responses-card-header">
@@ -95,7 +97,7 @@ export default function RecentResponses({ responses, searchQuery, setSearchQuery
             </tr>
           </thead>
           <tbody>
-            {filteredResponses.map((row) => (
+            {displayedResponses.map((row) => (
               <tr key={row.id}>
                 <td>
                   <div className="guest-info-cell">
