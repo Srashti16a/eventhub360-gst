@@ -152,12 +152,14 @@ export default function RSVPCharts({ stats = { total: 0, accepted: 0, declined: 
 
             {/* Gradient Area under Wave */}
             <path
+              className="chart-area-animate"
               d={chartData.areaPath}
               fill="url(#chartGradient)"
             />
 
             {/* The Main Smooth Line */}
             <path
+              className="chart-path-animate"
               d={chartData.path}
               fill="none"
               stroke="#ff4d4f"
@@ -167,7 +169,19 @@ export default function RSVPCharts({ stats = { total: 0, accepted: 0, declined: 
 
             {/* Node Points on peaks/data points */}
             {chartData.points.map((pt, i) => (
-              <circle key={i} cx={pt.x} cy={pt.y} r="4" fill="#ff4d4f" stroke="#fff" strokeWidth="2" />
+              <circle 
+                key={i} 
+                className="chart-node-animate"
+                cx={pt.x} 
+                cy={pt.y} 
+                r="4" 
+                fill="#ff4d4f" 
+                stroke="#fff" 
+                strokeWidth="2" 
+                style={{ animationDelay: `${i * 0.15}s` }}
+              >
+                <title>{pt.label}: {pt.count} RSVPs</title>
+              </circle>
             ))}
           </svg>
         </div>
