@@ -167,6 +167,16 @@ export default function Hotels({ isBookRoomOpen, setIsBookRoomOpen }) {
   const [selectedRoomType, setSelectedRoomType] = useState('Room Type');
   const [selectedStatus, setSelectedStatus] = useState('All Status');
 
+  // Selected filter date range (applied)
+  const [filterStartDate, setFilterStartDate] = useState('2023-10-12');
+  const [filterEndDate, setFilterEndDate] = useState('2023-10-18');
+
+  // Date picker modal state
+  const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
+  const [tempStartDate, setTempStartDate] = useState('2023-10-12');
+  const [tempEndDate, setTempEndDate] = useState('2023-10-18');
+  const [dateError, setDateError] = useState('');
+
   // Pagination State
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 5;
@@ -200,6 +210,88 @@ export default function Hotels({ isBookRoomOpen, setIsBookRoomOpen }) {
     return `${months[date.getMonth()]} ${date.getDate()}, ${date.getFullYear()}`;
   };
 
+  // Local date formatting helper to avoid timezone offset conversion issues
+  const toLocalDateString = (date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
+  // Helper to format date range string for presentation (e.g. 'Oct 12 - Oct 18, 2023')
+  const formatDateRangeString = (startStr, endStr) => {
+    if (!startStr && !endStr) return 'All Dates';
+    if (!startStr) return `Until ${formatDateString(endStr)}`;
+    if (!endStr) return `From ${formatDateString(startStr)}`;
+    
+    const startDate = new Date(startStr);
+    const endDate = new Date(endStr);
+    if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+      return `${startStr} - ${endStr}`;
+    }
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    
+    const startMonth = months[startDate.getMonth()];
+    const startDay = startDate.getDate();
+    const startYear = startDate.getFullYear();
+    
+    const endMonth = months[endDate.getMonth()];
+    const endDay = endDate.getDate();
+    const endYear = endDate.getFullYear();
+    
+    if (startYear === endYear) {
+      return `${startMonth} ${startDay} - ${endMonth} ${endDay}, ${startYear}`;
+    }
+    return `${startMonth} ${startDay}, ${startYear} - ${endMonth} ${endDay}, ${endYear}`;
+  };
+
+  const getTodayDateStr = () => {
+    return toLocalDateString(new Date());
+  };
+
+  const getThisWeekRange = () => {
+    const today = new Date();
+    const currentDay = today.getDay(); // 0 Sunday, 1 Monday, etc.
+    const startOfWeek = new Date(today);
+    const distanceToMonday = currentDay === 0 ? 6 : currentDay - 1;
+    startOfWeek.setDate(today.getDate() - distanceToMonday);
+
+    const endOfWeek = new Date(startOfWeek);
+    endOfWeek.setDate(startOfWeek.getDate() + 6); // Sunday
+
+    return {
+      start: toLocalDateString(startOfWeek),
+      end: toLocalDateString(endOfWeek)
+    };
+  };
+
+  const getThisMonthRange = () => {
+    const today = new Date();
+    const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+    const endOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+    return {
+      start: toLocalDateString(startOfMonth),
+      end: toLocalDateString(endOfMonth)
+    };
+  };
+
+  const handleOpenDatePicker = () => {
+    setTempStartDate(filterStartDate || '');
+    setTempEndDate(filterEndDate || '');
+    setDateError('');
+    setIsDatePickerOpen(true);
+  };
+
+  const handleApplyDatePicker = () => {
+    if (tempStartDate && tempEndDate && new Date(tempStartDate) > new Date(tempEndDate)) {
+      setDateError('Start date must be on or before end date.');
+      return;
+    }
+    setFilterStartDate(tempStartDate);
+    setFilterEndDate(tempEndDate);
+    setIsDatePickerOpen(false);
+  };
+
   // Close actions dropdown when clicking elsewhere
   useEffect(() => {
     const handleOutsideClick = () => {
@@ -209,13 +301,35 @@ export default function Hotels({ isBookRoomOpen, setIsBookRoomOpen }) {
     return () => window.removeEventListener('click', handleOutsideClick);
   }, []);
 
+  // Filter allocations by date range (overlap query with fallback)
+  const dateFilteredAllocations = useMemo(() => {
+    return allocations.filter(a => {
+      // Graceful Fallback: if any allocation lacks check-in/check-out dates, include it
+      if (!a.checkIn || !a.checkOut) return true;
+
+      // If active date range filters are not set, include all allocations
+      if (!filterStartDate && !filterEndDate) return true;
+
+      const checkInStr = a.checkIn;
+      const checkOutStr = a.checkOut;
+
+      if (filterStartDate && !filterEndDate) {
+        return checkOutStr >= filterStartDate;
+      }
+      if (!filterStartDate && filterEndDate) {
+        return checkInStr <= filterEndDate;
+      }
+      return checkInStr <= filterEndDate && checkOutStr >= filterStartDate;
+    });
+  }, [allocations, filterStartDate, filterEndDate]);
+
   // Recalculated metrics dynamically based on bookings list
   const metrics = useMemo(() => {
     const totalRooms = 500;
-    const assignedCount = 380 + allocations.length * 2.5; // Scaled base + current
+    const assignedCount = 380 + dateFilteredAllocations.length * 2.5; // Scaled base + current
     const occupancyPercent = ((assignedCount / totalRooms) * 100).toFixed(1);
-    const unassignedCount = Math.max(0, 112 - allocations.length);
-    const vipBooked = allocations.filter(a => a.roomType === 'Suite' || a.roomType === 'Penthouse').length + 6;
+    const unassignedCount = Math.max(0, 112 - dateFilteredAllocations.length);
+    const vipBooked = dateFilteredAllocations.filter(a => a.roomType === 'Suite' || a.roomType === 'Penthouse').length + 6;
 
     return {
       occupancy: `${occupancyPercent}%`,
@@ -225,21 +339,21 @@ export default function Hotels({ isBookRoomOpen, setIsBookRoomOpen }) {
       vipBooked: Math.min(15, vipBooked),
       vipTotal: 15
     };
-  }, [allocations]);
+  }, [dateFilteredAllocations]);
 
   // Recalculated Hotels utilization chart values dynamically
   const updatedHotelsChart = useMemo(() => {
     return hotelsData.map(h => {
-      const matchCount = allocations.filter(a => a.hotel === h.name).length;
+      const matchCount = dateFilteredAllocations.filter(a => a.hotel === h.name).length;
       // occupancy adjusts based on counts
       const dynamicOcc = Math.min(100, Math.max(10, h.occupancy + (matchCount - 2) * 5));
       return { ...h, occupancy: dynamicOcc };
     });
-  }, [allocations, hotelsData]);
+  }, [dateFilteredAllocations, hotelsData]);
 
   // Filter logic
   const filteredAllocations = useMemo(() => {
-    return allocations.filter(item => {
+    return dateFilteredAllocations.filter(item => {
       // Search match (Guest Name, Hotel Name, Room Number)
       const matchesSearch = searchQuery.trim() === '' || 
         item.guestName.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -258,7 +372,7 @@ export default function Hotels({ isBookRoomOpen, setIsBookRoomOpen }) {
 
       return matchesSearch && matchesHotel && matchesRoomType && matchesStatus;
     });
-  }, [allocations, searchQuery, selectedHotel, selectedRoomType, selectedStatus]);
+  }, [dateFilteredAllocations, searchQuery, selectedHotel, selectedRoomType, selectedStatus]);
 
   // Pagination slice
   const paginatedAllocations = useMemo(() => {
@@ -270,7 +384,7 @@ export default function Hotels({ isBookRoomOpen, setIsBookRoomOpen }) {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, selectedHotel, selectedRoomType, selectedStatus]);
+  }, [searchQuery, selectedHotel, selectedRoomType, selectedStatus, filterStartDate, filterEndDate]);
 
   // Export report as CSV file
   const handleExportCSV = () => {
@@ -382,9 +496,9 @@ export default function Hotels({ isBookRoomOpen, setIsBookRoomOpen }) {
 
   // VIP Quick selection profiles (Top list matching visual design)
   const vipAllocationsList = useMemo(() => {
-    const list = allocations.filter(a => a.roomType === 'Suite' || a.roomType === 'Penthouse');
+    const list = dateFilteredAllocations.filter(a => a.roomType === 'Suite' || a.roomType === 'Penthouse');
     return showAllVips ? list : list.slice(0, 3);
-  }, [allocations, showAllVips]);
+  }, [dateFilteredAllocations, showAllVips]);
 
   return (
     <div className="hotels-container">
@@ -399,15 +513,15 @@ export default function Hotels({ isBookRoomOpen, setIsBookRoomOpen }) {
         </div>
 
         <div className="hotels-header-actions">
-          {/* Calendar Picker Mock */}
-          <button type="button" className="date-picker-trigger" onClick={() => alert('Opening calendar date range selector...')}>
+          {/* Calendar Picker */}
+          <button type="button" className="date-picker-trigger" onClick={handleOpenDatePicker}>
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
               <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
               <line x1="16" y1="2" x2="16" y2="6" />
               <line x1="8" y1="2" x2="8" y2="6" />
               <line x1="3" y1="10" x2="21" y2="10" />
             </svg>
-            <span>Oct 12 - Oct 18, 2023</span>
+            <span>{formatDateRangeString(filterStartDate, filterEndDate)}</span>
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
               <polyline points="6 9 12 15 18 9" />
             </svg>
@@ -968,6 +1082,138 @@ export default function Hotels({ isBookRoomOpen, setIsBookRoomOpen }) {
               </button>
             </div>
           </form>
+        </div>
+      )}
+
+      {/* Date Range Picker Modal */}
+      {isDatePickerOpen && (
+        <div className="hotels-modal-overlay" onClick={() => setIsDatePickerOpen(false)}>
+          <div className="hotels-modal-container" style={{ maxWidth: '420px' }} onClick={(e) => e.stopPropagation()}>
+            <div className="hotels-modal-header">
+              <h2>Select Date Range</h2>
+              <button 
+                type="button" 
+                className="btn-hotels-modal-close"
+                onClick={() => setIsDatePickerOpen(false)}
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <line x1="18" y1="6" x2="6" y2="18"></line>
+                  <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+              </button>
+            </div>
+
+            <div className="hotels-modal-body">
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                {dateError && (
+                  <div className="hotels-form-error" style={{ fontSize: '0.85rem', marginBottom: '0.5rem', fontWeight: 600 }}>
+                    ⚠️ {dateError}
+                  </div>
+                )}
+                <div className="hotels-form-group">
+                  <label htmlFor="filterStartDate">Start Date</label>
+                  <input
+                    type="date"
+                    id="filterStartDate"
+                    className="hotels-form-input"
+                    value={tempStartDate}
+                    onChange={(e) => setTempStartDate(e.target.value)}
+                  />
+                </div>
+                <div className="hotels-form-group">
+                  <label htmlFor="filterEndDate">End Date</label>
+                  <input
+                    type="date"
+                    id="filterEndDate"
+                    className="hotels-form-input"
+                    value={tempEndDate}
+                    onChange={(e) => setTempEndDate(e.target.value)}
+                  />
+                </div>
+                
+                {/* Presets */}
+                <div style={{ marginTop: '0.5rem' }}>
+                  <label style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: '0.5rem' }}>Presets</label>
+                  <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                    <button
+                      type="button"
+                      className="btn-hotels-secondary"
+                      style={{ padding: '0.35rem 0.75rem', fontSize: '0.75rem', borderRadius: '8px' }}
+                      onClick={() => {
+                        setTempStartDate(getTodayDateStr());
+                        setTempEndDate(getTodayDateStr());
+                      }}
+                    >
+                      Today
+                    </button>
+                    <button
+                      type="button"
+                      className="btn-hotels-secondary"
+                      style={{ padding: '0.35rem 0.75rem', fontSize: '0.75rem', borderRadius: '8px' }}
+                      onClick={() => {
+                        const week = getThisWeekRange();
+                        setTempStartDate(week.start);
+                        setTempEndDate(week.end);
+                      }}
+                    >
+                      This Week
+                    </button>
+                    <button
+                      type="button"
+                      className="btn-hotels-secondary"
+                      style={{ padding: '0.35rem 0.75rem', fontSize: '0.75rem', borderRadius: '8px' }}
+                      onClick={() => {
+                        const month = getThisMonthRange();
+                        setTempStartDate(month.start);
+                        setTempEndDate(month.end);
+                      }}
+                    >
+                      This Month
+                    </button>
+                    <button
+                      type="button"
+                      className="btn-hotels-secondary"
+                      style={{ padding: '0.35rem 0.75rem', fontSize: '0.75rem', borderRadius: '8px' }}
+                      onClick={() => {
+                        setTempStartDate('2023-10-12');
+                        setTempEndDate('2023-10-18');
+                      }}
+                    >
+                      Default Event Week
+                    </button>
+                    <button
+                      type="button"
+                      className="btn-hotels-secondary"
+                      style={{ padding: '0.35rem 0.75rem', fontSize: '0.75rem', borderRadius: '8px' }}
+                      onClick={() => {
+                        setTempStartDate('');
+                        setTempEndDate('');
+                      }}
+                    >
+                      All Dates
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="hotels-modal-footer">
+              <button 
+                type="button" 
+                className="btn-hotels-secondary"
+                onClick={() => setIsDatePickerOpen(false)}
+              >
+                Cancel
+              </button>
+              <button 
+                type="button" 
+                className="btn-hotels-primary"
+                onClick={handleApplyDatePicker}
+              >
+                Apply Range
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
