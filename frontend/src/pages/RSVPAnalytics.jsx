@@ -19,9 +19,13 @@ export default function RSVPAnalytics({ onViewAllGuests }) {
         if (res.success && res.data) {
           setStats({
             total: res.data.totalGuests.value,
+            totalGrowth: res.data.totalGuests.growth,
             accepted: res.data.confirmed.value,
+            acceptedGrowth: res.data.confirmed.growth,
             declined: res.data.totalGuests.value - res.data.confirmed.value - res.data.pendingRsvp.value,
-            pending: res.data.pendingRsvp.value
+            declinedGrowth: null,
+            pending: res.data.pendingRsvp.value,
+            pendingGrowth: res.data.pendingRsvp.growth
           });
         }
       })

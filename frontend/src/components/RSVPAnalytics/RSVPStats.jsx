@@ -1,7 +1,20 @@
 import React from 'react';
 
 export default function RSVPStats({ stats }) {
-  const { total, accepted, declined, pending } = stats;
+  const { total, totalGrowth, accepted, acceptedGrowth, declined, declinedGrowth, pending, pendingGrowth } = stats;
+
+  const renderBadge = (growth, customStyle = {}) => {
+    if (!growth) return null;
+    const isPositive = !growth.startsWith('-');
+    const className = `stat-trend-badge ${isPositive ? 'positive' : 'negative'}`;
+    const prefix = isPositive && !growth.startsWith('+') ? '+' : '';
+    const arrow = isPositive ? '▲ ' : '▼ ';
+    return (
+      <span className={className} style={customStyle}>
+        {arrow}{prefix}{growth}
+      </span>
+    );
+  };
 
   return (
     <div className="guest-stats-grid">
@@ -13,10 +26,10 @@ export default function RSVPStats({ stats }) {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
             </svg>
           </div>
-          <span className="stat-trend-badge positive">+12%</span>
+          {renderBadge(totalGrowth)}
         </div>
         <div className="stat-card-body">
-          <h3>{total.toLocaleString()}</h3>
+          <h3>{total?.toLocaleString() || 0}</h3>
           <p>Total Invitations</p>
         </div>
       </div>
@@ -29,10 +42,10 @@ export default function RSVPStats({ stats }) {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
           </div>
-          <span className="stat-trend-badge positive">+8.4%</span>
+          {renderBadge(acceptedGrowth)}
         </div>
         <div className="stat-card-body">
-          <h3>{accepted.toLocaleString()}</h3>
+          <h3>{accepted?.toLocaleString() || 0}</h3>
           <p>Accepted</p>
         </div>
       </div>
@@ -45,10 +58,10 @@ export default function RSVPStats({ stats }) {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
           </div>
-          <span className="stat-trend-badge negative">-2.1%</span>
+          {renderBadge(declinedGrowth)}
         </div>
         <div className="stat-card-body">
-          <h3>{declined.toLocaleString()}</h3>
+          <h3>{declined?.toLocaleString() || 0}</h3>
           <p>Declined</p>
         </div>
       </div>
@@ -61,10 +74,10 @@ export default function RSVPStats({ stats }) {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
             </svg>
           </div>
-          <span className="stat-trend-badge negative" style={{ backgroundColor: '#eff6ff', color: '#1d4ed8' }}>-0.5%</span>
+          {renderBadge(pendingGrowth, { backgroundColor: '#eff6ff', color: '#1d4ed8' })}
         </div>
         <div className="stat-card-body">
-          <h3>{pending.toLocaleString()}</h3>
+          <h3>{pending?.toLocaleString() || 0}</h3>
           <p>Pending</p>
         </div>
       </div>
