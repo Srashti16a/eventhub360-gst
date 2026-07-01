@@ -260,7 +260,8 @@
 /* Search Input */
 .search-wrapper {
   position: relative;
-  min-width: 260px;
+  min-width: 150px;
+  flex: 1;
 }
 
 .search-icon {

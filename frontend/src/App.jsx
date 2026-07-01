@@ -451,7 +451,7 @@ export default function App() {
 
         {/* Create Event & Help */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginTop: 'auto' }}>
-          {activeView === 'hotels' || activeView === 'reservations' ? (
+          {activeView === 'hotels' && (
             <button style={{
               background: 'linear-gradient(135deg, #ff7a45 0%, #ff4d4f 100%)',
               border: 'none',
@@ -479,7 +479,9 @@ export default function App() {
                 fontWeight: 'bold'
               }}>🛏️</span> Book Room
             </button>
-          ) : (
+          )}
+
+          {activeView === 'events' && (
             <button style={{
               background: 'linear-gradient(135deg, #ff7a45 0%, #ff4d4f 100%)',
               border: 'none',
@@ -554,7 +556,9 @@ export default function App() {
                   padding: '0.5rem 1rem 0.5rem 2.25rem',
                   fontSize: '0.85rem',
                   outline: 'none',
-                  width: '240px',
+                  width: '100%',
+                  minWidth: '150px',
+                  maxWidth: '240px',
                   backgroundColor: '#f8fafc'
                 }}
               />
