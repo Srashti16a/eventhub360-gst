@@ -427,3 +427,18 @@
     filter: drop-shadow(0 0 8px rgba(255, 77, 79, 0.9));
   }
 }
+
+/* Shared Badges */
+.guest-badge { font-size: 0.65rem; font-weight: 700; padding: 0.125rem 0.375rem; border-radius: 4px; text-transform: uppercase; letter-spacing: 0.02em; }
+.guest-badge.vip { background-color: #f5f3ff; color: #7c3aed; }
+.guest-badge.speaker { background-color: #ecfeff; color: #0891b2; }
+.guest-badge.bridal-party { background-color: #fdf2f8; color: #db2777; }
+.guest-badge.primary-guest { background-color: #f8fafc; color: #475569; border: 1px solid var(--border-hover); }
+.status-badge { font-size: 0.75rem; font-weight: 600; padding: 0.25rem 0.75rem; border-radius: 20px; display: inline-flex; align-items: center; gap: 0.375rem; }
+.status-badge::before { content: ''; display: block; width: 6px; height: 6px; border-radius: 50%; }
+.status-badge.confirmed { background-color: rgba(16, 185, 129, 0.1); color: #059669; }
+.status-badge.confirmed::before { background-color: #10b981; }
+.status-badge.declined { background-color: rgba(239, 68, 68, 0.1); color: #dc2626; }
+.status-badge.declined::before { background-color: #ef4444; }
+.status-badge.pending { background-color: #f8fafc; color: #64748b; }
+.status-badge.pending::before { background-color: #94a3b8; }
