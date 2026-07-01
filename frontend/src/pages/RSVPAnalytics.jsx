@@ -196,7 +196,7 @@ export default function RSVPAnalytics({ onViewAllGuests }) {
       <RSVPStats stats={stats} />
 
       {/* Conversion Rate columns and line charts */}
-      <RSVPCharts stats={stats} />
+      <RSVPCharts stats={stats} guests={guests} />
 
       {/* Category breakdown bar ratios and timelines */}
       <CategoryTimeline
