@@ -1,12 +1,15 @@
 import React, { useState, useEffect, useRef } from 'react';
 
 export default function RecentResponses({ responses, searchQuery, setSearchQuery, onViewAllGuests, onDeleteGuest, onEditGuestStatus }) {
-  const [selectedCategory, setSelectedCategory] = useState('All');
+  const [selectedCategories, setSelectedCategories] = useState([]);
+  const [selectedStatuses, setSelectedStatuses] = useState([]);
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [activeMenuId, setActiveMenuId] = useState(null);
   const [actionModal, setActionModal] = useState(null); // 'view', 'edit', null
   const [activeGuest, setActiveGuest] = useState(null);
   const [editStatus, setEditStatus] = useState('');
   const menuRef = useRef(null);
+  const filterRef = useRef(null);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -14,10 +17,13 @@ export default function RecentResponses({ responses, searchQuery, setSearchQuery
       if (menuRef.current && !menuRef.current.contains(event.target)) {
         setActiveMenuId(null);
       }
+      if (filterRef.current && !filterRef.current.contains(event.target)) {
+        setIsFilterOpen(false);
+      }
     }
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [menuRef]);
+  }, [menuRef, filterRef]);
 
   const handleDeleteClick = (id) => {
     setActiveMenuId(null);
@@ -54,11 +60,18 @@ export default function RecentResponses({ responses, searchQuery, setSearchQuery
   };
 
   const filteredResponses = responses.filter(r => {
-    const matchesCat = selectedCategory === 'All' || r.category === selectedCategory;
+    const matchesCat = selectedCategories.length === 0 || selectedCategories.includes(r.category);
+    
+    const rsvpStatus = r.status?.toLowerCase();
+    const normalizedStatus = (rsvpStatus === 'accepted' || rsvpStatus === 'confirmed') ? 'Accepted' : 
+                             (rsvpStatus === 'declined' ? 'Declined' : 'Pending');
+    const matchesStatus = selectedStatuses.length === 0 || selectedStatuses.includes(normalizedStatus);
+
     const matchesSearch = !searchQuery || 
       (r.name && r.name.toLowerCase().includes(searchQuery.toLowerCase())) || 
       (r.email && r.email.toLowerCase().includes(searchQuery.toLowerCase()));
-    return matchesCat && matchesSearch;
+      
+    return matchesCat && matchesStatus && matchesSearch;
   });
 
   const displayedResponses = filteredResponses.slice(0, 10);
@@ -88,28 +101,59 @@ export default function RecentResponses({ responses, searchQuery, setSearchQuery
             />
           </div>
 
-          <select
-            className="dropdown-styled"
-            style={{ padding: '0.375rem 2rem 0.375rem 0.75rem', fontSize: '0.8rem' }}
-            value={selectedCategory}
-            onChange={(e) => setSelectedCategory(e.target.value)}
-          >
-            <option value="All">All Categories</option>
-            <option value="VIP">VIP</option>
-            <option value="Speaker">Speaker</option>
-            <option value="Family">Family</option>
-            <option value="Corporate">Corporate</option>
-            <option value="Sponsor">Sponsor</option>
-            <option value="Media">Media</option>
-            <option value="Staff">Staff</option>
-            <option value="Standard">Standard</option>
-          </select>
-          <button type="button" className="control-btn" style={{ width: '32px', height: '32px' }} onClick={() => alert('Filter clicked.')}>
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" style={{ width: '16px', height: '16px' }}>
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
-            </svg>
-          </button>
-        </div>
+          <div style={{ position: 'relative' }} ref={filterRef}>
+            <button 
+              type="button" 
+              className={`control-btn ${isFilterOpen ? 'active' : ''}`}
+              style={{ width: '32px', height: '32px', position: 'relative', backgroundColor: isFilterOpen ? 'var(--bg-hover)' : '#fff' }} 
+              onClick={() => setIsFilterOpen(!isFilterOpen)}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" style={{ width: '16px', height: '16px' }}>
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+              </svg>
+              {(selectedCategories.length > 0 || selectedStatuses.length > 0) && (
+                <span style={{ position: 'absolute', top: '-4px', right: '-4px', backgroundColor: '#ff4d4f', width: '8px', height: '8px', borderRadius: '50%' }}></span>
+              )}
+            </button>
+
+            {isFilterOpen && (
+              <div style={{ position: 'absolute', top: '100%', right: '0', marginTop: '0.5rem', backgroundColor: '#fff', border: '1px solid var(--border-color)', borderRadius: '8px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', zIndex: 50, width: '220px', padding: '1rem' }}>
+                <h4 style={{ margin: '0 0 0.5rem 0', fontSize: '0.8rem', color: 'var(--text-light)', textTransform: 'uppercase' }}>Categories</h4>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', marginBottom: '1rem' }}>
+                  {['VIP', 'Speaker', 'Family', 'Corporate', 'Sponsor', 'Media', 'Staff', 'Standard'].map(cat => (
+                    <label key={cat} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', cursor: 'pointer' }}>
+                      <input 
+                        type="checkbox" 
+                        checked={selectedCategories.includes(cat)}
+                        onChange={(e) => {
+                          if (e.target.checked) setSelectedCategories([...selectedCategories, cat]);
+                          else setSelectedCategories(selectedCategories.filter(c => c !== cat));
+                        }}
+                      />
+                      {cat}
+                    </label>
+                  ))}
+                </div>
+
+                <h4 style={{ margin: '0 0 0.5rem 0', fontSize: '0.8rem', color: 'var(--text-light)', textTransform: 'uppercase' }}>Status</h4>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                  {['Accepted', 'Declined', 'Pending'].map(status => (
+                    <label key={status} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', cursor: 'pointer' }}>
+                      <input 
+                        type="checkbox" 
+                        checked={selectedStatuses.includes(status)}
+                        onChange={(e) => {
+                          if (e.target.checked) setSelectedStatuses([...selectedStatuses, status]);
+                          else setSelectedStatuses(selectedStatuses.filter(s => s !== status));
+                        }}
+                      />
+                      {status}
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
       </div>
 
       <div style={{ overflowX: 'auto', width: '100%' }}>
