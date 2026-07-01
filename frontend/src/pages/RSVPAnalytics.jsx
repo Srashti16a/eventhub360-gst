@@ -27,7 +27,7 @@ export default function RSVPAnalytics({ onViewAllGuests }) {
       })
       .catch(err => console.error('Error fetching RSVP stats:', err));
 
-    fetch('/api/guests')
+    fetch('/api/guests?limit=1000')
       .then(r => r.json())
       .then(res => {
         if (res.success && res.data) {

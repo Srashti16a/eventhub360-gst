@@ -95,6 +95,8 @@ export default function RecentResponses({ responses, searchQuery, setSearchQuery
             <option value="All">All Categories</option>
             <option value="VIP">VIP</option>
             <option value="Speaker">Speaker</option>
+            <option value="Family">Family</option>
+            <option value="Corporate">Corporate</option>
             <option value="Sponsor">Sponsor</option>
             <option value="Media">Media</option>
             <option value="Staff">Staff</option>
