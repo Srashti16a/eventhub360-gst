@@ -43,11 +43,12 @@
   to { opacity: 1; transform: translateY(0); }
 }
 
-/* Header */
 .rsvp-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  flex-wrap: wrap;
+  gap: 1.5rem;
   margin-bottom: 2rem;
 }
 
@@ -211,6 +212,9 @@
 .progress-bar-fill.sponsor { background-color: #8b5cf6; }
 .progress-bar-fill.media { background-color: #3b82f6; }
 .progress-bar-fill.staff { background-color: #10b981; }
+.progress-bar-fill.family { background-color: #ec4899; }
+.progress-bar-fill.corporate { background-color: #6366f1; }
+.progress-bar-fill.standard { background-color: #94a3b8; }
 
 /* Timeline Widget Styles */
 .timeline-card {
@@ -376,5 +380,50 @@
     flex-direction: column;
     align-items: stretch;
     gap: 0.75rem;
+  }
+}
+
+/* SVG Live Animations */
+.chart-path-animate {
+  stroke-dasharray: 2000;
+  stroke-dashoffset: 2000;
+  animation: drawChart 1.5s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+}
+
+@keyframes drawChart {
+  to { stroke-dashoffset: 0; }
+}
+
+.chart-area-animate {
+  animation: fadeArea 1.5s ease-out forwards;
+  opacity: 0;
+}
+
+@keyframes fadeArea {
+  to { opacity: 1; }
+}
+
+.chart-node-animate {
+  animation: pulseNode 2s infinite alternate;
+  transform-origin: center;
+  transform-box: fill-box;
+}
+
+.chart-node-animate:hover {
+  animation: none;
+  transform: scale(1.8);
+  fill: #fff;
+  stroke: #ff4d4f;
+  cursor: pointer;
+}
+
+@keyframes pulseNode {
+  from {
+    transform: scale(1);
+    filter: drop-shadow(0 0 2px rgba(255, 77, 79, 0.4));
+  }
+  to {
+    transform: scale(1.4);
+    filter: drop-shadow(0 0 8px rgba(255, 77, 79, 0.9));
   }
 }

@@ -1,14 +1,89 @@
 import React, { useState } from 'react';
 
-export default function RSVPCharts() {
+export default function RSVPCharts({ stats = { total: 0, accepted: 0, declined: 0, pending: 0 }, guests = [] }) {
   const [trendView, setTrendView] = useState('weekly'); // 'weekly' or 'monthly'
 
-  // Weekly and Monthly mock wave paths for SVG
-  const weeklyPath = "M 30 110 Q 110 90 190 70 T 350 90 T 510 30 T 670 60";
-  const weeklyAreaPath = `${weeklyPath} L 670 140 L 30 140 Z`;
+  // Dynamically generate SVG path from real data
+  const generateChartPaths = () => {
+    const counts = [];
+    const now = new Date();
+    
+    if (trendView === 'weekly') {
+      // Last 7 days
+      for (let i = 6; i >= 0; i--) {
+        const d = new Date();
+        d.setDate(now.getDate() - i);
+        d.setHours(0,0,0,0);
+        counts.push({ label: d.toLocaleDateString('en-US', {weekday: 'short'}).toUpperCase(), count: 0, date: d });
+      }
+      
+      guests.forEach(g => {
+        if (!g.updatedAt && !g.createdAt) return;
+        const gDate = new Date(g.updatedAt || g.createdAt);
+        gDate.setHours(0,0,0,0);
+        const match = counts.find(c => c.date.getTime() === gDate.getTime());
+        if (match) match.count++;
+      });
+    } else {
+      // Last 4 weeks
+      for (let i = 3; i >= 0; i--) {
+        counts.push({ label: `WEEK ${4-i}`, count: 0, weekOffset: i });
+      }
+      
+      guests.forEach(g => {
+        if (!g.updatedAt && !g.createdAt) return;
+        const gDate = new Date(g.updatedAt || g.createdAt);
+        const diffDays = Math.floor((now - gDate) / (1000 * 60 * 60 * 24));
+        const weekOffset = Math.floor(diffDays / 7);
+        if (weekOffset >= 0 && weekOffset < 4) {
+          const match = counts.find(c => c.weekOffset === weekOffset);
+          if (match) match.count++;
+        }
+      });
+    }
 
-  const monthlyPath = "M 30 100 Q 110 60 190 85 T 350 40 T 510 80 T 670 20";
-  const monthlyAreaPath = `${monthlyPath} L 670 140 L 30 140 Z`;
+    // Scale to fit the SVG (width 640, height 110)
+    const maxCount = Math.max(...counts.map(c => c.count), 5); 
+    const xStep = 640 / (counts.length - 1 || 1);
+    
+    const points = counts.map((c, i) => {
+      const x = 30 + (i * xStep);
+      const y = 140 - ((c.count / maxCount) * 110);
+      return { x, y, ...c };
+    });
+    
+    // Create smooth bezier curve
+    let path = `M ${points[0].x} ${points[0].y}`;
+    for (let i = 1; i < points.length; i++) {
+      const curr = points[i];
+      const prev = points[i-1];
+      const cx = (prev.x + curr.x) / 2;
+      path += ` C ${cx} ${prev.y}, ${cx} ${curr.y}, ${curr.x} ${curr.y}`;
+    }
+    
+    const areaPath = `${path} L 670 140 L 30 140 Z`;
+    
+    return { path, areaPath, points };
+  };
+
+  const chartData = generateChartPaths();
+
+  // Calculate dynamic heights for the mini bar chart
+  const conversionRate = stats.total ? (stats.accepted / stats.total) * 100 : 0;
+  
+  // We'll generate a mock "trend" that leads up to the current conversion rate
+  const generateTrendBars = () => {
+    const bars = [];
+    const maxVal = Math.max(conversionRate, 20); // ensure some height
+    for (let i = 0; i < 9; i++) {
+      // Create a nice ascending curve that ends at the current conversion rate
+      const val = Math.min(100, Math.max(15, (conversionRate * 0.4) + (i * (conversionRate * 0.6) / 8)));
+      bars.push(val);
+    }
+    return bars;
+  };
+
+  const dynamicBars = generateTrendBars();
 
   return (
     <div className="rsvp-charts-grid">
@@ -18,7 +93,7 @@ export default function RSVPCharts() {
         <p>Percentage of invitees who have responded to date.</p>
         
         <div className="conversion-value-row">
-          <span className="conversion-val">67.5%</span>
+          <span className="conversion-val">{conversionRate.toFixed(1)}%</span>
           <span className="stat-trend-badge positive" style={{ fontSize: '0.75rem', padding: '0.15rem 0.4rem' }}>
             ▲ +5.4%
           </span>
@@ -26,7 +101,7 @@ export default function RSVPCharts() {
 
         {/* Dynamic Column Chart */}
         <div className="conv-bar-chart">
-          {[20, 28, 25, 38, 48, 44, 75, 90, 80].map((h, idx) => (
+          {dynamicBars.map((h, idx) => (
             <div
               key={idx}
               className="conv-bar-col"
@@ -77,37 +152,45 @@ export default function RSVPCharts() {
 
             {/* Gradient Area under Wave */}
             <path
-              d={trendView === 'weekly' ? weeklyAreaPath : monthlyAreaPath}
+              className="chart-area-animate"
+              d={chartData.areaPath}
               fill="url(#chartGradient)"
             />
 
             {/* The Main Smooth Line */}
             <path
-              d={trendView === 'weekly' ? weeklyPath : monthlyPath}
+              className="chart-path-animate"
+              d={chartData.path}
               fill="none"
               stroke="#ff4d4f"
               strokeWidth="3.5"
               strokeLinecap="round"
             />
 
-            {/* Node Points on peaks */}
-            <circle cx="190" cy={trendView === 'weekly' ? 70 : 85} r="5" fill="#ff4d4f" stroke="#fff" strokeWidth="2.5" />
-            <circle cx="510" cy={trendView === 'weekly' ? 30 : 80} r="5" fill="#ff4d4f" stroke="#fff" strokeWidth="2.5" />
-            <circle cx="350" cy={trendView === 'weekly' ? 90 : 40} r="5" fill="#ff4d4f" stroke="#fff" strokeWidth="2.5" />
+            {/* Node Points on peaks/data points */}
+            {chartData.points.map((pt, i) => (
+              <circle 
+                key={i} 
+                className="chart-node-animate"
+                cx={pt.x} 
+                cy={pt.y} 
+                r="4" 
+                fill="#ff4d4f" 
+                stroke="#fff" 
+                strokeWidth="2" 
+                style={{ animationDelay: `${i * 0.15}s` }}
+              >
+                <title>{pt.label}: {pt.count} RSVPs</title>
+              </circle>
+            ))}
           </svg>
         </div>
 
         {/* X-Axis Labels */}
         <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.5rem 1rem 0 1.25rem' }}>
-          {trendView === 'weekly' ? (
-            ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'].map((d) => (
-              <span key={d} style={{ fontSize: '0.65rem', fontWeight: '700', color: 'var(--text-light)' }}>{d}</span>
-            ))
-          ) : (
-            ['WEEK 1', 'WEEK 2', 'WEEK 3', 'WEEK 4'].map((d) => (
-              <span key={d} style={{ fontSize: '0.65rem', fontWeight: '700', color: 'var(--text-light)' }}>{d}</span>
-            ))
-          )}
+          {chartData.points.map((pt, i) => (
+            <span key={i} style={{ fontSize: '0.65rem', fontWeight: '700', color: 'var(--text-light)' }}>{pt.label}</span>
+          ))}
         </div>
       </div>
     </div>
