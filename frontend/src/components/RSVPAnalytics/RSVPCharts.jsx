@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 
-export default function RSVPCharts({ stats = { total: 0, accepted: 0, declined: 0, pending: 0 } }) {
+export default function RSVPCharts({ stats = { total: 0, accepted: 0, declined: 0, pending: 0 }, guests = [] }) {
   const [trendView, setTrendView] = useState('weekly'); // 'weekly' or 'monthly'
 
   // Dynamically generate SVG path from real data
