@@ -1,6 +1,6 @@
 import React from 'react';
 
-export default function RSVPStats({ stats }) {
+export default function RSVPStats({ stats, onCardClick }) {
   const { total, totalGrowth, accepted, acceptedGrowth, declined, declinedGrowth, pending, pendingGrowth } = stats;
 
   const renderBadge = (growth, customStyle = {}) => {
@@ -19,7 +19,7 @@ export default function RSVPStats({ stats }) {
   return (
     <div className="guest-stats-grid">
       {/* Total Invitations */}
-      <div className="stat-card">
+      <div className="stat-card" onClick={() => onCardClick('total')} style={{ cursor: 'pointer' }}>
         <div className="stat-card-header">
           <div className="stat-card-icon-wrapper guests" style={{ backgroundColor: 'rgba(255, 77, 79, 0.1)', color: '#ff4d4f' }}>
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -35,7 +35,7 @@ export default function RSVPStats({ stats }) {
       </div>
 
       {/* Accepted */}
-      <div className="stat-card">
+      <div className="stat-card" onClick={() => onCardClick('accepted')} style={{ cursor: 'pointer' }}>
         <div className="stat-card-header">
           <div className="stat-card-icon-wrapper confirmed" style={{ backgroundColor: 'rgba(16, 185, 129, 0.1)', color: '#10b981' }}>
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -51,7 +51,7 @@ export default function RSVPStats({ stats }) {
       </div>
 
       {/* Declined */}
-      <div className="stat-card">
+      <div className="stat-card" onClick={() => onCardClick('declined')} style={{ cursor: 'pointer' }}>
         <div className="stat-card-header">
           <div className="stat-card-icon-wrapper pending" style={{ backgroundColor: 'rgba(239, 68, 68, 0.1)', color: '#ef4444' }}>
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -67,7 +67,7 @@ export default function RSVPStats({ stats }) {
       </div>
 
       {/* Pending */}
-      <div className="stat-card">
+      <div className="stat-card" onClick={() => onCardClick('pending')} style={{ cursor: 'pointer' }}>
         <div className="stat-card-header">
           <div className="stat-card-icon-wrapper vip" style={{ backgroundColor: 'rgba(245, 158, 11, 0.1)', color: '#f59e0b' }}>
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">

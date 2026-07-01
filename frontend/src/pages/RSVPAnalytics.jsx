@@ -4,10 +4,12 @@ import RSVPStats from '../components/RSVPAnalytics/RSVPStats';
 import RSVPCharts from '../components/RSVPAnalytics/RSVPCharts';
 import CategoryTimeline from '../components/RSVPAnalytics/CategoryTimeline';
 import RecentResponses from '../components/RSVPAnalytics/RecentResponses';
+import RSVPListModal from '../components/RSVPAnalytics/RSVPListModal';
 
 export default function RSVPAnalytics({ onViewAllGuests }) {
   const [guests, setGuests] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
+  const [activeModal, setActiveModal] = useState(null);
   
   // Fetch real stats from backend
   const [stats, setStats] = useState({ total: 0, accepted: 0, declined: 0, pending: 0 });
@@ -197,7 +199,7 @@ export default function RSVPAnalytics({ onViewAllGuests }) {
       </header>
 
       {/* Top summary stats */}
-      <RSVPStats stats={stats} />
+      <RSVPStats stats={stats} onCardClick={setActiveModal} />
 
       {/* Conversion Rate columns and line charts */}
       <RSVPCharts stats={stats} guests={guests} />
@@ -216,6 +218,13 @@ export default function RSVPAnalytics({ onViewAllGuests }) {
         onViewAllGuests={onViewAllGuests}
         onDeleteGuest={handleDeleteGuest}
         onEditGuestStatus={handleEditGuestStatus}
+      />
+
+      {/* RSVP List Modal */}
+      <RSVPListModal 
+        type={activeModal} 
+        guests={allResponses} 
+        onClose={() => setActiveModal(null)} 
       />
     </div>
   );
