@@ -323,10 +323,10 @@ async function main() {
   const driver4 = await prisma.driver.create({ data: { fullName: 'David Chen', phoneNumber: '+1 (555) 012-4433', status: 'Active' } });
 
   // 2. Create Vehicles linked to Drivers
-  const vehicle1 = await prisma.vehicle.create({ data: { name: 'Mercedes V-Class (2024)', type: 'Van', licenseNumber: 'EH-092', capacity: 7, status: 'Available', driverId: driver1.id } });
+  const vehicle1 = await prisma.vehicle.create({ data: { name: 'Mercedes V-Class (2024)', type: 'Van', licenseNumber: 'EH-092', capacity: 7, status: 'On Route', driverId: driver1.id } });
   const vehicle2 = await prisma.vehicle.create({ data: { name: 'Tesla Model X (White)', type: 'SUV', licenseNumber: 'EH-104', capacity: 5, status: 'Available', driverId: driver2.id } });
   const vehicle3 = await prisma.vehicle.create({ data: { name: 'Sprinter Exec-Bus B12', type: 'Minibus', licenseNumber: 'EH-058', capacity: 15, status: 'Available', driverId: driver3.id } });
-  const vehicle4 = await prisma.vehicle.create({ data: { name: 'Executive Sedan S1', type: 'Sedan', licenseNumber: 'EH-112', capacity: 4, status: 'Available', driverId: driver4.id } });
+  const vehicle4 = await prisma.vehicle.create({ data: { name: 'Executive Sedan S1', type: 'Sedan', licenseNumber: 'EH-112', capacity: 4, status: 'On Route', driverId: driver4.id } });
 
   // 3. Create Transport Routes
   const route1 = await prisma.transportRoute.create({ data: { routeName: 'Airport ➔ Grand Hall', startLocation: 'Airport', endLocation: 'Grand Hall', distanceKm: 25.5, durationMins: 35, status: 'Active' } });
@@ -338,37 +338,37 @@ async function main() {
   await prisma.fleetAssignment.create({ data: { vehicleId: vehicle4.id, driverId: driver4.id, eventId: eventGala.id, status: 'Active' } });
 
   // 5. Create Transfer Schedules for Vips/Guests
-  const vipGuests = await prisma.guest.findMany({ where: { isVip: true }, take: 2 });
-  if (vipGuests.length >= 2) {
-    await prisma.transferSchedule.create({
-      data: {
-        guestId: vipGuests[0].id,
-        eventId: eventGala.id,
-        transferType: 'VIP Transport',
-        pickupLocation: 'Airport Terminal 2',
-        dropoffLocation: 'Four Seasons Room 402',
-        scheduledTime: new Date(Date.now() + 1200000), // in 20 mins
-        routeId: route1.id,
-        vehicleId: vehicle1.id,
-        driverId: driver1.id,
-        status: 'In Transit'
-      }
-    });
+  const allVips = await prisma.guest.findMany({ where: { isVip: true }, take: 20 });
+  const vehiclesList = [vehicle1, vehicle2, vehicle3, vehicle4];
+  const routesList = [route1, route2, route3];
+  const transferTypes = ['VIP Transport', 'Airport Pickup', 'Airport Dropoff', 'Hotel Transfer'];
 
-    await prisma.transferSchedule.create({
-      data: {
-        guestId: vipGuests[1].id,
-        eventId: eventGala.id,
-        transferType: 'Airport Pickup',
-        pickupLocation: 'Airport Terminal 1',
-        dropoffLocation: 'Grand Hall Entrance',
-        scheduledTime: new Date(Date.now() + 3600000), // in 60 mins
-        routeId: route1.id,
-        vehicleId: vehicle2.id,
-        driverId: driver2.id,
-        status: 'Scheduled'
-      }
-    });
+  // Create transfers across the last 7 days to populate chart analytics
+  for (let i = 0; i < 7; i++) {
+    const scheduledDate = new Date();
+    scheduledDate.setDate(scheduledDate.getDate() - i);
+    
+    // Create 3 transfers on each day to populate the chart
+    for (let j = 0; j < 3; j++) {
+      const vipIndex = (i * 3 + j) % allVips.length;
+      const vehicle = vehiclesList[j % vehiclesList.length];
+      const route = routesList[j % routesList.length];
+      
+      await prisma.transferSchedule.create({
+        data: {
+          guestId: allVips[vipIndex].id,
+          eventId: eventGala.id,
+          transferType: transferTypes[j % transferTypes.length],
+          pickupLocation: 'Airport Terminal ' + ((j % 3) + 1),
+          dropoffLocation: 'Four Seasons Room ' + (100 + j * 10),
+          scheduledTime: scheduledDate,
+          routeId: route.id,
+          vehicleId: vehicle.id,
+          driverId: vehicle.driverId || driver1.id,
+          status: i === 0 ? (j === 0 ? 'In Transit' : 'Scheduled') : 'Completed'
+        }
+      });
+    }
   }
 
   // 6. Create Fleet Activity Logs

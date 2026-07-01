@@ -531,7 +531,7 @@ export default function App() {
         }}>
           {/* Header Search, Switcher & Info Links */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem', height: '100%' }}>
-            <div style={{ position: 'relative' }}>
+            <div style={{ position: 'relative', width: '200px' }}>
               <span style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', fontSize: '0.9rem' }}>🔍</span>
               <input
                 type="text"
@@ -543,9 +543,8 @@ export default function App() {
                   fontSize: '0.85rem',
                   outline: 'none',
                   width: '100%',
-                  minWidth: '150px',
-                  maxWidth: '240px',
-                  backgroundColor: '#f8fafc'
+                  backgroundColor: '#f8fafc',
+                  boxSizing: 'border-box'
                 }}
               />
             </div>
@@ -597,7 +596,7 @@ export default function App() {
             )}
 
             {/* Navbar Directory Navigation (Figma Match) */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem', height: '100%', paddingLeft: '0.5rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem', height: '100%', paddingLeft: '0.5rem', flexShrink: 0 }}>
               <span
                 style={{
                   color: activeView === 'categories' ? '#ff4d4f' : '#64748b',
@@ -609,7 +608,8 @@ export default function App() {
                   alignItems: 'center',
                   borderBottom: activeView === 'categories' ? '3px solid #ff4d4f' : '3px solid transparent',
                   boxSizing: 'border-box',
-                  transition: 'all 0.2s'
+                  transition: 'all 0.2s',
+                  whiteSpace: 'nowrap'
                 }}
                 onClick={() => {
                   setActiveView('categories');
@@ -628,7 +628,8 @@ export default function App() {
                   display: 'flex',
                   alignItems: 'center',
                   borderBottom: '3px solid transparent',
-                  boxSizing: 'border-box'
+                  boxSizing: 'border-box',
+                  whiteSpace: 'nowrap'
                 }}
                 onClick={() => alert('Resources section clicked.')}
               >

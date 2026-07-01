@@ -90,3 +90,20 @@ export async function getDashboardOverview(eventId) {
 export async function refreshAnalytics(eventId) {
   return api.post(`/transportation/dashboard/refresh/${eventId}`);
 }
+
+export async function getAllocVehicles(eventId) {
+  return api.get(`/transportation/alloc-vehicles?eventId=${eventId}`);
+}
+
+export async function getGuestQueue(eventId, search = '') {
+  const query = search ? `&search=${encodeURIComponent(search)}` : '';
+  return api.get(`/transportation/guest-queue?eventId=${eventId}${query}`);
+}
+
+export async function assignGuestToVehicle(payload) {
+  return api.post('/transportation/assign-guest', payload);
+}
+
+export async function unassignGuestFromVehicle(payload) {
+  return api.post('/transportation/unassign-guest', payload);
+}

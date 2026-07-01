@@ -57,6 +57,8 @@
   cursor: pointer;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
   transition: all 0.25s ease;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .btn-trans-filter:hover {
@@ -79,6 +81,8 @@
   cursor: pointer;
   box-shadow: 0 4px 12px rgba(255, 77, 79, 0.2);
   transition: all 0.25s ease;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .btn-trans-export:hover {
@@ -613,6 +617,7 @@
 .log-line-bar.green { background-color: #10b981; }
 .log-line-bar.orange { background-color: #f97316; }
 .log-line-bar.yellow { background-color: #b45309; }
+.log-line-bar.red { background-color: #ef4444; }
 
 .log-content {
   display: flex;
@@ -828,4 +833,94 @@
   .live-trips-split {
     grid-template-columns: 1fr;
   }
+}
+
+/* Filter Dropdown Menu */
+.filter-dropdown-menu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 0.5rem;
+  background-color: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+  padding: 1rem;
+  width: 240px;
+  z-index: 1000;
+  animation: slideDownFilter 0.2s ease-out;
+  box-sizing: border-box;
+}
+
+@keyframes slideDownFilter {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.filter-dropdown-section h4 {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #64748b;
+  text-transform: uppercase;
+  margin: 0 0 0.5rem 0;
+  letter-spacing: 0.05em;
+}
+
+.filter-options-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+}
+
+.filter-option-label {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.8rem;
+  color: #475569;
+  cursor: pointer;
+  user-select: none;
+}
+
+.filter-option-label input {
+  margin: 0;
+  cursor: pointer;
+}
+
+.filter-dropdown-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-top: 1px solid #f1f5f9;
+  padding-top: 0.75rem;
+  margin-top: 0.75rem;
+}
+
+.btn-filter-reset {
+  background: none;
+  border: none;
+  color: #64748b;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0;
+}
+
+.btn-filter-reset:hover {
+  color: #0f172a;
+}
+
+.btn-filter-apply {
+  background-color: #0f172a;
+  border: none;
+  color: #ffffff;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.35rem 0.75rem;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.btn-filter-apply:hover {
+  background-color: #1e293b;
 }

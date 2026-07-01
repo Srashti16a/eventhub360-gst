@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import './Transportation.css';
 import AllocationMatrix from '../components/Transportation/AllocationMatrix';
-import { getDrivers, getTransfers, getActivityLogs } from '../services/transportationService';
+import { getDrivers, getTransfers, getActivityLogs, getDashboardOverview, getVehicles } from '../services/transportationService';
 
 // Initial Seed data for drivers & fleet
 const INITIAL_DRIVERS = [
@@ -115,23 +115,78 @@ const getAreaPath = (points, baselineY) => {
   return `${curve} L ${last.x} ${baselineY} L ${first.x} ${baselineY} Z`;
 };
 
+const formatLogTime = (dateStr) => {
+  const date = new Date(dateStr);
+  if (isNaN(date.getTime())) return 'Just now';
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffMins = Math.floor(diffMs / 60000);
+  
+  if (diffMins < 1) return 'Just now';
+  if (diffMins < 60) return `${diffMins} min${diffMins > 1 ? 's' : ''} ago`;
+  const diffHours = Math.floor(diffMins / 60);
+  if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
+  
+  return date.toLocaleDateString([], { month: 'short', day: 'numeric' }) + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+};
+
 export default function Transportation({ activeTab: propActiveTab }) {
   const [drivers, setDrivers] = useState(INITIAL_DRIVERS);
   const [arrivals, setArrivals] = useState(INITIAL_ARRIVALS);
   const [departures, setDepartures] = useState(INITIAL_DEPARTURES);
   const [logs, setLogs] = useState(INITIAL_LOGS);
+  const [events, setEvents] = useState([]);
+  const [activeEvent, setActiveEvent] = useState(null);
+  const [dashboardOverview, setDashboardOverview] = useState({
+    totalVehicles: 0,
+    activeDrivers: 0,
+    onRouteVehicles: 0,
+    availableVehicles: 0,
+    efficiencyRating: 94.5
+  });
+  const [chartData, setChartData] = useState([]);
+  const [vehiclesData, setVehiclesData] = useState([]);
+  
+  // Filter Dropdown States
+  const [showFilterDropdown, setShowFilterDropdown] = useState(false);
+  const [statusFilter, setStatusFilter] = useState('All');
+  const [vehicleFilter, setVehicleFilter] = useState('All');
 
-  // Dynamic fetch on mount
+  // Fetch events list once on mount
   useEffect(() => {
+    fetch('/api/events')
+      .then(r => r.json())
+      .then(res => {
+        if (res.success && res.data && res.data.length > 0) {
+          setEvents(res.data);
+          const forum = res.data.find(e => e.title.includes('Forum') || e.category.includes('Gala')) || res.data[0];
+          setActiveEvent(forum);
+        }
+      })
+      .catch(err => console.error("Error loading events in Transportation:", err));
+  }, []);
+
+  // Fetch all overview metrics when active event is loaded/changes
+  useEffect(() => {
+    if (!activeEvent) return;
+
     Promise.all([
       getDrivers(),
-      getTransfers(),
-      getActivityLogs()
+      getTransfers(activeEvent.id),
+      getActivityLogs(),
+      getDashboardOverview(activeEvent.id),
+      getVehicles()
     ])
-      .then(([driversRes, transfersRes, logsRes]) => {
+      .then(([driversRes, transfersRes, logsRes, overviewRes, vehiclesRes]) => {
         if (driversRes.success && driversRes.data) {
           const mappedDrivers = driversRes.data.map((d, index) => {
             const assignedVehicle = d.vehicles && d.vehicles[0] ? d.vehicles[0] : null;
+            const activeTransfer = d.transfers?.find(t => t.status === 'In Transit') || d.transfers?.[0];
+            const route = activeTransfer 
+              ? (activeTransfer.route?.routeName || activeTransfer.transferType) 
+              : (d.status === 'Active' ? 'Airport ➔ Grand Hall' : '—');
+            const guestNames = d.transfers ? d.transfers.map(t => t.guest?.name).filter(Boolean) : [];
+
             return {
               id: d.id,
               driverName: d.fullName,
@@ -145,7 +200,8 @@ export default function Transportation({ activeTab: propActiveTab }) {
                 : 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&auto=format&fit=crop&q=80',
               vehicle: assignedVehicle ? `${assignedVehicle.name}` : 'Unassigned',
               status: d.status,
-              route: d.status === 'Active' ? 'Airport ➔ Grand Hall' : '—'
+              route,
+              guestNames
             };
           });
           setDrivers(mappedDrivers);
@@ -162,7 +218,7 @@ export default function Transportation({ activeTab: propActiveTab }) {
               eta: t.status === 'In Transit' ? '2 mins away' : 'In Transit',
               status: t.status === 'In Transit' ? 'Near' : 'In-Transit'
             }));
-          if (arrs.length > 0) setArrivals(arrs);
+          setArrivals(arrs);
 
           const deps = transfersRes.data
             .filter(t => t.transferType.toLowerCase().includes('dropoff') || t.transferType.toLowerCase().includes('shuttle'))
@@ -175,7 +231,7 @@ export default function Transportation({ activeTab: propActiveTab }) {
               eta: t.status,
               status: t.status
             }));
-          if (deps.length > 0) setDepartures(deps);
+          setDepartures(deps);
         }
 
         if (logsRes.success && logsRes.data) {
@@ -183,14 +239,25 @@ export default function Transportation({ activeTab: propActiveTab }) {
             id: l.id,
             title: l.activityType,
             desc: l.message,
-            time: new Date(l.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            time: formatLogTime(l.createdAt),
             status: l.severity === 'Critical' ? 'red' : l.severity === 'Warning' ? 'orange' : 'green'
           }));
           setLogs(mappedLogs);
         }
+
+        if (overviewRes.success && overviewRes.data) {
+          setDashboardOverview(overviewRes.data);
+          if (overviewRes.data.chartData) {
+            setChartData(overviewRes.data.chartData);
+          }
+        }
+
+        if (vehiclesRes.success && vehiclesRes.data) {
+          setVehiclesData(vehiclesRes.data);
+        }
       })
       .catch(err => console.error("Error loading dynamic transportation data:", err));
-  }, []);
+  }, [activeEvent]);
 
   // Search filter
   const [searchQuery, setSearchQuery] = useState('');
@@ -213,13 +280,13 @@ export default function Transportation({ activeTab: propActiveTab }) {
 
   // Compute coordinates and curve paths for rendering SVG chart
   const chartPoints = useMemo(() => {
-    return CHART_DATA.map((d, i) => {
+    return chartData.map((d, i) => {
       const x = 40 + i * 85;
       const ySuv = 155 - (d.suv / 36) * 125;
       const yVans = 155 - (d.vans / 36) * 125;
       return { ...d, x, ySuv, yVans };
     });
-  }, []);
+  }, [chartData]);
 
   const suvPath = useMemo(() => {
     const pts = chartPoints.map(p => ({ x: p.x, y: p.ySuv }));
@@ -241,6 +308,41 @@ export default function Transportation({ activeTab: propActiveTab }) {
     return getAreaPath(pts, 155);
   }, [chartPoints]);
 
+  const fleetDistribution = useMemo(() => {
+    const categories = {
+      sedan: { name: 'Luxury Sedans', active: 0, total: 0, class: 'sedans' },
+      van: { name: 'Sprinter Vans', active: 0, total: 0, class: 'vans' },
+      suv: { name: 'SUVs (Escort)', active: 0, total: 0, class: 'suvs' }
+    };
+
+    vehiclesData.forEach(v => {
+      const type = v.type?.toLowerCase() || '';
+      let cat = null;
+      if (type.includes('sedan')) {
+        cat = categories.sedan;
+      } else if (type.includes('van') || type.includes('minibus')) {
+        cat = categories.van;
+      } else if (type.includes('suv')) {
+        cat = categories.suv;
+      }
+
+      if (cat) {
+        cat.total++;
+        if (v.status === 'On Route' || v.status === 'Staged' || v.status === 'Active') {
+          cat.active++;
+        }
+      }
+    });
+
+    return Object.values(categories).map(cat => {
+      const percentage = cat.total > 0 ? Math.round((cat.active / cat.total) * 100) : 0;
+      return {
+        ...cat,
+        percentage
+      };
+    });
+  }, [vehiclesData]);
+
   // Initialize chat conversations once
   useEffect(() => {
     setChatMessages(MOCK_CONVERSATIONS);
@@ -255,14 +357,42 @@ export default function Transportation({ activeTab: propActiveTab }) {
 
   // Search filter for Drivers table
   const filteredDrivers = useMemo(() => {
-    return drivers.filter(d => 
-      searchQuery.trim() === '' ||
-      d.driverName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      d.vehicle.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      d.driverId.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      d.status.toLowerCase().includes(searchQuery.toLowerCase())
-    );
-  }, [drivers, searchQuery]);
+    let result = drivers;
+    
+    // Status Filter
+    if (statusFilter !== 'All') {
+      result = result.filter(d => d.status === statusFilter);
+    }
+    
+    // Vehicle Filter
+    if (vehicleFilter !== 'All') {
+      result = result.filter(d => {
+        const isAssigned = d.vehicle !== 'Unassigned';
+        return vehicleFilter === 'Assigned' ? isAssigned : !isAssigned;
+      });
+    }
+
+    const query = searchQuery.trim().toLowerCase();
+    if (query !== '') {
+      result = result.filter(d => {
+        const driverName = (d.driverName || '').toLowerCase();
+        const vehicle = (d.vehicle || '').toLowerCase();
+        const driverId = (d.driverId || '').toLowerCase();
+        const status = (d.status || '').toLowerCase();
+        const route = (d.route || '').toLowerCase();
+        const guests = Array.isArray(d.guestNames) ? d.guestNames.join(', ').toLowerCase() : '';
+        
+        return driverName.includes(query) ||
+               vehicle.includes(query) ||
+               driverId.includes(query) ||
+               status.includes(query) ||
+               route.includes(query) ||
+               guests.includes(query);
+      });
+    }
+    
+    return result;
+  }, [drivers, searchQuery, statusFilter, vehicleFilter]);
 
   // Export report as CSV
   const handleExportCSV = () => {
@@ -336,14 +466,63 @@ export default function Transportation({ activeTab: propActiveTab }) {
           <p>Real-time status for the Gala Dinner Arrivals</p>
         </div>
 
-        <div className="trans-header-actions">
+        <div className="trans-header-actions" style={{ position: 'relative' }}>
           {/* Header Action Buttons */}
-          <button type="button" className="btn-trans-filter" onClick={() => alert('Opening dispatch search filter panels...')}>
+          <button 
+            type="button" 
+            className="btn-trans-filter" 
+            onClick={() => setShowFilterDropdown(!showFilterDropdown)}
+          >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
               <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
             </svg>
             <span>Filters</span>
           </button>
+
+          {showFilterDropdown && (
+            <div className="filter-dropdown-menu">
+              <div className="filter-dropdown-section">
+                <h4>Driver Status</h4>
+                <div className="filter-options-grid">
+                  {['All', 'Active', 'Available', 'Resting'].map(status => (
+                    <label key={status} className="filter-option-label">
+                      <input 
+                        type="radio" 
+                        name="statusFilter" 
+                        value={status}
+                        checked={statusFilter === status} 
+                        onChange={() => setStatusFilter(status)} 
+                      />
+                      <span>{status}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              <div className="filter-dropdown-section" style={{ borderTop: '1px solid #f1f5f9', paddingTop: '0.75rem', marginTop: '0.75rem' }}>
+                <h4>Vehicle Assign</h4>
+                <div className="filter-options-grid">
+                  {['All', 'Assigned', 'Unassigned'].map(opt => (
+                    <label key={opt} className="filter-option-label">
+                      <input 
+                        type="radio" 
+                        name="vehicleFilter" 
+                        value={opt}
+                        checked={vehicleFilter === opt} 
+                        onChange={() => setVehicleFilter(opt)} 
+                      />
+                      <span>{opt}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              <div className="filter-dropdown-footer">
+                <button type="button" className="btn-filter-reset" onClick={() => { setStatusFilter('All'); setVehicleFilter('All'); setShowFilterDropdown(false); }}>Reset</button>
+                <button type="button" className="btn-filter-apply" onClick={() => setShowFilterDropdown(false)}>Apply</button>
+              </div>
+            </div>
+          )}
 
           <button type="button" className="btn-trans-export" onClick={handleExportCSV}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
@@ -441,7 +620,7 @@ export default function Transportation({ activeTab: propActiveTab }) {
           </div>
           <div className="trans-card-body">
             <h3>Total Vehicles</h3>
-            <p className="trans-val">42</p>
+            <p className="trans-val">{dashboardOverview.totalVehicles}</p>
           </div>
         </div>
 
@@ -458,7 +637,7 @@ export default function Transportation({ activeTab: propActiveTab }) {
           </div>
           <div className="trans-card-body">
             <h3>Active Drivers</h3>
-            <p className="trans-val">38</p>
+            <p className="trans-val">{dashboardOverview.activeDrivers}</p>
           </div>
         </div>
 
@@ -475,7 +654,7 @@ export default function Transportation({ activeTab: propActiveTab }) {
           </div>
           <div className="trans-card-body">
             <h3>On-Route</h3>
-            <p className="trans-val">14</p>
+            <p className="trans-val">{dashboardOverview.onRouteVehicles}</p>
           </div>
         </div>
 
@@ -492,7 +671,7 @@ export default function Transportation({ activeTab: propActiveTab }) {
           </div>
           <div className="trans-card-body">
             <h3>Efficiency Rating</h3>
-            <p className="trans-val">94.5%</p>
+            <p className="trans-val">{dashboardOverview.efficiencyRating}%</p>
           </div>
         </div>
       </section>
@@ -693,36 +872,17 @@ export default function Transportation({ activeTab: propActiveTab }) {
           <div className="trans-card">
             <h2 style={{ fontSize: '0.95rem', marginBottom: '1rem' }}>Fleet Distribution</h2>
             <div className="distribution-list">
-              {/* Item 1 */}
-              <div className="distribution-item-row">
-                <div className="dist-meta">
-                  <span>Luxury Sedans</span>
-                  <span>12 / 15</span>
+              {fleetDistribution.map(cat => (
+                <div key={cat.name} className="distribution-item-row">
+                  <div className="dist-meta">
+                    <span>{cat.name}</span>
+                    <span>{cat.active} / {cat.total}</span>
+                  </div>
+                  <div className="dist-bar-track">
+                    <div className={`dist-bar-fill ${cat.class}`} style={{ width: `${cat.percentage}%` }}></div>
+                  </div>
                 </div>
-                <div className="dist-bar-track">
-                  <div className="dist-bar-fill sedans" style={{ width: '80%' }}></div>
-                </div>
-              </div>
-              {/* Item 2 */}
-              <div className="distribution-item-row">
-                <div className="dist-meta">
-                  <span>Sprinter Vans</span>
-                  <span>8 / 10</span>
-                </div>
-                <div className="dist-bar-track">
-                  <div className="dist-bar-fill vans" style={{ width: '80%' }}></div>
-                </div>
-              </div>
-              {/* Item 3 */}
-              <div className="distribution-item-row">
-                <div className="dist-meta">
-                  <span>SUVs (Escort)</span>
-                  <span>5 / 12</span>
-                </div>
-                <div className="dist-bar-track">
-                  <div className="dist-bar-fill suvs" style={{ width: '42%' }}></div>
-                </div>
-              </div>
+              ))}
             </div>
           </div>
         </div>
@@ -855,6 +1015,11 @@ export default function Transportation({ activeTab: propActiveTab }) {
                       <div className="guest-profile-info">
                         <span className="guest-profile-name" style={{ fontSize: '0.85rem' }}>{item.driverName}</span>
                         <span className="guest-profile-id" style={{ fontSize: '0.7rem' }}>ID: {item.driverId}</span>
+                        {item.guestNames && item.guestNames.length > 0 && (
+                          <div style={{ fontSize: '0.7rem', color: '#64748b', marginTop: '0.15rem' }}>
+                            👤 {item.guestNames.join(', ')}
+                          </div>
+                        )}
                       </div>
                     </div>
                   </td>
@@ -902,7 +1067,68 @@ export default function Transportation({ activeTab: propActiveTab }) {
       </>
       )}
 
-      {activeTab === 'allocation' && <AllocationMatrix />}
+      {activeTab === 'allocation' && activeEvent && (
+        <AllocationMatrix 
+          eventId={activeEvent.id} 
+          onAssignmentUpdate={() => {
+            getDashboardOverview(activeEvent.id).then(overviewRes => {
+              if (overviewRes.success && overviewRes.data) {
+                setDashboardOverview(overviewRes.data);
+                if (overviewRes.data.chartData) {
+                  setChartData(overviewRes.data.chartData);
+                }
+              }
+            });
+            getVehicles().then(vehiclesRes => {
+              if (vehiclesRes.success && vehiclesRes.data) {
+                setVehiclesData(vehiclesRes.data);
+              }
+            });
+            getActivityLogs().then(logsRes => {
+              if (logsRes.success && logsRes.data) {
+                const mappedLogs = logsRes.data.map(l => ({
+                  id: l.id,
+                  title: l.activityType,
+                  desc: l.message,
+                  time: formatLogTime(l.createdAt),
+                  status: l.severity === 'Critical' ? 'red' : l.severity === 'Warning' ? 'orange' : 'green'
+                }));
+                setLogs(mappedLogs);
+              }
+            });
+            getDrivers().then(driversRes => {
+              if (driversRes.success && driversRes.data) {
+                const mappedDrivers = driversRes.data.map((d, index) => {
+                  const assignedVehicle = d.vehicles && d.vehicles[0] ? d.vehicles[0] : null;
+                  const activeTransfer = d.transfers?.find(t => t.status === 'In Transit') || d.transfers?.[0];
+                  const route = activeTransfer 
+                    ? (activeTransfer.route?.routeName || activeTransfer.transferType) 
+                    : (d.status === 'Active' ? 'Airport ➔ Grand Hall' : '—');
+                  const guestNames = d.transfers ? d.transfers.map(t => t.guest?.name).filter(Boolean) : [];
+
+                  return {
+                    id: d.id,
+                    driverName: d.fullName,
+                    driverId: assignedVehicle ? assignedVehicle.licenseNumber : `EH-${100 + index}`,
+                    avatar: d.fullName.toLowerCase().includes('sarah') 
+                      ? 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&auto=format&fit=crop&q=80'
+                      : d.fullName.toLowerCase().includes('james')
+                      ? 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&auto=format&fit=crop&q=80'
+                      : d.fullName.toLowerCase().includes('michael')
+                      ? 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100&auto=format&fit=crop&q=80'
+                      : 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&auto=format&fit=crop&q=80',
+                    vehicle: assignedVehicle ? `${assignedVehicle.name}` : 'Unassigned',
+                    status: d.status,
+                    route,
+                    guestNames
+                  };
+                });
+                setDrivers(mappedDrivers);
+              }
+            });
+          }} 
+        />
+      )}
 
       {activeTab === 'drivers' && (
         <div className="driver-portal-placeholder" style={{ padding: '3rem 2rem', textAlign: 'center', backgroundColor: '#ffffff', borderRadius: '16px', border: '1px solid #e2e8f0', margin: '2rem 0' }}>
