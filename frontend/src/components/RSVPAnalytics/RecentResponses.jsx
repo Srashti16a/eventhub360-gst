@@ -1,5 +1,93 @@
 import React, { useState, useEffect, useRef } from 'react';
 
+const CustomDropdown = ({ value, options, onChange, width = '150px' }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const ref = useRef(null);
+
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (ref.current && !ref.current.contains(event.target)) {
+        setIsOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const selectedOption = options.find(o => o.value === value) || options[0];
+
+  return (
+    <div style={{ position: 'relative', width }} ref={ref}>
+      <button 
+        type="button"
+        onClick={() => setIsOpen(!isOpen)}
+        style={{
+          width: '100%',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          padding: '0.375rem 0.75rem',
+          backgroundColor: '#fff',
+          border: '1px solid var(--border-color)',
+          borderRadius: '6px',
+          fontSize: '0.8rem',
+          color: 'var(--text-main)',
+          cursor: 'pointer',
+          boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+          transition: 'all 0.2s',
+          outline: isOpen ? '2px solid var(--primary-color)' : 'none',
+        }}
+      >
+        <span>{selectedOption.label}</span>
+        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" style={{ color: '#94a3b8', transform: isOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+
+      {isOpen && (
+        <div style={{
+          position: 'absolute',
+          top: '100%',
+          left: 0,
+          right: 0,
+          marginTop: '4px',
+          backgroundColor: '#fff',
+          border: '1px solid var(--border-color)',
+          borderRadius: '6px',
+          boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+          zIndex: 50,
+          maxHeight: '250px',
+          overflowY: 'auto',
+          padding: '4px 0'
+        }}>
+          {options.map((opt) => (
+            <div 
+              key={opt.value}
+              onClick={() => { onChange(opt.value); setIsOpen(false); }}
+              style={{
+                padding: '6px 12px',
+                fontSize: '0.8rem',
+                cursor: 'pointer',
+                backgroundColor: value === opt.value ? 'var(--bg-hover)' : 'transparent',
+                color: value === opt.value ? 'var(--primary-color)' : 'var(--text-main)',
+                transition: 'background-color 0.15s',
+              }}
+              onMouseEnter={(e) => {
+                if (value !== opt.value) e.target.style.backgroundColor = 'var(--bg-hover)';
+              }}
+              onMouseLeave={(e) => {
+                if (value !== opt.value) e.target.style.backgroundColor = 'transparent';
+              }}
+            >
+              {opt.label}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
 export default function RecentResponses({ responses, searchQuery, setSearchQuery, onViewAllGuests, onDeleteGuest, onEditGuestStatus }) {
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [selectedStatus, setSelectedStatus] = useState('All');
@@ -96,34 +184,34 @@ export default function RecentResponses({ responses, searchQuery, setSearchQuery
             />
           </div>
 
-          <select
-            className="dropdown-styled"
-            style={{ padding: '0.375rem 2rem 0.375rem 0.75rem', fontSize: '0.8rem' }}
+          <CustomDropdown 
+            width="160px"
             value={selectedCategory}
-            onChange={(e) => setSelectedCategory(e.target.value)}
-          >
-            <option value="All">All Categories</option>
-            <option value="VIP">VIP</option>
-            <option value="Speaker">Speaker</option>
-            <option value="Family">Family</option>
-            <option value="Corporate">Corporate</option>
-            <option value="Sponsor">Sponsor</option>
-            <option value="Media">Media</option>
-            <option value="Staff">Staff</option>
-            <option value="Standard">Standard</option>
-          </select>
+            onChange={setSelectedCategory}
+            options={[
+              { value: 'All', label: 'All Categories' },
+              { value: 'VIP', label: 'VIP' },
+              { value: 'Speaker', label: 'Speaker' },
+              { value: 'Family', label: 'Family' },
+              { value: 'Corporate', label: 'Corporate' },
+              { value: 'Sponsor', label: 'Sponsor' },
+              { value: 'Media', label: 'Media' },
+              { value: 'Staff', label: 'Staff' },
+              { value: 'Standard', label: 'Standard' }
+            ]}
+          />
 
-          <select
-            className="dropdown-styled"
-            style={{ padding: '0.375rem 2rem 0.375rem 0.75rem', fontSize: '0.8rem' }}
+          <CustomDropdown 
+            width="140px"
             value={selectedStatus}
-            onChange={(e) => setSelectedStatus(e.target.value)}
-          >
-            <option value="All">All Status</option>
-            <option value="Accepted">Accepted</option>
-            <option value="Declined">Declined</option>
-            <option value="Pending">Pending</option>
-          </select>
+            onChange={setSelectedStatus}
+            options={[
+              { value: 'All', label: 'All Status' },
+              { value: 'Accepted', label: 'Accepted' },
+              { value: 'Declined', label: 'Declined' },
+              { value: 'Pending', label: 'Pending' }
+            ]}
+          />
         </div>
       </div>
 
