@@ -260,7 +260,8 @@
 /* Search Input */
 .search-wrapper {
   position: relative;
-  width: 280px;
+  min-width: 280px;
+  flex: 1;
   max-width: 100%;
 }
 
