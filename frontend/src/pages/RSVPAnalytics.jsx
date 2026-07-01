@@ -104,26 +104,29 @@ export default function RSVPAnalytics({ onViewAllGuests }) {
 
   // Compute all responses mapped to the table format
   const allResponses = useMemo(() => {
-    return [...guests]
-      .sort((a, b) => new Date(b.updatedAt || b.createdAt) - new Date(a.updatedAt || a.createdAt))
-      .map(g => {
-        let cat = 'Standard';
-        if (g.isVip) cat = 'VIP';
-        else if (g.isSpeaker) cat = 'Speaker';
-        else if (g.isBridalParty) cat = 'Family';
-        else if (g.isPrimaryGuest) cat = 'Corporate';
-        else if (g.category) cat = g.category;
-        
-        return {
-          id: g.id,
-          name: g.name,
-          email: g.email,
-          category: cat,
-          status: (g.status === 'CONFIRMED' ? 'Accepted' : g.status === 'DECLINED' ? 'Declined' : 'Pending'),
-          responseDate: new Date(g.updatedAt || g.createdAt).toLocaleDateString(),
-          avatarUrl: null
-        };
-      });
+    return guests.map(g => {
+      // Re-map the db status cleanly
+      let status = 'Pending';
+      if (g.status === 'CONFIRMED') status = 'Accepted';
+      if (g.status === 'DECLINED') status = 'Declined';
+      
+      let cat = 'Standard';
+      if (g.isVip) cat = 'VIP';
+      else if (g.isSpeaker) cat = 'Speaker';
+      else if (g.isBridalParty) cat = 'Family';
+      else if (g.isPrimaryGuest) cat = 'Corporate';
+      else if (g.category) cat = g.category;
+
+      return {
+        id: g.id,
+        name: g.name,
+        email: g.email || '-',
+        category: cat,
+        status: status,
+        responseDate: g.updatedAt ? new Date(g.updatedAt).toLocaleDateString() : 'Pending',
+        avatarUrl: null
+      };
+    }).sort((a, b) => new Date(b.updatedAt || b.createdAt) - new Date(a.updatedAt || a.createdAt));
   }, [guests]);
 
   // Compute Timeline dynamically
