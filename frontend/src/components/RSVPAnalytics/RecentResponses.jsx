@@ -55,7 +55,9 @@ export default function RecentResponses({ responses, searchQuery, setSearchQuery
 
   const filteredResponses = responses.filter(r => {
     const matchesCat = selectedCategory === 'All' || r.category === selectedCategory;
-    const matchesSearch = !searchQuery || r.name.toLowerCase().includes(searchQuery.toLowerCase()) || (r.email && r.email.toLowerCase().includes(searchQuery.toLowerCase()));
+    const matchesSearch = !searchQuery || 
+      (r.name && r.name.toLowerCase().includes(searchQuery.toLowerCase())) || 
+      (r.email && r.email.toLowerCase().includes(searchQuery.toLowerCase()));
     return matchesCat && matchesSearch;
   });
 
