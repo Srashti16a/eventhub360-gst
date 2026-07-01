@@ -212,6 +212,9 @@
 .progress-bar-fill.sponsor { background-color: #8b5cf6; }
 .progress-bar-fill.media { background-color: #3b82f6; }
 .progress-bar-fill.staff { background-color: #10b981; }
+.progress-bar-fill.family { background-color: #ec4899; }
+.progress-bar-fill.corporate { background-color: #6366f1; }
+.progress-bar-fill.standard { background-color: #94a3b8; }
 
 /* Timeline Widget Styles */
 .timeline-card {

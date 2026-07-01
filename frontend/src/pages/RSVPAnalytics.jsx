@@ -81,7 +81,13 @@ export default function RSVPAnalytics({ onViewAllGuests }) {
     if (!guests.length) return [];
     const counts = {};
     guests.forEach(g => {
-      const cat = g.category || 'Standard';
+      let cat = 'Standard';
+      if (g.isVip) cat = 'VIP';
+      else if (g.isSpeaker) cat = 'Speaker';
+      else if (g.isBridalParty) cat = 'Family';
+      else if (g.isPrimaryGuest) cat = 'Corporate';
+      else if (g.category) cat = g.category;
+      
       counts[cat] = (counts[cat] || 0) + 1;
     });
     return Object.entries(counts)
@@ -94,15 +100,24 @@ export default function RSVPAnalytics({ onViewAllGuests }) {
   const allResponses = useMemo(() => {
     return [...guests]
       .sort((a, b) => new Date(b.updatedAt || b.createdAt) - new Date(a.updatedAt || a.createdAt))
-      .map(g => ({
-        id: g.id,
-        name: g.name,
-        email: g.email,
-        category: g.category || 'Standard',
-        status: (g.status === 'CONFIRMED' ? 'Accepted' : g.status === 'DECLINED' ? 'Declined' : 'Pending'),
-        responseDate: new Date(g.updatedAt || g.createdAt).toLocaleDateString(),
-        avatarUrl: null
-      }));
+      .map(g => {
+        let cat = 'Standard';
+        if (g.isVip) cat = 'VIP';
+        else if (g.isSpeaker) cat = 'Speaker';
+        else if (g.isBridalParty) cat = 'Family';
+        else if (g.isPrimaryGuest) cat = 'Corporate';
+        else if (g.category) cat = g.category;
+        
+        return {
+          id: g.id,
+          name: g.name,
+          email: g.email,
+          category: cat,
+          status: (g.status === 'CONFIRMED' ? 'Accepted' : g.status === 'DECLINED' ? 'Declined' : 'Pending'),
+          responseDate: new Date(g.updatedAt || g.createdAt).toLocaleDateString(),
+          avatarUrl: null
+        };
+      });
   }, [guests]);
 
   // Compute Timeline dynamically
@@ -111,14 +126,23 @@ export default function RSVPAnalytics({ onViewAllGuests }) {
       .filter(g => g.status === 'CONFIRMED' || g.status === 'DECLINED')
       .sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt))
       .slice(0, 5)
-      .map((g, idx) => ({
-        id: g.id || idx,
-        guestName: g.name,
-        actionText: g.status === 'CONFIRMED' ? 'accepted the invitation' : 'declined the invitation',
-        timeAgo: new Date(g.updatedAt).toLocaleDateString(),
-        category: g.category || 'Standard',
-        status: g.status === 'CONFIRMED' ? 'accepted' : 'declined'
-      }));
+      .map((g, idx) => {
+        let cat = 'Standard';
+        if (g.isVip) cat = 'VIP';
+        else if (g.isSpeaker) cat = 'Speaker';
+        else if (g.isBridalParty) cat = 'Family';
+        else if (g.isPrimaryGuest) cat = 'Corporate';
+        else if (g.category) cat = g.category;
+        
+        return {
+          id: g.id || idx,
+          guestName: g.name,
+          actionText: g.status === 'CONFIRMED' ? 'accepted the invitation' : 'declined the invitation',
+          timeAgo: new Date(g.updatedAt).toLocaleDateString(),
+          category: cat,
+          status: g.status === 'CONFIRMED' ? 'accepted' : 'declined'
+        };
+      });
   }, [guests]);
 
   // CSV Report exporter
