@@ -55,8 +55,8 @@ export default function CategoryChart({ categories, guestsCount }) {
                 <div
                   className="chart-bar-fill"
                   style={{
-                    height: `${Math.max(barHeightPercentage, 4)}%`,
-                    color: barColor
+                    height: `${barHeightPercentage}%`,
+                    backgroundColor: barColor
                   }}
                 ></div>
                 {/* Abbreviation label */}

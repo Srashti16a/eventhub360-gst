@@ -39,6 +39,7 @@ export default function GuestCategories() {
   const [guests, setGuests] = useState([]);
   const [dbEvents, setDbEvents] = useState([]);
   const [toast, setToast] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   // Modal visibilities
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -109,6 +110,8 @@ export default function GuestCategories() {
     } catch (err) {
       console.error('Error fetching guests:', err);
       showToast('Error connecting to backend API', 'error');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -322,10 +325,16 @@ export default function GuestCategories() {
       </header>
 
       {/* Categories Distribution Visual breakdown column/bar chart */}
-      <CategoryChart
-        categories={computedCategories}
-        guestsCount={totalGuestsCount}
-      />
+      {isLoading ? (
+        <div className="chart-loading-skeleton" style={{ height: '200px', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0', margin: '1rem 2rem' }}>
+          <div className="spinner" style={{ width: '30px', height: '30px', border: '3px solid #e2e8f0', borderTopColor: '#3b82f6', borderRadius: '50%', animation: 'spin 1s linear infinite' }}></div>
+        </div>
+      ) : (
+        <CategoryChart
+          categories={computedCategories}
+          guestsCount={totalGuestsCount}
+        />
+      )}
 
       {/* Grid listing Category Cards */}
       <div className="categories-grid">
