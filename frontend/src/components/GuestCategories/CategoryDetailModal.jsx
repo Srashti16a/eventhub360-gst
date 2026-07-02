@@ -1,6 +1,21 @@
-import React from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 
-export default function CategoryDetailModal({ isOpen, onClose, category, guests }) {
+export default function CategoryDetailModal({ isOpen, onClose, category, guests, onEdit, onDelete }) {
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+
+  useEffect(() => {
+    if (isOpen) setCurrentPage(1);
+  }, [isOpen, category]);
+
+  const paginatedGuests = useMemo(() => {
+    if (!guests) return [];
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    return guests.slice(startIndex, startIndex + itemsPerPage);
+  }, [guests, currentPage]);
+
+  const totalPages = guests ? Math.ceil(guests.length / itemsPerPage) : 0;
+
   if (!isOpen || !category) return null;
 
   return (
@@ -25,19 +40,63 @@ export default function CategoryDetailModal({ isOpen, onClose, category, guests 
                 No attendees registered under this classification yet.
               </span>
             ) : (
-              guests.map((g) => (
-                <div key={g.guest_id} className="category-member-item">
+              paginatedGuests.map((g) => (
+                <div key={g.guest_id} className="category-member-item" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <div>
                     <strong style={{ display: 'block', fontSize: '0.9rem', color: 'var(--text-main)' }}>{g.name}</strong>
                     <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{g.phone}</span>
                   </div>
-                  <span style={{ fontSize: '0.8rem', color: 'var(--text-light)' }}>
-                    {g.email || 'No email'}
-                  </span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                    <span style={{ fontSize: '0.8rem', color: 'var(--text-light)' }}>
+                      {g.email || 'No email'}
+                    </span>
+                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                      <button 
+                        type="button" 
+                        onClick={() => onEdit(g)}
+                        style={{ background: 'none', border: 'none', color: '#2563eb', cursor: 'pointer', fontSize: '0.8rem' }}
+                      >
+                        Edit
+                      </button>
+                      <button 
+                        type="button" 
+                        onClick={() => onDelete(g)}
+                        style={{ background: 'none', border: 'none', color: '#dc2626', cursor: 'pointer', fontSize: '0.8rem' }}
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </div>
                 </div>
               ))
             )}
           </div>
+
+          {totalPages > 1 && (
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid var(--border-color)' }}>
+              <button 
+                type="button" 
+                className="btn-secondary" 
+                disabled={currentPage === 1}
+                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                style={{ padding: '0.25rem 0.75rem', fontSize: '0.8rem' }}
+              >
+                Previous
+              </button>
+              <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                Page {currentPage} of {totalPages}
+              </span>
+              <button 
+                type="button" 
+                className="btn-secondary" 
+                disabled={currentPage === totalPages}
+                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                style={{ padding: '0.25rem 0.75rem', fontSize: '0.8rem' }}
+              >
+                Next
+              </button>
+            </div>
+          )}
         </div>
         <div className="modal-footer">
           <button type="button" className="btn-primary" onClick={onClose}>

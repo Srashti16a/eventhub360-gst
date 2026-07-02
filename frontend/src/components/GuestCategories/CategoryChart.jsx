@@ -26,7 +26,7 @@ export default function CategoryChart({ categories, guestsCount }) {
       <div className="distribution-layout">
         {/* Left Side List */}
         <div className="distribution-list">
-          {categories.slice(0, 3).map((cat) => (
+          {categories.map((cat) => (
             <div key={cat.id} className="distribution-list-item">
               <div className="dist-label">
                 <span
