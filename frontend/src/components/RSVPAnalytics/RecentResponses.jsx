@@ -95,6 +95,7 @@ export default function RecentResponses({ responses, searchQuery, setSearchQuery
   const [actionModal, setActionModal] = useState(null); // 'view', 'edit', null
   const [activeGuest, setActiveGuest] = useState(null);
   const [editStatus, setEditStatus] = useState('');
+  const [isExpanded, setIsExpanded] = useState(false);
   const menuRef = useRef(null);
 
   // Close dropdown when clicking outside
@@ -157,7 +158,7 @@ export default function RecentResponses({ responses, searchQuery, setSearchQuery
     return matchesCat && matchesStatus && matchesSearch;
   });
 
-  const displayedResponses = filteredResponses.slice(0, 10);
+  const displayedResponses = isExpanded ? filteredResponses : filteredResponses.slice(0, 10);
 
   return (
     <div className="recent-responses-card">
@@ -311,9 +312,11 @@ export default function RecentResponses({ responses, searchQuery, setSearchQuery
       </div>
 
       <div className="recent-responses-footer">
-        <span className="recent-responses-footer-link" onClick={onViewAllGuests}>
-          View All Guests
-        </span>
+        {filteredResponses.length > 10 && (
+          <span className="recent-responses-footer-link" onClick={() => setIsExpanded(!isExpanded)}>
+            {isExpanded ? 'Show Less Guests' : 'View All Guests'}
+          </span>
+        )}
       </div>
 
       {/* View Details Modal */}
