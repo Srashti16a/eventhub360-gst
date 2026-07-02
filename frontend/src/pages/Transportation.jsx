@@ -147,10 +147,10 @@ export default function Transportation({ activeTab: propActiveTab }) {
   const [chartData, setChartData] = useState([]);
   const [vehiclesData, setVehiclesData] = useState([]);
   
-  // Filter Dropdown States
-  const [showFilterDropdown, setShowFilterDropdown] = useState(false);
-  const [statusFilter, setStatusFilter] = useState('All');
-  const [vehicleFilter, setVehicleFilter] = useState('All');
+  // Filter Panel States
+  const [isFilterPanelOpen, setIsFilterPanelOpen] = useState(false);
+  const [statusFilter, setStatusFilter] = useState('All Statuses');
+  const [vehicleFilter, setVehicleFilter] = useState('All Vehicles');
 
   // Fetch events list once on mount
   useEffect(() => {
@@ -355,43 +355,22 @@ export default function Transportation({ activeTab: propActiveTab }) {
     }
   }, [selectedDriverForChat, chatMessages]);
 
-  // Search filter for Drivers table
+  // Search and dropdown filter for Drivers table
   const filteredDrivers = useMemo(() => {
-    let result = drivers;
-    
-    // Status Filter
-    if (statusFilter !== 'All') {
-      result = result.filter(d => d.status === statusFilter);
-    }
-    
-    // Vehicle Filter
-    if (vehicleFilter !== 'All') {
-      result = result.filter(d => {
-        const isAssigned = d.vehicle !== 'Unassigned';
-        return vehicleFilter === 'Assigned' ? isAssigned : !isAssigned;
-      });
-    }
+    return drivers.filter(d => {
+      const matchesSearch = searchQuery.trim() === '' ||
+        d.driverName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        d.vehicle.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        d.driverId.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        d.status.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        d.route.toLowerCase().includes(searchQuery.toLowerCase());
 
-    const query = searchQuery.trim().toLowerCase();
-    if (query !== '') {
-      result = result.filter(d => {
-        const driverName = (d.driverName || '').toLowerCase();
-        const vehicle = (d.vehicle || '').toLowerCase();
-        const driverId = (d.driverId || '').toLowerCase();
-        const status = (d.status || '').toLowerCase();
-        const route = (d.route || '').toLowerCase();
-        const guests = Array.isArray(d.guestNames) ? d.guestNames.join(', ').toLowerCase() : '';
-        
-        return driverName.includes(query) ||
-               vehicle.includes(query) ||
-               driverId.includes(query) ||
-               status.includes(query) ||
-               route.includes(query) ||
-               guests.includes(query);
-      });
-    }
-    
-    return result;
+      const matchesStatus = statusFilter === 'All Statuses' || d.status === statusFilter;
+
+      const matchesVehicle = vehicleFilter === 'All Vehicles' || d.vehicle.toLowerCase().includes(vehicleFilter.toLowerCase());
+
+      return matchesSearch && matchesStatus && matchesVehicle;
+    });
   }, [drivers, searchQuery, statusFilter, vehicleFilter]);
 
   // Export report as CSV
@@ -470,59 +449,19 @@ export default function Transportation({ activeTab: propActiveTab }) {
           {/* Header Action Buttons */}
           <button 
             type="button" 
-            className="btn-trans-filter" 
-            onClick={() => setShowFilterDropdown(!showFilterDropdown)}
+            className={`btn-trans-filter ${isFilterPanelOpen ? 'active' : ''}`} 
+            onClick={() => setIsFilterPanelOpen(!isFilterPanelOpen)}
+            style={{
+              borderColor: isFilterPanelOpen ? '#ff4d4f' : undefined,
+              backgroundColor: isFilterPanelOpen ? '#fff5f5' : undefined,
+              color: isFilterPanelOpen ? '#ff4d4f' : undefined
+            }}
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
               <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
             </svg>
             <span>Filters</span>
           </button>
-
-          {showFilterDropdown && (
-            <div className="filter-dropdown-menu">
-              <div className="filter-dropdown-section">
-                <h4>Driver Status</h4>
-                <div className="filter-options-grid">
-                  {['All', 'Active', 'Available', 'Resting'].map(status => (
-                    <label key={status} className="filter-option-label">
-                      <input 
-                        type="radio" 
-                        name="statusFilter" 
-                        value={status}
-                        checked={statusFilter === status} 
-                        onChange={() => setStatusFilter(status)} 
-                      />
-                      <span>{status}</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-
-              <div className="filter-dropdown-section" style={{ borderTop: '1px solid #f1f5f9', paddingTop: '0.75rem', marginTop: '0.75rem' }}>
-                <h4>Vehicle Assign</h4>
-                <div className="filter-options-grid">
-                  {['All', 'Assigned', 'Unassigned'].map(opt => (
-                    <label key={opt} className="filter-option-label">
-                      <input 
-                        type="radio" 
-                        name="vehicleFilter" 
-                        value={opt}
-                        checked={vehicleFilter === opt} 
-                        onChange={() => setVehicleFilter(opt)} 
-                      />
-                      <span>{opt}</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-
-              <div className="filter-dropdown-footer">
-                <button type="button" className="btn-filter-reset" onClick={() => { setStatusFilter('All'); setVehicleFilter('All'); setShowFilterDropdown(false); }}>Reset</button>
-                <button type="button" className="btn-filter-apply" onClick={() => setShowFilterDropdown(false)}>Apply</button>
-              </div>
-            </div>
-          )}
 
           <button type="button" className="btn-trans-export" onClick={handleExportCSV}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
@@ -534,6 +473,116 @@ export default function Transportation({ activeTab: propActiveTab }) {
           </button>
         </div>
       </header>
+
+      {/* Collapsible Filter Panel */}
+      {isFilterPanelOpen && (
+        <div className="trans-filter-panel" style={{
+          backgroundColor: '#ffffff',
+          borderRadius: '16px',
+          padding: '1.25rem 1.5rem',
+          marginBottom: '1.5rem',
+          boxShadow: '0 4px 20px -2px rgba(148, 163, 184, 0.08)',
+          border: '1px solid #e2e8f0',
+          display: 'flex',
+          flexWrap: 'wrap',
+          gap: '1.5rem',
+          alignItems: 'center',
+          animation: 'slideDown 0.25s ease-out'
+        }}>
+          {/* Status Filter */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+            <label style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Driver Status</label>
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              style={{
+                padding: '0.5rem 1.5rem 0.5rem 0.75rem',
+                fontSize: '0.85rem',
+                fontWeight: 600,
+                border: '1px solid #cbd5e1',
+                borderRadius: '8px',
+                outline: 'none',
+                color: '#1e293b',
+                backgroundColor: '#ffffff',
+                cursor: 'pointer'
+              }}
+            >
+              <option value="All Statuses">All Statuses</option>
+              <option value="Active">Active</option>
+              <option value="Resting">Resting</option>
+              <option value="On-Break">On-Break</option>
+            </select>
+          </div>
+
+          {/* Vehicle Type Filter */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+            <label style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Vehicle Fleet</label>
+            <select
+              value={vehicleFilter}
+              onChange={(e) => setVehicleFilter(e.target.value)}
+              style={{
+                padding: '0.5rem 1.5rem 0.5rem 0.75rem',
+                fontSize: '0.85rem',
+                fontWeight: 600,
+                border: '1px solid #cbd5e1',
+                borderRadius: '8px',
+                outline: 'none',
+                color: '#1e293b',
+                backgroundColor: '#ffffff',
+                cursor: 'pointer'
+              }}
+            >
+              <option value="All Vehicles">All Vehicles</option>
+              <option value="Mercedes">Mercedes V-Class</option>
+              <option value="Tesla">Tesla Model X</option>
+              <option value="Sprinter">Sprinter Exec-Bus</option>
+              <option value="Sedan">Executive Sedan</option>
+            </select>
+          </div>
+
+          {/* Reset button */}
+          <div style={{ display: 'flex', alignSelf: 'flex-end', marginLeft: 'auto', gap: '0.75rem' }}>
+            <button
+              type="button"
+              onClick={() => {
+                setStatusFilter('All Statuses');
+                setVehicleFilter('All Vehicles');
+                setSearchQuery('');
+              }}
+              style={{
+                backgroundColor: '#f1f5f9',
+                color: '#475569',
+                border: 'none',
+                fontWeight: 600,
+                fontSize: '0.825rem',
+                padding: '0.5rem 1rem',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                transition: 'all 0.2s'
+              }}
+            >
+              Reset Filters
+            </button>
+            <button
+              type="button"
+              onClick={() => setIsFilterPanelOpen(false)}
+              style={{
+                backgroundColor: '#1e293b',
+                color: '#ffffff',
+                border: 'none',
+                fontWeight: 600,
+                fontSize: '0.825rem',
+                padding: '0.5rem 1rem',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                transition: 'all 0.2s'
+              }}
+            >
+              Apply & Close
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Sub-navigation Tabs */}
       <div className="trans-tabs" style={{
