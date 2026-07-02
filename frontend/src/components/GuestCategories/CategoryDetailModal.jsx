@@ -1,7 +1,19 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 
 export default function CategoryDetailModal({ isOpen, onClose, category, guests, onEdit, onDelete }) {
   const [currentPage, setCurrentPage] = useState(1);
+  const [openMenuId, setOpenMenuId] = useState(null);
+  const menuRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (menuRef.current && !menuRef.current.contains(event.target)) {
+        setOpenMenuId(null);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
   const itemsPerPage = 10;
 
   useEffect(() => {
@@ -50,21 +62,38 @@ export default function CategoryDetailModal({ isOpen, onClose, category, guests,
                     <span style={{ fontSize: '0.8rem', color: 'var(--text-light)' }}>
                       {g.email || 'No email'}
                     </span>
-                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                    <div style={{ position: 'relative' }} ref={openMenuId === g.guest_id ? menuRef : null}>
                       <button 
                         type="button" 
-                        onClick={() => onEdit(g)}
-                        style={{ background: 'none', border: 'none', color: '#2563eb', cursor: 'pointer', fontSize: '0.8rem' }}
+                        onClick={(e) => { e.stopPropagation(); setOpenMenuId(openMenuId === g.guest_id ? null : g.guest_id); }}
+                        style={{ background: 'transparent', border: 'none', color: '#9ca3af', cursor: 'pointer', padding: '0.25rem', display: 'flex', alignItems: 'center' }}
                       >
-                        Edit
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" style={{ width: '20px', height: '20px' }}>
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
+                        </svg>
                       </button>
-                      <button 
-                        type="button" 
-                        onClick={() => onDelete(g)}
-                        style={{ background: 'none', border: 'none', color: '#dc2626', cursor: 'pointer', fontSize: '0.8rem' }}
-                      >
-                        Delete
-                      </button>
+                      {openMenuId === g.guest_id && (
+                        <div style={{
+                          position: 'absolute', top: '100%', right: '0', backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: '6px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)', zIndex: 20, minWidth: '120px', padding: '0.25rem 0'
+                        }}>
+                          <button 
+                            onClick={(e) => { e.stopPropagation(); setOpenMenuId(null); onEdit(g); }}
+                            style={{ display: 'block', width: '100%', textAlign: 'left', padding: '0.5rem 1rem', fontSize: '0.85rem', color: '#374151', background: 'transparent', border: 'none', cursor: 'pointer' }}
+                            onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#f3f4f6'}
+                            onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                          >
+                            Edit Guest
+                          </button>
+                          <button 
+                            onClick={(e) => { e.stopPropagation(); setOpenMenuId(null); onDelete(g); }}
+                            style={{ display: 'block', width: '100%', textAlign: 'left', padding: '0.5rem 1rem', fontSize: '0.85rem', color: '#ef4444', background: 'transparent', border: 'none', cursor: 'pointer' }}
+                            onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#fee2e2'}
+                            onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                          >
+                            Delete Guest
+                          </button>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>

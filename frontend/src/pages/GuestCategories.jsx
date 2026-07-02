@@ -37,6 +37,7 @@ const INITIAL_CATEGORIES = [
 export default function GuestCategories() {
   const [categories, setCategories] = useState(loadCategories);
   const [guests, setGuests] = useState([]);
+  const [dbEvents, setDbEvents] = useState([]);
   const [toast, setToast] = useState(null);
 
   // Modal visibilities
@@ -66,6 +67,9 @@ export default function GuestCategories() {
 
   React.useEffect(() => {
     fetchGuests();
+    api.get('/events').then(res => {
+      if (res.success) setDbEvents(res.data);
+    }).catch(err => console.error(err));
   }, []);
 
   const fetchGuests = async () => {
@@ -159,6 +163,19 @@ export default function GuestCategories() {
 
   const handleSaveEdit = async (formData) => {
     try {
+      if (!formData.email || formData.email.trim() === '') {
+        showToast('Email is required', 'error');
+        return;
+      }
+
+      const matchingEvent = dbEvents.find(e => e.category === formData.eventName) || dbEvents[0];
+      const eventId = matchingEvent ? matchingEvent.id : null;
+      
+      if (!eventId) {
+        showToast('No active events found in the database.', 'error');
+        return;
+      }
+
       const payload = {
         name: formData.name,
         email: formData.email,
@@ -167,25 +184,32 @@ export default function GuestCategories() {
                 (formData.rsvpStatus === 'no' || formData.rsvpStatus === 'declined') ? 'DECLINED' : 'PENDING',
         isVip: formData.category === 'VIP',
         isSpeaker: formData.category === 'Speaker' || formData.category === 'Speakers',
+        eventId
       };
       
-      const res = await api.put(`/guests/${editingGuest.guest_id}`, payload);
+      const isEdit = !!editingGuest?.guest_id;
+      const res = isEdit 
+        ? await api.put(`/guests/${editingGuest.guest_id}`, payload)
+        : await api.post(`/guests`, payload);
+        
       if (res.success) {
+        const guestId = isEdit ? editingGuest.guest_id : res.data.id;
+        
         // Persist local category override
         if (formData.category !== 'VIP' && formData.category !== 'Speaker') {
-          localStorage.setItem(`guest_cat_${editingGuest.guest_id}`, formData.category);
+          localStorage.setItem(`guest_cat_${guestId}`, formData.category);
         } else {
-          localStorage.removeItem(`guest_cat_${editingGuest.guest_id}`);
+          localStorage.removeItem(`guest_cat_${guestId}`);
         }
         
         await fetchGuests();
         setIsEditModalOpen(false);
         setEditingGuest(null);
-        showToast('Guest updated successfully!');
+        showToast(`Guest ${isEdit ? 'updated' : 'added'} successfully!`);
       }
     } catch (err) {
       console.error(err);
-      showToast('Error updating guest', 'error');
+      showToast('Error saving guest', 'error');
     }
   };
 
@@ -210,8 +234,13 @@ export default function GuestCategories() {
     }
   };
 
-  const handleEditCategory = (e, cat) => {
-    e.stopPropagation();
+  const handleAddGuestToCategory = (cat) => {
+    // Pre-fill the category for the new guest
+    setEditingGuest({ category: cat.name });
+    setIsEditModalOpen(true);
+  };
+
+  const handleEditCategory = (cat) => {
     setEditingCategory(cat);
     setIsEditCategoryModalOpen(true);
   };
@@ -226,18 +255,34 @@ export default function GuestCategories() {
     showToast('Category updated successfully!');
   };
 
-  const handleDeleteCategory = (e, cat) => {
-    e.stopPropagation();
+  const handleDeleteCategory = (cat) => {
     setPendingDeleteCategoryId(cat.id);
     setDeleteCategoryConfirmOpen(true);
   };
 
-  const handleConfirmDeleteCategory = () => {
+  const handleConfirmDeleteCategory = async () => {
+    // Uncategorize guests
+    const categoryToDelete = categories.find(c => c.id === pendingDeleteCategoryId);
+    if (categoryToDelete) {
+      const guestsToUpdate = guests.filter(g => g.category?.toLowerCase() === categoryToDelete.name.toLowerCase());
+      for (const g of guestsToUpdate) {
+        // Clear local storage
+        localStorage.removeItem(`guest_cat_${g.guest_id}`);
+        // Clear DB flags if VIP or Speaker
+        if (categoryToDelete.name === 'VIP' || categoryToDelete.name === 'Speaker') {
+          try {
+            await api.put(`/guests/${g.guest_id}`, { isVip: false, isSpeaker: false });
+          } catch (e) { console.error('Error uncategorizing guest', e); }
+        }
+      }
+    }
+
     const updated = categories.filter(c => c.id !== pendingDeleteCategoryId);
     saveCategories(updated);
     setDeleteCategoryConfirmOpen(false);
     setPendingDeleteCategoryId(null);
     showToast('Category deleted successfully!');
+    fetchGuests(); // refresh guests to show them as uncategorized
   };
 
   return (
@@ -279,16 +324,14 @@ export default function GuestCategories() {
       {/* Grid listing Category Cards */}
       <div className="categories-grid">
         {computedCategories.map((cat) => (
-          <div key={cat.id} style={{ position: 'relative' }}>
-            <CategoryCard
-              category={cat}
-              onClick={() => handleCardClick(cat)}
-            />
-            <div style={{ position: 'absolute', top: '10px', right: '10px', display: 'flex', gap: '0.5rem', zIndex: 10 }}>
-              <button onClick={(e) => handleEditCategory(e, cat)} style={{ background: 'white', border: '1px solid #ccc', borderRadius: '4px', padding: '0.25rem 0.5rem', cursor: 'pointer', fontSize: '0.75rem' }}>Edit</button>
-              <button onClick={(e) => handleDeleteCategory(e, cat)} style={{ background: 'white', border: '1px solid #ccc', color: '#dc2626', borderRadius: '4px', padding: '0.25rem 0.5rem', cursor: 'pointer', fontSize: '0.75rem' }}>Delete</button>
-            </div>
-          </div>
+          <CategoryCard
+            key={cat.id}
+            category={cat}
+            onClick={() => handleCardClick(cat)}
+            onAddGuest={() => handleAddGuestToCategory(cat)}
+            onEditCategory={() => handleEditCategory(cat)}
+            onDeleteCategory={() => handleDeleteCategory(cat)}
+          />
         ))}
       </div>
 
@@ -385,7 +428,7 @@ export default function GuestCategories() {
               </div>
               <h3 style={{ fontSize: '1.05rem', fontWeight: 700, marginBottom: '0.5rem', color: 'var(--text-main)' }}>Are you sure?</h3>
               <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', lineHeight: 1.6 }}>
-                You are about to delete this category. Previously assigned guests will remain in the system. This action cannot be undone.
+                Delete this category? All guests in this category will become uncategorized. This cannot be undone.
               </p>
             </div>
             <div className="modal-footer" style={{ justifyContent: 'center', gap: '1rem' }}>
