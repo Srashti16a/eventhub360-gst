@@ -83,12 +83,11 @@ export default function GuestCategories() {
           let category = bg.category || bg.guestCategory || 'Guest';
           
           // Only fallback to boolean flags if no explicit category string was provided
-          if (category === 'Guest') {
-            if (bg.isVip) category = 'VIP';
-            else if (bg.isSpeaker) category = 'Speaker';
-            else if (bg.isBridalParty) category = 'Family';
-            else if (bg.isPrimaryGuest) category = 'Corporate';
-          }
+          if (bg.isVip) category = 'VIP';
+          else if (bg.isSpeaker) category = 'Speaker';
+          else if (bg.isBridalParty && bg.isPrimaryGuest) category = 'Staff';
+          else if (bg.isBridalParty) category = 'Sponsor';
+          else if (bg.isPrimaryGuest) category = 'Media';
           
           // Override if stored in localStorage
           const localMapping = localStorage.getItem(`guest_cat_${bg.id}`);
@@ -189,6 +188,8 @@ export default function GuestCategories() {
                 (formData.rsvpStatus === 'no' || formData.rsvpStatus === 'declined') ? 'DECLINED' : 'PENDING',
         isVip: formData.category === 'VIP',
         isSpeaker: formData.category === 'Speaker' || formData.category === 'Speakers',
+        isBridalParty: formData.category === 'Sponsor' || formData.category === 'Staff',
+        isPrimaryGuest: formData.category === 'Media' || formData.category === 'Staff',
         eventId
       };
       
