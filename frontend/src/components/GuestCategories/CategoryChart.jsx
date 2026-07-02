@@ -43,7 +43,9 @@ export default function CategoryChart({ categories, guestsCount }) {
         {/* Right Side Column Bar Chart */}
         <div className="chart-container">
           {categories.map((cat) => {
-            const barHeightPercentage = (cat.count / maxCount) * 100;
+            const rawPercentage = (cat.count / maxCount) * 100;
+            // Bug 2 Fix: set a minimum visible bar height of 8% for any category with at least 1 guest
+            const barHeightPercentage = cat.count === 0 ? 0 : Math.max(rawPercentage, 8);
             const barColor = getColorClass(cat.abbr);
             return (
               <div key={cat.id} className="chart-column">

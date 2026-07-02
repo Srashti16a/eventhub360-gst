@@ -20,7 +20,19 @@ const DEFAULT_CATEGORIES = [
 const loadCategories = () => {
   try {
     const saved = localStorage.getItem('guest_categories');
-    if (saved) return JSON.parse(saved);
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      // Bug 1 Fix: Ensure all core DEFAULT_CATEGORIES are always present
+      const finalCategories = [...parsed];
+      DEFAULT_CATEGORIES.forEach(defaultCat => {
+        if (!finalCategories.find(c => c.abbr === defaultCat.abbr)) {
+          finalCategories.push(defaultCat);
+        }
+      });
+      // Sort to ensure VIP, Speaker, Sponsor, etc. stay in the correct order
+      finalCategories.sort((a, b) => a.id - b.id);
+      return finalCategories;
+    }
   } catch (e) {}
   return DEFAULT_CATEGORIES;
 };
