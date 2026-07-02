@@ -20,7 +20,11 @@ import {
   updateMaintenance,
   listActivityLogs,
   getDashboardOverview,
-  triggerAnalyticsRefresh
+  triggerAnalyticsRefresh,
+  listAllocVehicles,
+  listGuestQueue,
+  assignGuest,
+  unassignGuest
 } from '../controllers/transportationController';
 import { validate } from '../middlewares/validation';
 import {
@@ -75,5 +79,11 @@ router.get('/activity-logs', listActivityLogs);
 // Dashboard Overview & Analytics
 router.get('/dashboard/overview/:eventId', getDashboardOverview);
 router.post('/dashboard/refresh/:eventId', triggerAnalyticsRefresh);
+
+// Custom Allocation Matrix Routes
+router.get('/alloc-vehicles', listAllocVehicles);
+router.get('/guest-queue', listGuestQueue);
+router.post('/assign-guest', assignGuest);
+router.post('/unassign-guest', unassignGuest);
 
 export default router;

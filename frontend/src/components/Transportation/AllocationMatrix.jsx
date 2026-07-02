@@ -1,136 +1,180 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import './AllocationMatrix.css';
+import {
+  getAllocVehicles,
+  getGuestQueue,
+  assignGuestToVehicle,
+  unassignGuestFromVehicle,
+  getDashboardOverview
+} from '../../services/transportationService';
 
-// Seed lists
-const INITIAL_VEHICLES = [
-  {
-    id: 'v1',
-    name: 'Mercedes V-Class',
-    license: 'VH-402',
-    type: 'van',
-    status: 'On-Route',
-    statusColor: '#10b981', // green
-    capacity: 7,
-    driver: 'James Whitaker',
-    driverAvatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&auto=format&fit=crop&q=80',
-    guests: [
-      { id: 'g_init1', name: 'Eleanor Rigby', type: 'VIP' },
-      { id: 'g_init2', name: 'Thomas Muller', type: 'Standard' }
-    ]
-  },
-  {
-    id: 'v2',
-    name: 'Tesla Model X',
-    license: 'VH-108',
-    type: 'suv',
-    status: 'Staged',
-    statusColor: '#f59e0b', // orange
-    capacity: 5,
-    driver: 'Sarah Jenkins',
-    driverAvatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&auto=format&fit=crop&q=80',
-    guests: [
-      { id: 'g_init3', name: 'Marcus Vane', type: 'Standard', warning: true },
-      { id: 'g_init4', name: 'Lucas Scott', type: 'Standard' },
-      { id: 'g_init5', name: 'Emma Watson', type: 'VIP' },
-      { id: 'g_init6', name: 'Daniel Radcliffe', type: 'Standard' },
-      { id: 'g_init7', name: 'Rupert Grint', type: 'Standard' }
-    ],
-    overcapacityWarning: true
-  },
-  {
-    id: 'v3',
-    name: 'Audi A8 L',
-    license: 'VH-205',
-    type: 'sedan',
-    status: 'Maintenance',
-    statusColor: '#94a3b8', // grey
-    capacity: 3,
-    driver: null,
-    driverAvatar: null,
-    guests: [],
-    placeholder: 'Vehicle currently unavailable for allocation until 14:00 today.'
-  }
-];
-
-const INITIAL_QUEUE = [
-  {
-    id: 'g_julianne',
-    name: 'Dr. Julianne Moore',
-    type: 'VIP GUEST',
-    eta: '11:45 AM',
-    location: 'Terminal 3, Gate B12',
-    bags: 3,
-    priority: 'High Priority',
-    priorityColor: '#ef4444'
-  },
-  {
-    id: 'g_robert',
-    name: 'Robert Pattinson',
-    type: 'KEYNOTE SPEAKER',
-    eta: '12:15 PM',
-    location: 'Grand Hyatt Hotel',
-    bags: 1,
-    priority: 'Standard',
-    priorityColor: '#64748b'
-  },
-  {
-    id: 'g_sarah',
-    name: 'Sarah Connor',
-    type: 'VIP GUEST',
-    eta: '11:30 AM',
-    location: 'Flight delayed by 45 mins',
-    bags: 'IMMEDIATE ACTION',
-    priority: 'Immediate Action',
-    priorityColor: '#ef4444',
-    isLate: true
-  },
-  // Waitlist filler
-  { id: 'g_wait_1', name: 'Alice Cooper', type: 'Standard', eta: '12:45 PM', location: 'Terminal 2', bags: 1, priority: 'Standard' },
-  { id: 'g_wait_2', name: 'Bob Dylan', type: 'VIP GUEST', eta: '01:10 PM', location: 'Grand Hall North', bags: 2, priority: 'High Priority' },
-  { id: 'g_wait_3', name: 'Charlie Parker', type: 'Standard', eta: '01:25 PM', location: 'Terminal 1', bags: 2, priority: 'Standard' },
-  { id: 'g_wait_4', name: 'David Bowie', type: 'Standard', eta: '01:40 PM', location: 'Main Gate Terminal', bags: 3, priority: 'Standard' },
-  { id: 'g_wait_5', name: 'Ella Fitzgerald', type: 'VIP GUEST', eta: '01:55 PM', location: 'Terminal 3', bags: 1, priority: 'High Priority' },
-  { id: 'g_wait_6', name: 'Frank Sinatra', type: 'Standard', eta: '02:00 PM', location: 'Airport Hotel', bags: 2, priority: 'Standard' },
-  { id: 'g_wait_7', name: 'Grace Slick', type: 'Standard', eta: '02:15 PM', location: 'Terminal 2', bags: 1, priority: 'Standard' },
-  { id: 'g_wait_8', name: 'Jimi Hendrix', type: 'VIP GUEST', eta: '02:30 PM', location: 'Grand Hall North', bags: 2, priority: 'High Priority' },
-  { id: 'g_wait_9', name: 'Janis Joplin', type: 'Standard', eta: '02:45 PM', location: 'Terminal 1', bags: 1, priority: 'Standard' },
-  { id: 'g_wait_10', name: 'Kurt Cobain', type: 'Standard', eta: '03:00 PM', location: 'Airport Hotel', bags: 2, priority: 'Standard' },
-  { id: 'g_wait_11', name: 'Nina Simone', type: 'VIP GUEST', eta: '03:15 PM', location: 'Terminal 3', bags: 1, priority: 'High Priority' },
-  { id: 'g_wait_12', name: 'Otis Redding', type: 'Standard', eta: '03:30 PM', location: 'Main Gate Terminal', bags: 2, priority: 'Standard' },
-  { id: 'g_wait_13', name: 'Prince Nelson', type: 'Standard', eta: '03:45 PM', location: 'Terminal 2', bags: 1, priority: 'Standard' },
-  { id: 'g_wait_14', name: 'Ray Charles', type: 'VIP GUEST', eta: '04:00 PM', location: 'Terminal 1', bags: 2, priority: 'High Priority' },
-  { id: 'g_wait_15', name: 'Stevie Wonder', type: 'Standard', eta: '04:15 PM', location: 'Grand Hall North', bags: 1, priority: 'Standard' }
-];
-
-export default function AllocationMatrix() {
-  const [vehicles, setVehicles] = useState(INITIAL_VEHICLES);
-  const [guestQueue, setGuestQueue] = useState(INITIAL_QUEUE);
+export default function AllocationMatrix({ eventId, onAssignmentUpdate }) {
+  const [vehicles, setVehicles] = useState([]);
+  const [guestQueue, setGuestQueue] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeGuestForAssign, setActiveGuestForAssign] = useState(null);
   const [isOptimizing, setIsOptimizing] = useState(false);
-  const [conflictsCount, setConflictsCount] = useState(2);
   const [toastMessage, setToastMessage] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState({ totalVehicles: 0 });
+  const [draggedOverVehicleId, setDraggedOverVehicleId] = useState(null);
+  
+  // Matrix Filters States
+  const [showAllocFilterDropdown, setShowAllocFilterDropdown] = useState(false);
+  const [allocStatusFilter, setAllocStatusFilter] = useState('All');
+  const [allocCapacityFilter, setAllocCapacityFilter] = useState('All');
 
-  // Search filter
+  // Fetch all necessary data from the backend
+  const fetchData = () => {
+    if (!eventId) return;
+    setLoading(true);
+    Promise.all([
+      getAllocVehicles(eventId),
+      getGuestQueue(eventId),
+      getDashboardOverview(eventId)
+    ])
+      .then(([vehiclesRes, queueRes, overviewRes]) => {
+        if (vehiclesRes.success && vehiclesRes.data) {
+          const mappedVehicles = vehiclesRes.data.map(v => {
+            const guestsList = (v.transfers || []).map(t => ({
+              id: t.guest.id,
+              name: t.guest.name,
+              type: t.guest.isVip ? 'VIP' : 'Standard'
+            }));
+
+            let statusColor = '#f59e0b'; // orange
+            if (v.status === 'Maintenance') {
+              statusColor = '#94a3b8'; // grey
+            } else if (v.status === 'On Route' || v.status === 'Active') {
+              statusColor = '#10b981'; // green
+            }
+
+            return {
+              id: v.id,
+              name: v.name,
+              license: v.licenseNumber,
+              type: v.type?.toLowerCase() || 'van',
+              status: v.status === 'Active' ? 'On Route' : v.status,
+              statusColor,
+              capacity: v.capacity,
+              driver: v.driver ? v.driver.fullName : null,
+              driverAvatar: v.driver ? 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&auto=format&fit=crop&q=80' : null,
+              guests: guestsList,
+              placeholder: v.status === 'Maintenance' ? 'Vehicle currently unavailable for allocation.' : null
+            };
+          });
+          setVehicles(mappedVehicles);
+        }
+
+        if (queueRes.success && queueRes.data) {
+          const mappedQueue = queueRes.data.map(g => ({
+            id: g.id,
+            name: g.name,
+            type: g.isVip ? 'VIP GUEST' : g.isSpeaker ? 'KEYNOTE SPEAKER' : 'Standard',
+            eta: g.isVip ? '11:45 AM' : '12:15 PM',
+            location: g.assignedHotel ? g.assignedHotel.name : 'Terminal 3, Gate B12',
+            bags: 2,
+            priority: g.isVip ? 'High Priority' : 'Standard',
+            priorityColor: g.isVip ? '#ef4444' : '#64748b'
+          }));
+          setGuestQueue(mappedQueue);
+        }
+
+        if (overviewRes.success && overviewRes.data) {
+          setStats(overviewRes.data);
+        }
+        setLoading(false);
+      })
+      .catch(err => {
+        console.error("Error fetching allocation matrix data:", err);
+        setLoading(false);
+      });
+  };
+
+  // Re-fetch data whenever eventId updates
+  useEffect(() => {
+    fetchData();
+  }, [eventId]);
+
+  // Search filters
+  const filteredVehicles = useMemo(() => {
+    let result = vehicles;
+
+    // Status filter
+    if (allocStatusFilter !== 'All') {
+      result = result.filter(v => v.status === allocStatusFilter);
+    }
+
+    // Capacity filter
+    if (allocCapacityFilter !== 'All') {
+      result = result.filter(v => {
+        const hasSeats = v.guests.length < v.capacity;
+        return allocCapacityFilter === 'Has Seats' ? hasSeats : !hasSeats;
+      });
+    }
+
+    if (!searchQuery) return result;
+    const query = searchQuery.trim().toLowerCase();
+    return result.filter(v =>
+      (v.name || '').toLowerCase().includes(query) ||
+      (v.license || '').toLowerCase().includes(query) ||
+      (v.driver || '').toLowerCase().includes(query) ||
+      (v.guests || []).some(g => (g.name || '').toLowerCase().includes(query))
+    );
+  }, [vehicles, searchQuery, allocStatusFilter, allocCapacityFilter]);
+
   const filteredQueue = useMemo(() => {
+    if (!searchQuery) return guestQueue;
+    const query = searchQuery.trim().toLowerCase();
     return guestQueue.filter(g =>
-      g.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      g.type.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      g.location.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      g.priority.toLowerCase().includes(searchQuery.toLowerCase())
+      (g.name || '').toLowerCase().includes(query) ||
+      (g.type || '').toLowerCase().includes(query) ||
+      (g.location || '').toLowerCase().includes(query) ||
+      (g.priority || '').toLowerCase().includes(query)
     );
   }, [guestQueue, searchQuery]);
 
-  // Display brief feedback messages
+  // Compute conflicts dynamically: vehicles where occupied seats exceed capacity
+  const conflictsCount = useMemo(() => {
+    return vehicles.filter(v => v.guests.length > v.capacity).length;
+  }, [vehicles]);
+
   const showToast = (msg) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 3000);
   };
 
-  // Assign guest to vehicle
+  // Drag and drop mechanics
+  const handleDragStart = (e, guestId) => {
+    e.dataTransfer.setData('text/plain', guestId);
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  const handleDragOver = (e, vehicleId) => {
+    e.preventDefault();
+    if (draggedOverVehicleId !== vehicleId) {
+      setDraggedOverVehicleId(vehicleId);
+    }
+  };
+
+  const handleDragLeave = (e) => {
+    e.preventDefault();
+    setDraggedOverVehicleId(null);
+  };
+
+  const handleDrop = (e, vehicleId) => {
+    e.preventDefault();
+    setDraggedOverVehicleId(null);
+    const guestId = e.dataTransfer.getData('text/plain');
+    if (guestId) {
+      handleAssignGuest(guestId, vehicleId);
+    }
+  };
+
+  // Assign guest to vehicle in database
   const handleAssignGuest = (guestId, vehicleId) => {
-    const guestIndex = guestQueue.findIndex(g => g.id === guestId);
-    if (guestIndex === -1) return;
+    const guest = guestQueue.find(g => g.id === guestId) || vehicles.flatMap(v => v.guests).find(g => g.id === guestId);
+    if (!guest) return;
 
     const targetVehicle = vehicles.find(v => v.id === vehicleId);
     if (!targetVehicle) return;
@@ -141,123 +185,107 @@ export default function AllocationMatrix() {
       return;
     }
 
-    // Check capacity
-    const currentGuestsCount = targetVehicle.guests.length;
-    if (currentGuestsCount >= targetVehicle.capacity) {
-      // Overcapacity attempt
-      setVehicles(prev => prev.map(v => {
-        if (v.id === vehicleId) {
-          // If Tesla Model X, show warnings
-          return {
-            ...v,
-            overcapacityWarning: true,
-            guests: [...v.guests, { ...guestQueue[guestIndex], warning: true }]
-          };
-        }
-        return v;
-      }));
-      setConflictsCount(prev => prev + 1);
-      showToast(`Warning: ${targetVehicle.name} is over capacity!`);
-    } else {
-      // Normal assignment
-      setVehicles(prev => prev.map(v => {
-        if (v.id === vehicleId) {
-          return {
-            ...v,
-            guests: [...v.guests, { id: guestQueue[guestIndex].id, name: guestQueue[guestIndex].name, type: guestQueue[guestIndex].type === 'VIP GUEST' ? 'VIP' : 'Standard' }]
-          };
-        }
-        return v;
-      }));
-      showToast(`Assigned ${guestQueue[guestIndex].name} to ${targetVehicle.name}.`);
+    // Check if duplicate assignment
+    const duplicate = targetVehicle.guests.some(g => g.id === guestId);
+    if (duplicate) {
+      showToast(`Guest ${guest.name} is already assigned to ${targetVehicle.name}.`);
+      setActiveGuestForAssign(null);
+      return;
     }
 
-    // Remove from queue
-    setGuestQueue(prev => prev.filter(g => g.id !== guestId));
+    assignGuestToVehicle({ guestId, vehicleId, eventId })
+      .then(res => {
+        if (res.success) {
+          showToast(`Assigned ${guest.name} to ${targetVehicle.name}.`);
+          fetchData();
+          if (onAssignmentUpdate) {
+            onAssignmentUpdate();
+          }
+        } else {
+          showToast(res.error?.message || 'Assignment failed');
+        }
+      })
+      .catch(err => {
+        console.error(err);
+        showToast(err.message || 'Error assigning guest');
+      });
+
     setActiveGuestForAssign(null);
   };
 
-  // Remove guest from vehicle
+  // Remove guest assignment from database
   const handleUnassignGuest = (vehicleId, guestObj) => {
-    // Check if the guest was an original seed guest or matches waitlist items
-    const restoredGuest = INITIAL_QUEUE.find(g => g.id === guestObj.id) || {
-      id: guestObj.id,
-      name: guestObj.name,
-      type: guestObj.type === 'VIP' ? 'VIP GUEST' : 'Standard',
-      eta: 'Immediate',
-      location: 'Unassigned',
-      bags: 1,
-      priority: 'Standard',
-      priorityColor: '#64748b'
-    };
+    const targetVehicle = vehicles.find(v => v.id === vehicleId);
+    if (!targetVehicle) return;
 
-    // Remove from vehicle
-    setVehicles(prev => prev.map(v => {
-      if (v.id === vehicleId) {
-        const remainingGuests = v.guests.filter(g => g.id !== guestObj.id);
-        const isNowUnderCapacity = remainingGuests.length <= v.capacity;
-        return {
-          ...v,
-          guests: remainingGuests,
-          overcapacityWarning: v.id === 'v2' && !isNowUnderCapacity ? v.overcapacityWarning : false
-        };
-      }
-      return v;
-    }));
-
-    // Put back to queue
-    setGuestQueue(prev => [restoredGuest, ...prev]);
-
-    // Recalculate conflicts
-    if (vehicleId === 'v2') {
-      setConflictsCount(prev => Math.max(0, prev - 1));
-    }
-    showToast(`Removed ${guestObj.name} from vehicle assignment.`);
+    unassignGuestFromVehicle({ guestId: guestObj.id, vehicleId, eventId })
+      .then(res => {
+        if (res.success) {
+          showToast(`Removed ${guestObj.name} from ${targetVehicle.name}.`);
+          fetchData();
+          if (onAssignmentUpdate) {
+            onAssignmentUpdate();
+          }
+        } else {
+          showToast(res.error?.message || 'Removal failed');
+        }
+      })
+      .catch(err => {
+        console.error(err);
+        showToast(err.message || 'Error removing guest');
+      });
   };
 
-  // Optimize Routes Simulator
+  // AI seating routes optimizer
   const handleOptimizeRoutes = () => {
     setIsOptimizing(true);
     showToast('Initiating AI Route Seating Optimizer...');
 
     setTimeout(() => {
-      // Re-distribute guests to solve capacity mismatch
-      setVehicles(prev => {
-        // Find overcapacity guests in Tesla (v2)
-        const tesla = prev.find(v => v.id === 'v2');
-        if (!tesla || tesla.guests.length <= tesla.capacity) {
-          setIsOptimizing(false);
-          return prev;
-        }
+      const overcapacityVehicles = vehicles.filter(v => v.guests.length > v.capacity);
+      if (overcapacityVehicles.length === 0) {
+        setIsOptimizing(false);
+        showToast('Fleet seating is already optimized.');
+        return;
+      }
 
-        const overLimit = tesla.guests.length - tesla.capacity;
-        const guestsToMove = tesla.guests.slice(tesla.capacity);
-        const cleanTeslaGuests = tesla.guests.slice(0, tesla.capacity).map(g => ({ ...g, warning: false }));
+      const promises = [];
+      const availableVehicles = vehicles.filter(v => v.status !== 'Maintenance' && v.guests.length < v.capacity);
 
-        return prev.map(v => {
-          if (v.id === 'v2') {
-            return {
-              ...v,
-              guests: cleanTeslaGuests,
-              overcapacityWarning: false
-            };
+      overcapacityVehicles.forEach(v => {
+        const guestsToMove = v.guests.slice(v.capacity);
+        guestsToMove.forEach(g => {
+          const target = availableVehicles.find(av => av.guests.length < av.capacity);
+          if (target) {
+            promises.push(
+              assignGuestToVehicle({ guestId: g.id, vehicleId: target.id, eventId })
+            );
+            target.guests.push(g);
           }
-          if (v.id === 'v1') {
-            // Move them to Mercedes
-            const mappedGuests = guestsToMove.map(g => ({ ...g, warning: false }));
-            return {
-              ...v,
-              guests: [...v.guests, ...mappedGuests]
-            };
-          }
-          return v;
         });
       });
 
-      setConflictsCount(0);
-      setIsOptimizing(false);
-      showToast('Optimization Complete! All overcapacity warnings resolved.');
-    }, 1800);
+      if (promises.length > 0) {
+        Promise.all(promises)
+          .then(() => {
+            showToast('Optimization Complete! All overcapacity warnings resolved.');
+            fetchData();
+            if (onAssignmentUpdate) {
+              onAssignmentUpdate();
+            }
+          })
+          .catch(err => {
+            console.error(err);
+            showToast('Optimization failed');
+          })
+          .finally(() => {
+            setIsOptimizing(false);
+          });
+      } else {
+        setIsOptimizing(false);
+        showToast('Optimization complete. No available vehicles with free capacity.');
+      }
+    }, 1500);
   };
 
   // Export report as CSV
@@ -293,7 +321,7 @@ export default function AllocationMatrix() {
         <div className="alloc-stats-row">
           <div className="alloc-stat-box">
             <span className="stat-lbl">TOTAL VEHICLES</span>
-            <span className="stat-num">42</span>
+            <span className="stat-num">{stats.totalVehicles}</span>
           </div>
           <div className="alloc-stat-box border-left">
             <span className="stat-lbl">UNASSIGNED GUESTS</span>
@@ -320,16 +348,65 @@ export default function AllocationMatrix() {
         </div>
 
         {/* Header CTA Buttons */}
-        <div className="alloc-action-ctas">
-          <button type="button" className="btn-alloc-filter" onClick={() => alert('Opening guest queue filters...')}>
+        <div className="alloc-action-ctas" style={{ position: 'relative' }}>
+          <button 
+            type="button" 
+            className="btn-alloc-filter" 
+            onClick={() => setShowAllocFilterDropdown(!showAllocFilterDropdown)}
+          >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
               <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
             </svg>
             <span>Filter</span>
           </button>
 
+          {showAllocFilterDropdown && (
+            <div className="filter-dropdown-menu alloc-menu" style={{ right: 'auto', left: 0 }}>
+              <div className="filter-dropdown-section">
+                <h4>Vehicle Status</h4>
+                <div className="filter-options-grid">
+                  {['All', 'Available', 'On Route', 'Maintenance'].map(status => (
+                    <label key={status} className="filter-option-label">
+                      <input 
+                        type="radio" 
+                        name="allocStatusFilter" 
+                        value={status}
+                        checked={allocStatusFilter === status} 
+                        onChange={() => setAllocStatusFilter(status)} 
+                      />
+                      <span>{status}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              <div className="filter-dropdown-section" style={{ borderTop: '1px solid #f1f5f9', paddingTop: '0.75rem', marginTop: '0.75rem' }}>
+                <h4>Capacity Level</h4>
+                <div className="filter-options-grid">
+                  {['All', 'Has Seats', 'Full / Over'].map(opt => (
+                    <label key={opt} className="filter-option-label">
+                      <input 
+                        type="radio" 
+                        name="allocCapacityFilter" 
+                        value={opt}
+                        checked={allocCapacityFilter === opt} 
+                        onChange={() => setAllocCapacityFilter(opt)} 
+                      />
+                      <span>{opt}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              <div className="filter-dropdown-footer">
+                <button type="button" className="btn-filter-reset" onClick={() => { setAllocStatusFilter('All'); setAllocCapacityFilter('All'); setShowAllocFilterDropdown(false); }}>Reset</button>
+                <button type="button" className="btn-filter-apply" onClick={() => setShowAllocFilterDropdown(false)}>Apply</button>
+              </div>
+            </div>
+          )}
+
           <button 
-            type="button" 
+             type="button" 
             className={`btn-alloc-optimize ${isOptimizing ? 'loading' : ''}`}
             onClick={handleOptimizeRoutes}
             disabled={isOptimizing}
@@ -350,7 +427,7 @@ export default function AllocationMatrix() {
       <div className="alloc-board-layout">
         {/* Left Side: Vehicles Grid */}
         <div className="alloc-vehicles-column">
-          {vehicles.map(v => {
+          {filteredVehicles.map(v => {
             const isFull = v.guests.length >= v.capacity;
             const isOver = v.guests.length > v.capacity;
             const fillPercentage = Math.min(100, (v.guests.length / v.capacity) * 100);
@@ -359,12 +436,16 @@ export default function AllocationMatrix() {
               <div 
                 key={v.id} 
                 className={`vehicle-alloc-card ${v.status === 'Maintenance' ? 'maintenance' : ''} ${isOver ? 'overcapacity' : ''}`}
+                onDragOver={(e) => handleDragOver(e, v.id)}
+                onDragLeave={handleDragLeave}
+                onDrop={(e) => handleDrop(e, v.id)}
+                style={draggedOverVehicleId === v.id ? { borderColor: '#ff4d4f', backgroundColor: '#fff1f0', transform: 'scale(1.015)', transition: 'all 0.25s ease' } : { transition: 'all 0.25s ease' }}
               >
                 {/* Header Profile Row */}
                 <div className="vehicle-card-hdr">
                   <div className="vehicle-profile-info">
                     <div className="vehicle-avatar-box">
-                      <span className="veh-emoji">{v.type === 'van' ? '🚐' : v.type === 'suv' ? '🚙' : '🚗'}</span>
+                      <span className="veh-emoji">{v.type === 'van' || v.type === 'minibus' ? '🚐' : v.type === 'suv' ? '🚙' : '🚗'}</span>
                     </div>
                     <div>
                       <h4>{v.name}</h4>
@@ -374,7 +455,7 @@ export default function AllocationMatrix() {
 
                   <div className="vehicle-status-tag">
                     <span 
-                      className={`status-indicator-dot ${v.status.toLowerCase()}`}
+                      className={`status-indicator-dot ${v.status?.toLowerCase() || ''}`}
                       style={{ backgroundColor: v.statusColor }}
                     />
                     <span className="status-indicator-lbl">{v.status}</span>
@@ -391,7 +472,7 @@ export default function AllocationMatrix() {
                   </div>
                   <div className="cap-track">
                     <div 
-                      className={`cap-fill ${v.id === 'v2' && isOver ? 'fill-red' : ''}`} 
+                      className={`cap-fill ${isOver ? 'fill-red' : ''}`} 
                       style={{ width: `${fillPercentage}%` }}
                     />
                   </div>
@@ -409,7 +490,7 @@ export default function AllocationMatrix() {
                 {v.driver ? (
                   <div className="driver-assign-row">
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                      <img src={v.driverAvatar} alt={v.driver} className="driver-avatar-mini" />
+                      <img src={v.driverAvatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&auto=format&fit=crop&q=80'} alt={v.driver} className="driver-avatar-mini" />
                       <div>
                         <span className="driver-sub-lbl">Driver</span>
                         <span className="driver-name-lbl">{v.driver}</span>
@@ -423,7 +504,11 @@ export default function AllocationMatrix() {
                       📞
                     </button>
                   </div>
-                ) : null}
+                ) : (
+                  <div className="driver-assign-row" style={{ color: '#94a3b8', fontSize: '0.8rem', fontWeight: 600 }}>
+                    No driver assigned to vehicle.
+                  </div>
+                )}
 
                 {/* Assigned Guests list */}
                 <div className="assigned-guests-wrap">
@@ -431,7 +516,7 @@ export default function AllocationMatrix() {
                   
                   {v.status === 'Maintenance' ? (
                     <div className="maintenance-placeholder-dotted">
-                      {v.placeholder}
+                      {v.placeholder || 'Vehicle currently unavailable.'}
                     </div>
                   ) : (
                     <>
@@ -463,8 +548,7 @@ export default function AllocationMatrix() {
                             showToast('Guest Queue is empty!');
                             return;
                           }
-                          // Open dropdown next to first queue item or alert
-                          showToast('Select a guest card in the queue to assign to this vehicle.');
+                          showToast('Select a guest card in the queue and use the dropdown to assign to this vehicle.');
                         }}
                       >
                         <span className="drop-plus">+</span>
@@ -511,12 +595,13 @@ export default function AllocationMatrix() {
           <div className="queue-cards-list">
             {filteredQueue.map(guest => {
               const isVIP = guest.type.includes('VIP');
-              const isLate = guest.isLate;
 
               return (
                 <div 
                   key={guest.id} 
                   className={`guest-queue-card-item ${activeGuestForAssign?.id === guest.id ? 'active' : ''}`}
+                  draggable={true}
+                  onDragStart={(e) => handleDragStart(e, guest.id)}
                   onClick={() => {
                     if (activeGuestForAssign?.id === guest.id) {
                       setActiveGuestForAssign(null);

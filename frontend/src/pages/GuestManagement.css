@@ -108,6 +108,8 @@
   cursor: pointer;
   box-shadow: var(--shadow-sm);
   transition: var(--transition-smooth);
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .btn-secondary:hover {
