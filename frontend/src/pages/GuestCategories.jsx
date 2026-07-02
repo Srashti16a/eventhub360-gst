@@ -79,11 +79,16 @@ export default function GuestCategories() {
       if (res.success) {
         // Map backend guest to frontend format
         const mapped = res.data.map(bg => {
-          // Custom mapping to local categories since backend only has flags
-          let category = 'Guest';
-          if (bg.isVip) category = 'VIP';
-          else if (bg.isSpeaker) category = 'Speaker';
-          else if (bg.isBridalParty) category = 'Family';
+          // Check if DB explicitly provided a category string field (this fixes the mismatch if the schema uses 'category')
+          let category = bg.category || bg.guestCategory || 'Guest';
+          
+          // Only fallback to boolean flags if no explicit category string was provided
+          if (category === 'Guest') {
+            if (bg.isVip) category = 'VIP';
+            else if (bg.isSpeaker) category = 'Speaker';
+            else if (bg.isBridalParty) category = 'Family';
+            else if (bg.isPrimaryGuest) category = 'Corporate';
+          }
           
           // Override if stored in localStorage
           const localMapping = localStorage.getItem(`guest_cat_${bg.id}`);
