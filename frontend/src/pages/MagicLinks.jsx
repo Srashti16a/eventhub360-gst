@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import './MagicLinks.css';
 
 // Mock Guest Database for Link Generation
@@ -56,26 +56,50 @@ const INITIAL_LINKS = [
 ];
 
 export default function MagicLinks() {
-  const [activeLinks, setActiveLinks] = useState(INITIAL_LINKS);
+  const [activeLinks, setActiveLinks] = useState(() => {
+    try {
+      const saved = localStorage.getItem('magicLinks');
+      return saved ? JSON.parse(saved) : INITIAL_LINKS;
+    } catch (error) {
+      console.error('Error loading magic links from localStorage:', error);
+      return INITIAL_LINKS;
+    }
+  });
+  // Persist activeLinks to localStorage whenever it changes
+  useEffect(() => {
+    try {
+      localStorage.setItem('magicLinks', JSON.stringify(activeLinks));
+    } catch (error) {
+      console.error('Error saving magic links to localStorage:', error);
+    }
+  }, [activeLinks]);
+
   const [searchQuery, setSearchQuery] = useState('');
-  
+
   // Selection/Generation States
   const [selectedGuest, setSelectedGuest] = useState(null);
   const [guestSearch, setGuestSearch] = useState('');
   const [isGuestDropdownOpen, setIsGuestDropdownOpen] = useState(false);
-  
+  const [registeredGuests, setRegisteredGuests] = useState([]);
+  const [hasLoadedGuests, setHasLoadedGuests] = useState(false);
+
   const [expirationSettings, setExpirationSettings] = useState('7_days'); // '24_hours', '7_days', '30_days', 'no_expiration'
   const [singleUse, setSingleUse] = useState(false);
   const [ipLockdown, setIpLockdown] = useState(true);
-  
+
   const [generatedLink, setGeneratedLink] = useState('');
   const [toastMessage, setToastMessage] = useState('');
-  
+
   // Filters on active links table
   const [tableSearch, setTableSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('All'); // 'All', 'Active', 'Expiring Soon', 'Expired'
   const [isFilterDropdownOpen, setIsFilterDropdownOpen] = useState(false);
   
+  // Selection and deletion states
+  const [selectedLinks, setSelectedLinks] = useState(new Set());
+  const [deleteSingleId, setDeleteSingleId] = useState(null);
+  const [showDeleteSelectedDialog, setShowDeleteSelectedDialog] = useState(false);
+
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 5;
@@ -88,15 +112,54 @@ export default function MagicLinks() {
     }, 3000);
   };
 
+  useEffect(() => {
+    loadGuestsData();
+  }, []);
+
+  const loadGuestsData = () => {
+    fetch('/api/guests?limit=1000')
+      .then(res => res.json())
+      .then(data => {
+        if (data && data.success && Array.isArray(data.data)) {
+          const mappedGuests = data.data.map(g => ({
+            guest_id: g.id || g.guest_id,
+            name: g.name || g.guest_name || '',
+            category: g.isVip
+              ? 'VIP'
+              : g.isBridalParty
+              ? 'Family'
+              : 'Corporate',
+            avatarColor: g.avatarColor || '#4b5563'
+          }));
+          setRegisteredGuests(mappedGuests);
+          setHasLoadedGuests(true);
+        }
+      })
+      .catch(() => {
+        setHasLoadedGuests(true);
+      });
+  };
+
+  const handleGuestSearchFocus = () => {
+    loadGuestsData();
+    setIsGuestDropdownOpen(false);
+  };
+
   // Filter guest options from database based on user typing
   const filteredGuestOptions = useMemo(() => {
-    if (!guestSearch.trim()) return MOCK_GUEST_DATABASE;
-    const q = guestSearch.toLowerCase();
-    return MOCK_GUEST_DATABASE.filter(g => 
-      g.name.toLowerCase().includes(q) || 
-      g.category.toLowerCase().includes(q)
-    );
-  }, [guestSearch]);
+  if (!guestSearch.trim()) return [];
+
+  const q = guestSearch.toLowerCase();
+
+  const result = registeredGuests.filter(g =>
+    (g.name || "").toLowerCase().includes(q) ||
+    (g.category || "").toLowerCase().includes(q)
+  );
+
+  console.log("Filtered Guests:", result);
+
+  return result;
+}, [guestSearch, registeredGuests]);
 
   // Compute Expiry Date string based on selection
   const getExpiryDateString = (setting) => {
@@ -123,7 +186,7 @@ export default function MagicLinks() {
     // Check if a link already exists for this guest
     const linkCode = Math.random().toString(16).substring(2, 10);
     const newLinkUrl = `event.hub/ml/${linkCode}`;
-    
+
     const newLink = {
       id: `ml_${Date.now()}`,
       guestId: selectedGuest.guest_id,
@@ -145,12 +208,12 @@ export default function MagicLinks() {
 
   // Handle Bulk Generate (simulation)
   const handleBulkGenerate = () => {
-    const unlinkedGuests = MOCK_GUEST_DATABASE.filter(g => 
+    const unlinkedGuests = registeredGuests.filter(g =>
       !activeLinks.some(link => link.guestId === g.guest_id)
     );
 
     if (unlinkedGuests.length === 0) {
-      triggerToast('All mock database guests already have active magic links.');
+      triggerToast('All registered guests already have active magic links.');
       return;
     }
 
@@ -217,6 +280,42 @@ export default function MagicLinks() {
     triggerToast('Magic link has been revoked/deactivated.');
   };
 
+  // Delete single link handler
+  const handleDeleteLink = (id) => {
+    setActiveLinks(prev => prev.filter(link => link.id !== id));
+    setDeleteSingleId(null);
+    triggerToast('Magic link deleted.');
+  };
+
+  // Selection handlers
+  const handleSelectLink = (id) => {
+    setSelectedLinks(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(id)) {
+        newSet.delete(id);
+      } else {
+        newSet.add(id);
+      }
+      return newSet;
+    });
+  };
+
+  const handleSelectAll = () => {
+    if (selectedLinks.size === paginatedLinks.length) {
+      setSelectedLinks(new Set());
+    } else {
+      setSelectedLinks(new Set(paginatedLinks.map(link => link.id)));
+    }
+  };
+
+  // Delete selected links handler
+  const handleDeleteSelected = () => {
+    setActiveLinks(prev => prev.filter(link => !selectedLinks.has(link.id)));
+    setSelectedLinks(new Set());
+    setShowDeleteSelectedDialog(false);
+    triggerToast(`${selectedLinks.size} magic link(s) deleted.`);
+  };
+
   // Share simulations
   const handleShareEmail = () => {
     if (!selectedGuest) {
@@ -263,8 +362,8 @@ export default function MagicLinks() {
     // Search query matching guest name or category
     if (tableSearch.trim()) {
       const q = tableSearch.toLowerCase();
-      result = result.filter(l => 
-        l.guestName.toLowerCase().includes(q) || 
+      result = result.filter(l =>
+        l.guestName.toLowerCase().includes(q) ||
         l.category.toLowerCase().includes(q)
       );
     }
@@ -285,14 +384,49 @@ export default function MagicLinks() {
 
   const totalPages = Math.ceil(filteredActiveLinks.length / itemsPerPage) || 1;
 
+  // Generate smart page numbers for pagination display
+  const getPageNumbers = () => {
+    const pages = [];
+    const range = 1; // Show 1 page before and after current page
+    
+    // Always add page 1
+    pages.push(1);
+    
+    // Determine the range around current page
+    const start = Math.max(2, currentPage - range);
+    const end = Math.min(totalPages - 1, currentPage + range);
+    
+    // Add ... if there's a gap between page 1 and start
+    if (start > 2) {
+      pages.push('...');
+    }
+    
+    // Add pages in range
+    for (let i = start; i <= end; i++) {
+      pages.push(i);
+    }
+    
+    // Add ... if there's a gap between end and last page
+    if (end < totalPages - 1) {
+      pages.push('...');
+    }
+    
+    // Add last page (if totalPages > 1)
+    if (totalPages > 1 && pages[pages.length - 1] !== totalPages) {
+      pages.push(totalPages);
+    }
+    
+    return pages;
+  };
+
   // Active stats calculations
   const totalActiveCount = useMemo(() => {
-    return activeLinks.filter(l => l.status === 'Active' || l.status === 'Expiring Soon').length + 1280;
-  }, [activeLinks]);
+  return filteredActiveLinks.filter(l => l.status === 'Active').length;
+}, [filteredActiveLinks]);
 
   const expiringSoonCount = useMemo(() => {
-    return activeLinks.filter(l => l.status === 'Expiring Soon').length + 40;
-  }, [activeLinks]);
+  return filteredActiveLinks.filter(l => l.status === 'Expiring Soon').length;
+}, [filteredActiveLinks]);
 
   return (
     <div className="magic-links-container">
@@ -325,7 +459,7 @@ export default function MagicLinks() {
         <div className="magic-links-title-area">
           <h1>Magic Link Generator</h1>
         </div>
-        
+
         {/* Figma Nav-Tabs + Search on Top Right */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
           {/* Top navigation selectors */}
@@ -376,9 +510,9 @@ export default function MagicLinks() {
           </div>
 
           <button style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.15rem' }}>🔔</button>
-          
-          <button 
-            type="button" 
+
+          <button
+            type="button"
             style={{
               background: 'linear-gradient(135deg, #ff7a45 0%, #ff4d4f 100%)',
               border: 'none',
@@ -455,7 +589,7 @@ export default function MagicLinks() {
         {/* Left Side: Form */}
         <div className="generate-link-card">
           <h3>Generate Magic Link</h3>
-          
+
           {/* Guest Selection */}
           <div className="form-group" style={{ position: 'relative' }}>
             <label style={{ fontSize: '0.75rem', fontWeight: '700', color: 'var(--text-light)', textTransform: 'uppercase', marginBottom: '0.35rem', display: 'block' }}>
@@ -468,15 +602,15 @@ export default function MagicLinks() {
                 className="form-input"
                 style={{ paddingLeft: '2.25rem', width: '100%', boxSizing: 'border-box' }}
                 placeholder="Search for a guest from your list..."
-                value={selectedGuest ? selectedGuest.name : guestSearch}
+                value={guestSearch}
                 onChange={(e) => {
                   setGuestSearch(e.target.value);
                   if (selectedGuest) setSelectedGuest(null);
-                  setIsGuestDropdownOpen(true);
+                  setIsGuestDropdownOpen(e.target.value.trim().length > 0);
                 }}
-                onFocus={() => setIsGuestDropdownOpen(true)}
+                onFocus={handleGuestSearchFocus}
               />
-              
+
               {/* Dropdown Options */}
               {isGuestDropdownOpen && (
                 <div style={{
@@ -573,7 +707,7 @@ export default function MagicLinks() {
             <label style={{ fontSize: '0.75rem', fontWeight: '700', color: 'var(--text-light)', textTransform: 'uppercase', display: 'block' }}>
               Security Settings
             </label>
-            
+
             {/* Single Use Only Toggle */}
             <div className="security-toggle-row">
               <div className="security-toggle-label">
@@ -633,7 +767,7 @@ export default function MagicLinks() {
               </svg>
               <span>Create Magic Link</span>
             </button>
-            
+
             <button
               type="button"
               className="btn-secondary"
@@ -662,7 +796,7 @@ export default function MagicLinks() {
           {/* Live QR Preview Card */}
           <div className="qr-preview-card">
             <h4>Live QR Preview</h4>
-            
+
             <div className="tilted-qr-wrapper">
               <div className="tilted-qr-image" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <svg width="68" height="68" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -684,21 +818,21 @@ export default function MagicLinks() {
                   <rect x="48" y="0" width="16" height="4" rx="0.5" fill="#a61e22" />
                   <rect x="36" y="16" width="16" height="8" rx="1" fill="#a61e22" />
                   <rect x="56" y="12" width="12" height="12" rx="1.5" fill="#a61e22" />
-                  
+
                   <rect x="0" y="36" width="12" height="8" rx="1" fill="#a61e22" />
                   <rect x="0" y="48" width="8" height="16" rx="1" fill="#a61e22" />
-                  
+
                   <rect x="36" y="36" width="28" height="28" rx="2" fill="#a61e22" />
                   <rect x="42" y="42" width="16" height="16" rx="1" fill="#ffffff" />
                   <rect x="47" y="47" width="6" height="6" fill="#a61e22" />
 
                   <rect x="72" y="36" width="16" height="16" rx="1" fill="#a61e22" />
                   <rect x="68" y="60" width="24" height="8" rx="1" fill="#a61e22" />
-                  
+
                   <rect x="36" y="72" width="16" height="12" rx="1" fill="#a61e22" />
                   <rect x="36" y="88" width="8" height="8" rx="1" fill="#a61e22" />
                   <rect x="56" y="76" width="12" height="16" rx="1" fill="#a61e22" />
-                  
+
                   <rect x="72" y="72" width="24" height="24" rx="2" fill="#a61e22" />
                   <rect x="78" y="78" width="12" height="12" rx="1" fill="#ffffff" />
                 </svg>
@@ -714,8 +848,8 @@ export default function MagicLinks() {
           <div className="distribute-card">
             <h4>Distribute Link</h4>
             <div className="distribute-buttons-row">
-              <button 
-                type="button" 
+              <button
+                type="button"
                 className="dist-channel-btn email"
                 onClick={handleShareEmail}
               >
@@ -724,9 +858,9 @@ export default function MagicLinks() {
                 </svg>
                 <span>Email</span>
               </button>
-              
-              <button 
-                type="button" 
+
+              <button
+                type="button"
                 className="dist-channel-btn whatsapp"
                 onClick={handleShareWhatsApp}
               >
@@ -796,8 +930,8 @@ export default function MagicLinks() {
             </div>
 
             {/* Filter Toggle */}
-            <button 
-              type="button" 
+            <button
+              type="button"
               className={`control-btn ${statusFilter !== 'All' ? 'active' : ''}`}
               style={{ width: '32px', height: '32px' }}
               onClick={() => setIsFilterDropdownOpen(!isFilterDropdownOpen)}
@@ -852,8 +986,8 @@ export default function MagicLinks() {
             )}
 
             {/* Download/Export CSV */}
-            <button 
-              type="button" 
+            <button
+              type="button"
               className="control-btn"
               style={{ width: '32px', height: '32px' }}
               onClick={handleExportCSV}
@@ -863,6 +997,28 @@ export default function MagicLinks() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
               </svg>
             </button>
+
+            {/* Delete Selected Button */}
+            {selectedLinks.size > 0 && (
+              <button
+                type="button"
+                className="control-btn"
+                style={{
+                  background: '#ef4444',
+                  color: '#fff',
+                  fontWeight: '600',
+                  fontSize: '0.8rem',
+                  padding: '0.45rem 1rem',
+                  borderRadius: '6px',
+                  border: 'none',
+                  cursor: 'pointer'
+                }}
+                onClick={() => setShowDeleteSelectedDialog(true)}
+                title={`Delete ${selectedLinks.size} selected link(s)`}
+              >
+                🗑️ Delete ({selectedLinks.size})
+              </button>
+            )}
           </div>
         </div>
 
@@ -871,6 +1027,14 @@ export default function MagicLinks() {
           <table className="premium-table">
             <thead>
               <tr>
+                <th style={{ width: '40px' }}>
+                  <input
+                    type="checkbox"
+                    checked={selectedLinks.size > 0 && selectedLinks.size === paginatedLinks.length}
+                    onChange={handleSelectAll}
+                    style={{ cursor: 'pointer' }}
+                  />
+                </th>
                 <th>Guest Name</th>
                 <th>Link URL</th>
                 <th>Created Date</th>
@@ -882,13 +1046,27 @@ export default function MagicLinks() {
             <tbody>
               {paginatedLinks.length === 0 ? (
                 <tr>
-                  <td colSpan="6" style={{ textAlign: 'center', color: 'var(--text-light)', padding: '3rem' }}>
+                  <td colSpan="7" style={{ textAlign: 'center', color: 'var(--text-light)', padding: '3rem' }}>
                     No active magic links found matching your filters.
                   </td>
                 </tr>
               ) : (
                 paginatedLinks.map((link) => (
-                  <tr key={link.id}>
+                  <tr
+                    key={link.id}
+                    style={{
+                      backgroundColor: selectedLinks.has(link.id) ? 'rgba(255, 122, 69, 0.05)' : 'transparent',
+                      transition: 'background-color 0.2s'
+                    }}
+                  >
+                    <td style={{ width: '40px', textAlign: 'center' }}>
+                      <input
+                        type="checkbox"
+                        checked={selectedLinks.has(link.id)}
+                        onChange={() => handleSelectLink(link.id)}
+                        style={{ cursor: 'pointer' }}
+                      />
+                    </td>
                     <td>
                       <div className="guest-info-cell">
                         <div className="guest-avatar-placeholder" style={{ backgroundColor: link.avatarColor, background: link.avatarColor }}>
@@ -904,9 +1082,9 @@ export default function MagicLinks() {
                         </div>
                       </div>
                     </td>
-                    
+
                     <td>
-                      <div 
+                      <div
                         className={`link-url-block ${link.status === 'Expired' ? 'expired' : ''}`}
                         onClick={() => handleCopyLinkText(link.linkUrl)}
                         title="Click to copy link"
@@ -917,29 +1095,28 @@ export default function MagicLinks() {
                         </svg>
                       </div>
                     </td>
-                    
+
                     <td>
                       <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>{link.createdDate}</span>
                     </td>
-                    
+
                     <td>
-                      <span style={{ 
-                        fontSize: '0.85rem', 
+                      <span style={{
+                        fontSize: '0.85rem',
                         color: link.status === 'Expired' ? 'var(--text-light)' : 'var(--text-main)',
                         fontWeight: link.status === 'Expiring Soon' ? '600' : 'normal'
                       }}>
                         {link.expiryDate}
                       </span>
                     </td>
-                    
+
                     <td>
-                      <span className={`status-pill ${
-                        link.status === 'Active' ? 'confirmed' : (link.status === 'Expired' ? 'declined' : 'pending')
-                      }`}>
+                      <span className={`status-pill ${link.status === 'Active' ? 'confirmed' : (link.status === 'Expired' ? 'declined' : 'pending')
+                        }`}>
                         {link.status}
                       </span>
                     </td>
-                    
+
                     <td style={{ textAlign: 'center' }}>
                       <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center' }}>
                         {/* Renew action button */}
@@ -967,6 +1144,19 @@ export default function MagicLinks() {
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
                           </svg>
                         </button>
+
+                        {/* Delete action button */}
+                        <button
+                          type="button"
+                          className="btn-revoke-action"
+                          onClick={() => setDeleteSingleId(link.id)}
+                          title="Delete magic link"
+                          style={{ color: '#ef4444' }}
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" style={{ width: '16px', height: '16px' }}>
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -990,16 +1180,26 @@ export default function MagicLinks() {
             >
               &lt;
             </button>
-            {Array.from({ length: totalPages }, (_, idx) => (
-              <button
-                key={idx + 1}
-                type="button"
-                className={`pagination-btn ${currentPage === idx + 1 ? 'active' : ''}`}
-                onClick={() => setCurrentPage(idx + 1)}
-              >
-                {idx + 1}
-              </button>
-            ))}
+            {getPageNumbers().map((page, idx) =>
+              page === '...' ? (
+                <span
+                  key={`ellipsis-${idx}`}
+                  className="pagination-btn"
+                  style={{ cursor: 'default', pointerEvents: 'none' }}
+                >
+                  ...
+                </span>
+              ) : (
+                <button
+                  key={page}
+                  type="button"
+                  className={`pagination-btn ${currentPage === page ? 'active' : ''}`}
+                  onClick={() => setCurrentPage(page)}
+                >
+                  {page}
+                </button>
+              )
+            )}
             <button
               type="button"
               className="pagination-btn"
@@ -1011,6 +1211,128 @@ export default function MagicLinks() {
           </div>
         </div>
       </div>
+
+      {/* Delete Single Link Confirmation Dialog */}
+      {deleteSingleId && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000
+        }}>
+          <div style={{
+            backgroundColor: '#fff',
+            borderRadius: '12px',
+            padding: '2rem',
+            boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)',
+            maxWidth: '400px',
+            width: '90%'
+          }}>
+            <h3 style={{ marginTop: 0, marginBottom: '1rem', color: 'var(--text-main)' }}>Delete Magic Link?</h3>
+            <p style={{ color: 'var(--text-light)', marginBottom: '2rem' }}>
+              Are you sure you want to delete this magic link? This action cannot be undone.
+            </p>
+            <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
+              <button
+                type="button"
+                onClick={() => setDeleteSingleId(null)}
+                style={{
+                  padding: '0.5rem 1rem',
+                  borderRadius: '6px',
+                  border: '1px solid #e2e8f0',
+                  backgroundColor: '#f8fafc',
+                  cursor: 'pointer',
+                  fontWeight: '600'
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => handleDeleteLink(deleteSingleId)}
+                style={{
+                  padding: '0.5rem 1rem',
+                  borderRadius: '6px',
+                  border: 'none',
+                  backgroundColor: '#ef4444',
+                  color: '#fff',
+                  cursor: 'pointer',
+                  fontWeight: '600'
+                }}
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Selected Links Confirmation Dialog */}
+      {showDeleteSelectedDialog && selectedLinks.size > 0 && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000
+        }}>
+          <div style={{
+            backgroundColor: '#fff',
+            borderRadius: '12px',
+            padding: '2rem',
+            boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)',
+            maxWidth: '400px',
+            width: '90%'
+          }}>
+            <h3 style={{ marginTop: 0, marginBottom: '1rem', color: 'var(--text-main)' }}>Delete {selectedLinks.size} Magic Link(s)?</h3>
+            <p style={{ color: 'var(--text-light)', marginBottom: '2rem' }}>
+              Are you sure you want to delete {selectedLinks.size} selected magic link(s)? This action cannot be undone.
+            </p>
+            <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
+              <button
+                type="button"
+                onClick={() => setShowDeleteSelectedDialog(false)}
+                style={{
+                  padding: '0.5rem 1rem',
+                  borderRadius: '6px',
+                  border: '1px solid #e2e8f0',
+                  backgroundColor: '#f8fafc',
+                  cursor: 'pointer',
+                  fontWeight: '600'
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleDeleteSelected}
+                style={{
+                  padding: '0.5rem 1rem',
+                  borderRadius: '6px',
+                  border: 'none',
+                  backgroundColor: '#ef4444',
+                  color: '#fff',
+                  cursor: 'pointer',
+                  fontWeight: '600'
+                }}
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

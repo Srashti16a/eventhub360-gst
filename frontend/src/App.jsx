@@ -5,7 +5,7 @@ import GuestCategories from './pages/GuestCategories';
 import RSVPAnalytics from './pages/RSVPAnalytics';
 import MagicLinks from './pages/MagicLinks';
 import Hotels from './pages/Hotels';
-import RoomAllocation from './pages/RoomAllocation';
+import RoomAllocation, { INITIAL_ROOMS, INITIAL_UNASSIGNED } from './pages/RoomAllocation';
 import Transportation from './pages/Transportation';
 import Templates from './pages/Templates';
 
@@ -194,6 +194,20 @@ export default function App() {
   const [isAccommodationDropdownOpen, setIsAccommodationDropdownOpen] = useState(true);
   const [isTransportationDropdownOpen, setIsTransportationDropdownOpen] = useState(true);
   const [isBookRoomOpen, setIsBookRoomOpen] = useState(false);
+  const [rooms, setRooms] = useState(() => {
+    const saved = localStorage.getItem('eh360_rooms');
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      if (Array.isArray(parsed) && parsed.length >= 60) {
+        return parsed;
+      }
+    }
+    return INITIAL_ROOMS;
+  });
+  const [unassignedGuests, setUnassignedGuests] = useState(() => {
+    const saved = localStorage.getItem('eh360_unassigned_guests');
+    return saved ? JSON.parse(saved) : INITIAL_UNASSIGNED;
+  });
 
   const handleGuestsClick = () => {
     setIsGuestsDropdownOpen(!isGuestsDropdownOpen);
@@ -437,35 +451,7 @@ export default function App() {
 
         {/* Create Event & Help */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginTop: 'auto' }}>
-          {activeView === 'hotels' && (
-            <button style={{
-              background: 'linear-gradient(135deg, #ff7a45 0%, #ff4d4f 100%)',
-              border: 'none',
-              color: '#fff',
-              fontWeight: '600',
-              fontSize: '0.875rem',
-              padding: '0.75rem 1rem',
-              borderRadius: '8px',
-              cursor: 'pointer',
-              boxShadow: '0 4px 12px rgba(255, 77, 79, 0.2)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '0.5rem'
-            }} onClick={() => setIsBookRoomOpen(true)}>
-              <span style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                backgroundColor: 'rgba(255,255,255,0.25)',
-                borderRadius: '50%',
-                width: '18px',
-                height: '18px',
-                fontSize: '0.7rem',
-                fontWeight: 'bold'
-              }}>🛏️</span> Book Room
-            </button>
-          )}
+
 
           {activeView === 'events' && (
             <button style={{
@@ -681,9 +667,14 @@ export default function App() {
           ) : activeView === 'magic_links' ? (
             <MagicLinks />
           ) : activeView === 'room_allocation' ? (
-            <RoomAllocation />
+            <RoomAllocation 
+              rooms={rooms}
+              setRooms={setRooms}
+              unassignedGuests={unassignedGuests}
+              setUnassignedGuests={setUnassignedGuests}
+            />
           ) : activeView === 'hotels' ? (
-            <Hotels isBookRoomOpen={isBookRoomOpen} setIsBookRoomOpen={setIsBookRoomOpen} />
+            <Hotels isBookRoomOpen={isBookRoomOpen} setIsBookRoomOpen={setIsBookRoomOpen} rooms={rooms} />
           ) : activeView === 'transportation' ? (
             <Transportation activeTab="overview" />
           ) : activeView === 'allocation_matrix' ? (
@@ -749,7 +740,7 @@ export default function App() {
               description="Leverage artificial intelligence to automate guest invites, optimize seating charts, predict RSVP turnout, and draft invitations."
             />
           ) : (
-            <Hotels isBookRoomOpen={isBookRoomOpen} setIsBookRoomOpen={setIsBookRoomOpen} />
+            <Hotels isBookRoomOpen={isBookRoomOpen} setIsBookRoomOpen={setIsBookRoomOpen} rooms={rooms} />
           )}
         </main>
       </div>

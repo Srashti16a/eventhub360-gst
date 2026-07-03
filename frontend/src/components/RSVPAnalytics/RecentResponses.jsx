@@ -88,6 +88,8 @@ const CustomDropdown = ({ value, options, onChange, width = '150px' }) => {
   );
 };
 
+const PAGE_SIZE = 4;
+
 export default function RecentResponses({ responses, searchQuery, setSearchQuery, onViewAllGuests, onDeleteGuest, onEditGuestStatus }) {
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [selectedStatus, setSelectedStatus] = useState('All');
@@ -95,7 +97,7 @@ export default function RecentResponses({ responses, searchQuery, setSearchQuery
   const [actionModal, setActionModal] = useState(null); // 'view', 'edit', null
   const [activeGuest, setActiveGuest] = useState(null);
   const [editStatus, setEditStatus] = useState('');
-  const [isExpanded, setIsExpanded] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
   const menuRef = useRef(null);
 
   // Close dropdown when clicking outside
@@ -144,21 +146,53 @@ export default function RecentResponses({ responses, searchQuery, setSearchQuery
   };
 
   const filteredResponses = responses.filter(r => {
-    const matchesCat = selectedCategory === 'All' || r.category === selectedCategory;
-    
-    const rsvpStatus = r.status?.toLowerCase();
-    const normalizedStatus = (rsvpStatus === 'accepted' || rsvpStatus === 'confirmed') ? 'Accepted' : 
-                             (rsvpStatus === 'declined' ? 'Declined' : 'Pending');
-    const matchesStatus = selectedStatus === 'All' || normalizedStatus === selectedStatus;
+const matchesCat = selectedCategory === 'All' || r.category === selectedCategory;
 
-    const matchesSearch = !searchQuery || 
-      (r.name && r.name.toLowerCase().includes(searchQuery.toLowerCase())) || 
+const rsvpStatus = r.status?.toLowerCase();
+const normalizedStatus =
+  (rsvpStatus === 'accepted' || rsvpStatus === 'confirmed')
+    ? 'Accepted'
+    : (rsvpStatus === 'declined' ? 'Declined' : 'Pending');
+
+const matchesStatus =
+  selectedStatus === 'All' || normalizedStatus === selectedStatus;
+
+    const matchesSearch = !searchQuery ||
+      (r.name && r.name.toLowerCase().includes(searchQuery.toLowerCase())) ||
       (r.email && r.email.toLowerCase().includes(searchQuery.toLowerCase()));
-      
+
     return matchesCat && matchesStatus && matchesSearch;
   });
 
-  const displayedResponses = isExpanded ? filteredResponses : filteredResponses.slice(0, 10);
+  // Reset to page 1 whenever filters/search change
+  useEffect(() => { setCurrentPage(1); }, [selectedCategory, selectedStatus, searchQuery]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredResponses.length / PAGE_SIZE));
+  const startIdx = (currentPage - 1) * PAGE_SIZE;
+  const endIdx = Math.min(startIdx + PAGE_SIZE, filteredResponses.length);
+  const displayedResponses = filteredResponses.slice(startIdx, endIdx);
+
+  // Smart windowed page list: show first 2, last 2, and 2 around current, with ellipsis
+  const getPageNumbers = () => {
+    if (totalPages <= 7) return Array.from({ length: totalPages }, (_, i) => i + 1);
+    const pages = new Set();
+    // Always show first 2
+    pages.add(1); pages.add(2);
+    // Always show last 2
+    pages.add(totalPages - 1); pages.add(totalPages);
+    // Show window around current page
+    for (let i = Math.max(1, currentPage - 1); i <= Math.min(totalPages, currentPage + 1); i++) {
+      pages.add(i);
+    }
+    const sorted = Array.from(pages).sort((a, b) => a - b);
+    // Insert '...' where there are gaps
+    const result = [];
+    for (let i = 0; i < sorted.length; i++) {
+      if (i > 0 && sorted[i] - sorted[i - 1] > 1) result.push('...');
+      result.push(sorted[i]);
+    }
+    return result;
+  };
 
   return (
     <div className="recent-responses-card">
@@ -185,34 +219,34 @@ export default function RecentResponses({ responses, searchQuery, setSearchQuery
             />
           </div>
 
-          <CustomDropdown 
-            width="160px"
-            value={selectedCategory}
-            onChange={setSelectedCategory}
-            options={[
-              { value: 'All', label: 'All Categories' },
-              { value: 'VIP', label: 'VIP' },
-              { value: 'Speaker', label: 'Speaker' },
-              { value: 'Family', label: 'Family' },
-              { value: 'Corporate', label: 'Corporate' },
-              { value: 'Sponsor', label: 'Sponsor' },
-              { value: 'Media', label: 'Media' },
-              { value: 'Staff', label: 'Staff' },
-              { value: 'Standard', label: 'Standard' }
-            ]}
-          />
+<CustomDropdown
+  width="160px"
+  value={selectedCategory}
+  onChange={setSelectedCategory}
+  options={[
+    { value: 'All', label: 'All Categories' },
+    { value: 'VIP', label: 'VIP' },
+    { value: 'Speaker', label: 'Speaker' },
+    { value: 'Family', label: 'Family' },
+    { value: 'Corporate', label: 'Corporate' },
+    { value: 'Sponsor', label: 'Sponsor' },
+    { value: 'Media', label: 'Media' },
+    { value: 'Staff', label: 'Staff' },
+    { value: 'Standard', label: 'Standard' }
+  ]}
+/>
 
-          <CustomDropdown 
-            width="140px"
-            value={selectedStatus}
-            onChange={setSelectedStatus}
-            options={[
-              { value: 'All', label: 'All Status' },
-              { value: 'Accepted', label: 'Accepted' },
-              { value: 'Declined', label: 'Declined' },
-              { value: 'Pending', label: 'Pending' }
-            ]}
-          />
+<CustomDropdown
+  width="140px"
+  value={selectedStatus}
+  onChange={setSelectedStatus}
+  options={[
+    { value: 'All', label: 'All Status' },
+    { value: 'Accepted', label: 'Accepted' },
+    { value: 'Declined', label: 'Declined' },
+    { value: 'Pending', label: 'Pending' }
+  ]}
+/>
         </div>
       </div>
 
@@ -265,18 +299,18 @@ export default function RecentResponses({ responses, searchQuery, setSearchQuery
                   {row.responseDate}
                 </td>
                 <td style={{ position: 'relative' }}>
-                  <button 
-                    type="button" 
-                    className="btn-icon" 
+                  <button
+                    type="button"
+                    className="btn-icon"
                     onClick={() => setActiveMenuId(activeMenuId === row.id ? null : row.id)}
                   >
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" style={{ width: '16px', height: '16px' }}>
                       <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />
                     </svg>
                   </button>
-                  
+
                   {activeMenuId === row.id && (
-                    <div 
+                    <div
                       ref={menuRef}
                       style={{
                         position: 'absolute',
@@ -303,7 +337,7 @@ export default function RecentResponses({ responses, searchQuery, setSearchQuery
             ))}
           </tbody>
         </table>
-        
+
         {filteredResponses.length === 0 && (
           <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-light)', fontSize: '0.9rem' }}>
             No guests found matching your search.
@@ -311,13 +345,47 @@ export default function RecentResponses({ responses, searchQuery, setSearchQuery
         )}
       </div>
 
-      <div className="recent-responses-footer">
-        {filteredResponses.length > 10 && (
-          <span className="recent-responses-footer-link" onClick={() => setIsExpanded(!isExpanded)}>
-            {isExpanded ? 'Show Less Guests' : 'View All Guests'}
-          </span>
-        )}
-      </div>
+      {/* Pagination Footer — identical classes to GuestManagement page */}
+      {filteredResponses.length > 0 && (
+        <div className="pagination-row">
+          <div className="pagination-info">
+            <span>
+              Showing {startIdx + 1}-{endIdx} of {filteredResponses.length} guests
+            </span>
+          </div>
+          <div className="pagination-controls">
+            <button
+              type="button"
+              className="pagination-btn"
+              disabled={currentPage === 1}
+              onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+            >&lt;</button>
+
+            {getPageNumbers().map((p, idx) =>
+              p === '...' ? (
+                <span key={`ellipsis-${idx}`} className="pagination-ellipsis">...</span>
+              ) : (
+                <button
+                  key={p}
+                  type="button"
+                  className={`pagination-btn ${currentPage === p ? 'active' : ''}`}
+                  onClick={() => setCurrentPage(p)}
+                >
+                  {p}
+                </button>
+              )
+            )}
+
+            {/* Next */}
+            <button
+              type="button"
+              className="pagination-btn"
+              disabled={currentPage === totalPages}
+              onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+            >&gt;</button>
+          </div>
+        </div>
+      )}
 
       {/* View Details Modal */}
       {actionModal === 'view' && activeGuest && (
@@ -343,9 +411,9 @@ export default function RecentResponses({ responses, searchQuery, setSearchQuery
             <h2 style={{ marginBottom: '1.5rem', fontSize: '1.2rem', color: '#1e293b' }}>Edit RSVP Status</h2>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '1.5rem' }}>
               <label style={{ fontSize: '0.9rem', color: '#475569', fontWeight: '500' }}>Status for {activeGuest.name}</label>
-              <select 
-                className="dropdown-styled" 
-                value={editStatus} 
+              <select
+                className="dropdown-styled"
+                value={editStatus}
                 onChange={(e) => setEditStatus(e.target.value)}
                 style={{ padding: '0.5rem', width: '100%' }}
               >
