@@ -451,35 +451,7 @@ export default function App() {
 
         {/* Create Event & Help */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginTop: 'auto' }}>
-          {activeView === 'hotels' && (
-            <button style={{
-              background: 'linear-gradient(135deg, #ff7a45 0%, #ff4d4f 100%)',
-              border: 'none',
-              color: '#fff',
-              fontWeight: '600',
-              fontSize: '0.875rem',
-              padding: '0.75rem 1rem',
-              borderRadius: '8px',
-              cursor: 'pointer',
-              boxShadow: '0 4px 12px rgba(255, 77, 79, 0.2)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '0.5rem'
-            }} onClick={() => setIsBookRoomOpen(true)}>
-              <span style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                backgroundColor: 'rgba(255,255,255,0.25)',
-                borderRadius: '50%',
-                width: '18px',
-                height: '18px',
-                fontSize: '0.7rem',
-                fontWeight: 'bold'
-              }}>🛏️</span> Book Room
-            </button>
-          )}
+
 
           {activeView === 'events' && (
             <button style={{
@@ -702,7 +674,7 @@ export default function App() {
               setUnassignedGuests={setUnassignedGuests}
             />
           ) : activeView === 'hotels' ? (
-            <Hotels isBookRoomOpen={isBookRoomOpen} setIsBookRoomOpen={setIsBookRoomOpen} />
+            <Hotels isBookRoomOpen={isBookRoomOpen} setIsBookRoomOpen={setIsBookRoomOpen} rooms={rooms} />
           ) : activeView === 'transportation' ? (
             <Transportation activeTab="overview" />
           ) : activeView === 'allocation_matrix' ? (
@@ -768,7 +740,7 @@ export default function App() {
               description="Leverage artificial intelligence to automate guest invites, optimize seating charts, predict RSVP turnout, and draft invitations."
             />
           ) : (
-            <Hotels isBookRoomOpen={isBookRoomOpen} setIsBookRoomOpen={setIsBookRoomOpen} />
+            <Hotels isBookRoomOpen={isBookRoomOpen} setIsBookRoomOpen={setIsBookRoomOpen} rooms={rooms} />
           )}
         </main>
       </div>

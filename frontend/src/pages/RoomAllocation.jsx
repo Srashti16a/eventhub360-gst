@@ -296,6 +296,84 @@ export default function RoomAllocation({
     }
   }, [toastMessage]);
 
+  // Notifications State and Helpers
+  const [notifications, setNotifications] = useState(() => {
+    const defaultNotifs = [
+      {
+        id: 1,
+        icon: '⚙️',
+        title: 'System Initialized',
+        description: 'System initialized room blocks for Grand Ballroom Hotel & Spa.',
+        timestamp: Date.now() - 30 * 60 * 1000,
+        unread: false
+      },
+      {
+        id: 2,
+        icon: '⚠️',
+        title: 'Capacity Conflict',
+        description: 'Pre-existing capacity conflict detected in Room 502 (3 guests assigned, capacity 2).',
+        timestamp: Date.now() - 25 * 60 * 1000,
+        unread: true
+      },
+      {
+        id: 3,
+        icon: '🔒',
+        title: 'Room Hold Placed',
+        description: 'Room 504 placed on hold for international delegation block.',
+        timestamp: Date.now() - 15 * 60 * 1000,
+        unread: true
+      }
+    ];
+
+    const saved = localStorage.getItem('eh360_notifications');
+    if (saved !== null) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          return parsed;
+        }
+        localStorage.removeItem('eh360_notifications');
+      } catch (e) {
+        console.error('Failed parsing notifications from localStorage:', e);
+        localStorage.removeItem('eh360_notifications');
+      }
+    }
+    return defaultNotifs;
+  });
+
+  // Sync notifications to localStorage
+  useEffect(() => {
+    localStorage.setItem('eh360_notifications', JSON.stringify(notifications));
+  }, [notifications]);
+
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+
+  const formatRelativeTime = (timestamp) => {
+    const diffMs = Date.now() - new Date(timestamp).getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    
+    if (diffMins < 1) return 'Just now';
+    if (diffMins < 60) return `${diffMins} min ago`;
+    
+    const diffHours = Math.floor(diffMins / 60);
+    if (diffHours < 24) return `${diffHours} hr ago`;
+    
+    const diffDays = Math.floor(diffHours / 24);
+    return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
+  };
+
+  const addNotification = (title, description, icon) => {
+    const newNotif = {
+      id: Date.now() + Math.random(),
+      icon,
+      title,
+      description,
+      timestamp: Date.now(),
+      unread: true
+    };
+    setNotifications(prev => [newNotif, ...prev]);
+  };
+
   const hotelsList = [
     'Grand Ballroom Hotel & Spa',
     'Azure Heights Resort & Suites',
@@ -449,6 +527,12 @@ export default function RoomAllocation({
       ...prev
     ]);
 
+    addNotification(
+      'Guest Assigned',
+      logMsg,
+      '👤'
+    );
+
     setToastMessage(`Successfully assigned ${assignedGuest.name} to Room ${targetRoom.roomNumber}!`);
   };
 
@@ -489,6 +573,12 @@ export default function RoomAllocation({
       { id: Date.now(), time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }), text: logMsg },
       ...prev
     ]);
+
+    addNotification(
+      'Room Cleared',
+      logMsg,
+      '🔄'
+    );
 
     setToastMessage(`Room ${room.roomNumber} is now vacant & available.`);
   };
@@ -548,6 +638,12 @@ export default function RoomAllocation({
       ...prev
     ]);
 
+    addNotification(
+      'Guest Removed',
+      logMsg,
+      '👤'
+    );
+
     setToastMessage(`${guestToMove.name} returned to unassigned panel.`);
   };
 
@@ -590,6 +686,12 @@ export default function RoomAllocation({
       ...prev
     ]);
 
+    addNotification(
+      'Conflict Resolved',
+      logMsg,
+      '✅'
+    );
+
     setToastMessage(`${guestToMove.name} returned to unassigned panel. Conflict resolved!`);
   };
 
@@ -598,6 +700,11 @@ export default function RoomAllocation({
     localStorage.setItem('eh360_rooms', JSON.stringify(rooms));
     localStorage.setItem('eh360_unassigned_guests', JSON.stringify(unassignedGuests));
     setToastMessage('Room allocation updated successfully.');
+    addNotification(
+      'Save Changes Completed',
+      'Room allocation matrix saved successfully to local storage.',
+      '💾'
+    );
   };
 
   // Intelligent Auto-Assign logic simulator
@@ -659,6 +766,12 @@ export default function RoomAllocation({
       ...prev
     ]);
 
+    addNotification(
+      'Auto-Assign Complete',
+      logMsg,
+      '⚡'
+    );
+
     setToastMessage(`Success: Auto-assigned ${assignedCount} guests matching room rules!`);
   };
 
@@ -710,11 +823,37 @@ export default function RoomAllocation({
             </svg>
           </button>
 
-          <button type="button" className="matrix-icon-btn" title="Notifications" onClick={() => setToastMessage('System Log: No new allocation alerts.')}>
+          <button 
+            type="button" 
+            className="matrix-icon-btn" 
+            title="Notifications" 
+            onClick={() => setIsNotificationsOpen(true)}
+            style={{ position: 'relative' }}
+          >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
               <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
               <path d="M13.73 21a2 2 0 0 1-3.46 0" />
             </svg>
+            {notifications.filter(n => n.unread).length > 0 && (
+              <span style={{
+                position: 'absolute',
+                top: '-4px',
+                right: '-4px',
+                backgroundColor: '#ff4d4f',
+                color: '#ffffff',
+                fontSize: '0.65rem',
+                fontWeight: 'bold',
+                borderRadius: '50%',
+                width: '16px',
+                height: '16px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                border: '2px solid #ffffff'
+              }}>
+                {notifications.filter(n => n.unread).length}
+              </span>
+            )}
           </button>
 
           <button type="button" className="btn-pill-checkin" onClick={() => setIsCheckInWorkflowOpen(true)}>
@@ -1194,6 +1333,118 @@ export default function RoomAllocation({
       {/* Floating toast notification */}
       {toastMessage && <div className="toast-msg">{toastMessage}</div>}
 
+      {/* 4a. Room Allocation Alerts (Notifications) Modal */}
+      {isNotificationsOpen && (
+        <div className="alloc-popup-overlay" onClick={() => setIsNotificationsOpen(false)}>
+          <div className="alloc-popup-box" onClick={e => e.stopPropagation()} style={{ width: '450px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+              <div>
+                <h3 className="alloc-popup-title" style={{ fontSize: '1.2rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <span>🔔</span> Room Allocation Alerts
+                </h3>
+                <span style={{ fontSize: '0.75rem', color: '#64748b' }}>Session activity and system alerts feed</span>
+              </div>
+              <button 
+                type="button" 
+                style={{ background: 'none', border: 'none', fontSize: '1.25rem', cursor: 'pointer', color: '#94a3b8' }}
+                onClick={() => setIsNotificationsOpen(false)}
+              >
+                ×
+              </button>
+            </div>
+
+            {notifications.length > 0 && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem', fontSize: '0.85rem' }}>
+                <button
+                  type="button"
+                  style={{ background: 'none', border: 'none', color: '#ff4d4f', cursor: 'pointer', padding: 0, fontWeight: 600 }}
+                  onClick={() => {
+                    setNotifications(prev => prev.map(n => ({ ...n, unread: false })));
+                  }}
+                >
+                  Mark all as read
+                </button>
+                <button
+                  type="button"
+                  style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', padding: 0, fontWeight: 600 }}
+                  onClick={() => {
+                    setNotifications([]);
+                  }}
+                >
+                  Clear all
+                </button>
+              </div>
+            )}
+
+            <div style={{ 
+              maxHeight: '320px', 
+              overflowY: 'auto', 
+              display: 'flex', 
+              flexDirection: 'column', 
+              gap: '0.75rem',
+              paddingRight: '4px',
+              marginBottom: '1.5rem'
+            }}>
+              {notifications.length === 0 ? (
+                <div style={{ padding: '3rem 2rem', textAlign: 'center', color: '#94a3b8', fontSize: '0.85rem' }}>
+                  <div style={{ fontSize: '2.5rem', marginBottom: '0.5rem' }}>📭</div>
+                  <div>No new notifications</div>
+                </div>
+              ) : (
+                notifications.map(notif => (
+                  <div 
+                    key={notif.id} 
+                    onClick={() => {
+                      setNotifications(prev => prev.map(n => n.id === notif.id ? { ...n, unread: false } : n));
+                    }}
+                    style={{ 
+                      display: 'flex', 
+                      gap: '0.75rem', 
+                      fontSize: '0.8rem', 
+                      padding: '0.8rem', 
+                      backgroundColor: notif.unread ? '#fff8f6' : '#f8fafc', 
+                      borderRadius: '8px', 
+                      border: notif.unread ? '1px solid rgba(255, 77, 79, 0.2)' : '1px solid #e2e8f0',
+                      lineHeight: '1.4',
+                      cursor: 'pointer',
+                      position: 'relative',
+                      transition: 'background-color 0.2s'
+                    }}
+                  >
+                    {notif.unread && (
+                      <span style={{
+                        position: 'absolute',
+                        top: '8px',
+                        right: '8px',
+                        width: '8px',
+                        height: '8px',
+                        backgroundColor: '#ff4d4f',
+                        borderRadius: '50%'
+                      }} />
+                    )}
+                    
+                    <span style={{ fontSize: '1.25rem', alignSelf: 'flex-start' }}>{notif.icon}</span>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                      <div style={{ fontWeight: '700', color: '#1e293b', display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                        {notif.title}
+                        <span style={{ fontSize: '0.7rem', color: '#94a3b8', fontWeight: 'normal' }}>
+                          • {formatRelativeTime(notif.timestamp)}
+                        </span>
+                      </div>
+                      <div style={{ color: '#475569' }}>{notif.description}</div>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+
+            <div className="alloc-popup-actions">
+              <button type="button" className="btn-popup-cancel" style={{ width: '100%' }} onClick={() => setIsNotificationsOpen(false)}>Close</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* 4. Allocation History Modal */}
       {isHistoryModalOpen && (
         <div className="alloc-popup-overlay" onClick={() => setIsHistoryModalOpen(false)}>
@@ -1399,6 +1650,11 @@ export default function RoomAllocation({
                               text: `${isCheckedIn ? 'Cancelled check-in for' : 'Completed check-in for'} ${g.name} (Room ${g.roomNumber}).`
                             };
                             setHistoryLog(prev => [newLog, ...prev]);
+                            addNotification(
+                              isCheckedIn ? 'Check-In Cancelled' : 'Guest Checked In',
+                              newLog.text,
+                              isCheckedIn ? '🔄' : '🛎️'
+                            );
                             setToastMessage(`${g.name} is now ${isCheckedIn ? 'Pending Check-In' : 'Checked In'}!`);
                           }}
                         >

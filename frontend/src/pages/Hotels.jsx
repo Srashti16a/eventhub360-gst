@@ -1,5 +1,36 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import './Hotels.css';
+import { INITIAL_ROOMS } from './RoomAllocation';
+
+const mapHotelName = (name) => {
+  if (!name) return '';
+  if (name.includes('Grand Ballroom')) return 'Grand Ballroom Hotel & Spa';
+  if (name.includes('Azure Heights')) return 'Azure Heights Resort & Suites';
+  if (name.includes('Ritz-Central')) return 'The Ritz-Central Executive';
+  if (name.includes('Harbor View')) return 'Harbor View Boutique';
+  if (name.includes('Summit Lodge')) return 'Summit Lodge Concierge';
+  return name;
+};
+
+const doesRoomTypeMatch = (roomTypeOption, roomTypeDb) => {
+  if (!roomTypeOption || !roomTypeDb) return false;
+  const option = roomTypeOption.toLowerCase();
+  const db = roomTypeDb.toLowerCase();
+  
+  if (option === 'standard') {
+    return db.includes('standard') || db.includes('deluxe');
+  }
+  if (option === 'suite') {
+    return db.includes('suite');
+  }
+  if (option === 'executive') {
+    return db.includes('executive') || db.includes('suite');
+  }
+  if (option === 'penthouse') {
+    return db.includes('penthouse');
+  }
+  return false;
+};
 
 // Initial Seed data reflecting standard allocations matching the mockup and extra records for interactive paging
 const INITIAL_ALLOCATIONS = [
@@ -157,7 +188,7 @@ const INITIAL_HOTELS = [
   { name: 'Summit Lodge', occupancy: 80, capacity: 100 }
 ];
 
-export default function Hotels({ isBookRoomOpen, setIsBookRoomOpen }) {
+export default function Hotels({ isBookRoomOpen, setIsBookRoomOpen, rooms }) {
   const [allocations, setAllocations] = useState(INITIAL_ALLOCATIONS);
   const [hotelsData, setHotelsData] = useState(INITIAL_HOTELS);
 
@@ -197,6 +228,85 @@ export default function Hotels({ isBookRoomOpen, setIsBookRoomOpen }) {
   const [isEditing, setIsEditing] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [formErrors, setFormErrors] = useState({});
+
+  const availableRooms = useMemo(() => {
+    const roomsSource = rooms || INITIAL_ROOMS;
+    const selectedHotelName = mapHotelName(bookingFormData.hotel);
+    const selectedType = bookingFormData.roomType;
+    
+    const matchedRooms = roomsSource.filter(room => {
+      return room.hotel === selectedHotelName && doesRoomTypeMatch(selectedType, room.roomType);
+    });
+    
+    const filtered = matchedRooms.filter(room => {
+      const currentAlloc = isEditing ? allocations.find(a => a.id === editingId) : null;
+      const isCurrentRoomOfBooking = currentAlloc && currentAlloc.hotel === bookingFormData.hotel && currentAlloc.roomNumber === room.roomNumber;
+      
+      if (room.status !== 'Available' && !isCurrentRoomOfBooking) return false;
+      
+      const isAllocated = allocations.some(alloc => {
+        if (isEditing && alloc.id === editingId) return false;
+        return alloc.hotel === bookingFormData.hotel && alloc.roomNumber === room.roomNumber;
+      });
+      
+      return !isAllocated;
+    });
+    
+    return [...filtered].sort((a, b) => {
+      return a.roomNumber.localeCompare(b.roomNumber, undefined, { numeric: true, sensitivity: 'base' });
+    });
+  }, [rooms, bookingFormData.hotel, bookingFormData.roomType, allocations, isEditing, editingId]);
+
+  useEffect(() => {
+    const isValidRoom = availableRooms.some(r => r.roomNumber === bookingFormData.roomNumber);
+    if (!isValidRoom) {
+      setBookingFormData(prev => ({
+        ...prev,
+        roomNumber: availableRooms.length > 0 ? availableRooms[0].roomNumber : ''
+      }));
+    }
+  }, [availableRooms, bookingFormData.roomNumber]);
+
+  useEffect(() => {
+    setFormErrors(prev => {
+      const errors = { ...prev };
+      
+      if (bookingFormData.checkIn && bookingFormData.checkOut) {
+        if (new Date(bookingFormData.checkOut) < new Date(bookingFormData.checkIn)) {
+          errors.checkOut = 'Check-out date cannot be earlier than check-in date';
+        } else {
+          if (errors.checkOut === 'Check-out date cannot be earlier than check-in date' || errors.checkOut === 'Check-out must be after check-in') {
+            delete errors.checkOut;
+          }
+        }
+      }
+      
+      if (bookingFormData.guestName.trim()) {
+        delete errors.guestName;
+      }
+      if (bookingFormData.roomNumber) {
+        delete errors.roomNumber;
+      }
+      if (bookingFormData.checkIn) {
+        delete errors.checkIn;
+      }
+      if (bookingFormData.checkOut) {
+        delete errors.checkOut;
+      }
+      
+      return errors;
+    });
+  }, [bookingFormData.guestName, bookingFormData.roomNumber, bookingFormData.checkIn, bookingFormData.checkOut]);
+
+  const isFormValid = useMemo(() => {
+    const hasGuestName = !!bookingFormData.guestName.trim();
+    const hasRoomNumber = !!bookingFormData.roomNumber;
+    const hasCheckIn = !!bookingFormData.checkIn;
+    const hasCheckOut = !!bookingFormData.checkOut;
+    const isDateRangeValid = hasCheckIn && hasCheckOut && new Date(bookingFormData.checkOut) >= new Date(bookingFormData.checkIn);
+    
+    return hasGuestName && hasRoomNumber && hasCheckIn && hasCheckOut && isDateRangeValid;
+  }, [bookingFormData.guestName, bookingFormData.roomNumber, bookingFormData.checkIn, bookingFormData.checkOut]);
 
   // VIP Quick view (Assign toggle/status indicator dots helper)
   const [showAllVips, setShowAllVips] = useState(false);
@@ -536,6 +646,32 @@ export default function Hotels({ isBookRoomOpen, setIsBookRoomOpen }) {
             </svg>
             <span>Export Report</span>
           </button>
+
+          {/* Book Room Button */}
+        <button
+              type="button"
+              className="btn-hotels-primary"
+              onClick={() => {
+                setBookingFormData(prev => ({
+                  ...prev,
+                  checkIn: prev.checkIn || filterStartDate,
+                  checkOut: prev.checkOut || filterEndDate
+                }));
+                setIsBookRoomOpen(true);
+              }}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '0.5rem',
+                height: '38px',
+                padding: '0 1.25rem',
+                borderRadius: '12px',
+                fontSize: '0.85rem'
+              }}
+            >
+              Book Room
+            </button>
         </div>
       </header>
 
@@ -860,7 +996,7 @@ export default function Hotels({ isBookRoomOpen, setIsBookRoomOpen }) {
                             setActiveActionsRowId(null);
                           }}
                         >
-                          {item.status === 'Checked-In' ? '⚠️ Confirm Booking' : '✅ Check-In'}
+                          {item.status === 'Checked-In' ? 'Confirm Booking' : 'Check-In'}
                         </button>
                         <button 
                           type="button" 
@@ -870,7 +1006,7 @@ export default function Hotels({ isBookRoomOpen, setIsBookRoomOpen }) {
                             setActiveActionsRowId(null);
                           }}
                         >
-                          ✏️ Edit Allocation
+                          Edit Allocation
                         </button>
                         <button 
                           type="button" 
@@ -880,7 +1016,7 @@ export default function Hotels({ isBookRoomOpen, setIsBookRoomOpen }) {
                             setActiveActionsRowId(null);
                           }}
                         >
-                          ❌ Delete Allocation
+                          Delete Allocation
                         </button>
                       </div>
                     )}
@@ -992,17 +1128,34 @@ export default function Hotels({ isBookRoomOpen, setIsBookRoomOpen }) {
                   </select>
                 </div>
 
-                {/* Room Number field */}
+                {/* Room Number selector dropdown */}
                 <div className="hotels-form-group">
                   <label htmlFor="roomNumber">Room Number</label>
-                  <input
-                    type="text"
+                  <select
                     id="roomNumber"
                     className="hotels-form-input"
-                    placeholder="e.g. 412A"
                     value={bookingFormData.roomNumber}
                     onChange={(e) => setBookingFormData({ ...bookingFormData, roomNumber: e.target.value })}
-                  />
+                    disabled={availableRooms.length === 0}
+                  >
+                    {availableRooms.length === 0 ? (
+                      <option value="">No Rooms Available</option>
+                    ) : (
+                      <>
+                        <option value="">-- Select Room --</option>
+                        {availableRooms.map(room => (
+                          <option key={room.id} value={room.roomNumber}>
+                            {room.roomNumber} — {room.roomType}
+                          </option>
+                        ))}
+                      </>
+                    )}
+                  </select>
+                  {availableRooms.length === 0 && (
+                    <span className="hotels-form-error" style={{ color: '#ef4444', fontSize: '0.75rem', marginTop: '0.25rem', display: 'block' }}>
+                      No available rooms found for the selected hotel and room type.
+                    </span>
+                  )}
                   {formErrors.roomNumber && <span className="hotels-form-error">{formErrors.roomNumber}</span>}
                 </div>
 
@@ -1057,6 +1210,7 @@ export default function Hotels({ isBookRoomOpen, setIsBookRoomOpen }) {
                     type="date"
                     id="checkOut"
                     className="hotels-form-input"
+                    min={bookingFormData.checkIn}
                     value={bookingFormData.checkOut}
                     onChange={(e) => setBookingFormData({ ...bookingFormData, checkOut: e.target.value })}
                   />
@@ -1077,7 +1231,17 @@ export default function Hotels({ isBookRoomOpen, setIsBookRoomOpen }) {
               >
                 Cancel
               </button>
-              <button type="submit" className="btn-hotels-primary">
+              <button 
+                type="submit" 
+                className="btn-hotels-primary"
+                disabled={availableRooms.length === 0 || !isFormValid}
+                style={{
+                  cursor: (availableRooms.length === 0 || !isFormValid) ? 'not-allowed' : 'pointer',
+                  opacity: (availableRooms.length === 0 || !isFormValid) ? 0.6 : 1,
+                  background: (availableRooms.length === 0 || !isFormValid) ? '#cbd5e1' : undefined,
+                  boxShadow: (availableRooms.length === 0 || !isFormValid) ? 'none' : undefined
+                }}
+              >
                 {isEditing ? 'Save Changes' : 'Confirm Allocation'}
               </button>
             </div>
