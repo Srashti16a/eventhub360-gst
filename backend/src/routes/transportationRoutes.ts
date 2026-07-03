@@ -24,7 +24,10 @@ import {
   listAllocVehicles,
   listGuestQueue,
   assignGuest,
-  unassignGuest
+  unassignGuest,
+  createDriver,
+  updateDriver,
+  deleteDriver
 } from '../controllers/transportationController';
 import { validate } from '../middlewares/validation';
 import {
@@ -38,13 +41,18 @@ import {
   deleteTransferSchema,
   updateStatusSchema,
   createMaintenanceSchema,
-  updateMaintenanceSchema
+  updateMaintenanceSchema,
+  createDriverSchema,
+  updateDriverSchema
 } from '../schemas/transportation';
 
 const router = Router();
 
 // Drivers & Vehicles Lists
 router.get('/drivers', listDrivers);
+router.post('/drivers', validate(createDriverSchema), createDriver);
+router.put('/drivers/:id', validate(updateDriverSchema), updateDriver);
+router.delete('/drivers/:id', deleteDriver);
 router.get('/vehicles', listVehicles);
 
 // Fleet Assignments

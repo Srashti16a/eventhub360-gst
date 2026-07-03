@@ -1013,3 +1013,96 @@ export const unassignGuest = async (req: Request, res: Response, next: NextFunct
     next(error);
   }
 };
+
+// ==========================================
+// 10. CRUD Drivers
+// ==========================================
+export const createDriver = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { fullName, phoneNumber, status } = req.body;
+    const driver = await prisma.driver.create({
+      data: {
+        fullName,
+        phoneNumber: phoneNumber || '',
+        status: status || 'Available',
+      },
+    });
+
+    // Log Activity
+    await prisma.fleetActivityLog.create({
+      data: {
+        activityType: 'Driver Created',
+        severity: 'Info',
+        message: `Driver ${driver.fullName} was created`,
+        driverId: driver.id,
+      },
+    });
+
+    res.status(201).json({ success: true, data: driver });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const updateDriver = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { id } = req.params;
+    const { fullName, phoneNumber, status } = req.body;
+
+    const driver = await prisma.driver.update({
+      where: { id },
+      data: {
+        fullName,
+        phoneNumber: phoneNumber || '',
+        status: status || 'Available',
+      },
+    });
+
+    // Log Activity
+    await prisma.fleetActivityLog.create({
+      data: {
+        activityType: 'Driver Updated',
+        severity: 'Info',
+        message: `Driver ${driver.fullName} details were updated`,
+        driverId: id,
+      },
+    });
+
+    res.json({ success: true, data: driver });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const deleteDriver = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { id } = req.params;
+
+    const driver = await prisma.driver.findUnique({
+      where: { id },
+    });
+
+    if (!driver) {
+      res.status(404).json({ success: false, error: { message: 'Driver not found' } });
+      return;
+    }
+
+    await prisma.driver.delete({
+      where: { id },
+    });
+
+    // Log Activity
+    await prisma.fleetActivityLog.create({
+      data: {
+        activityType: 'Driver Deleted',
+        severity: 'Info',
+        message: `Driver ${driver.fullName} was deleted`,
+      },
+    });
+
+    res.json({ success: true, message: 'Driver deleted successfully' });
+  } catch (error) {
+    next(error);
+  }
+};
+
