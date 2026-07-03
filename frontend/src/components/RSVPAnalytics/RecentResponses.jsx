@@ -144,17 +144,21 @@ export default function RecentResponses({ responses, searchQuery, setSearchQuery
   };
 
   const filteredResponses = responses.filter(r => {
-    const matchesCat = selectedCategory === 'All' || r.category === selectedCategory;
-    
-    const rsvpStatus = r.status?.toLowerCase();
-    const normalizedStatus = (rsvpStatus === 'accepted' || rsvpStatus === 'confirmed') ? 'Accepted' : 
-                             (rsvpStatus === 'declined' ? 'Declined' : 'Pending');
-    const matchesStatus = selectedStatus === 'All' || normalizedStatus === selectedStatus;
+const matchesCat = selectedCategory === 'All' || r.category === selectedCategory;
 
-    const matchesSearch = !searchQuery || 
-      (r.name && r.name.toLowerCase().includes(searchQuery.toLowerCase())) || 
+const rsvpStatus = r.status?.toLowerCase();
+const normalizedStatus =
+  (rsvpStatus === 'accepted' || rsvpStatus === 'confirmed')
+    ? 'Accepted'
+    : (rsvpStatus === 'declined' ? 'Declined' : 'Pending');
+
+const matchesStatus =
+  selectedStatus === 'All' || normalizedStatus === selectedStatus;
+
+    const matchesSearch = !searchQuery ||
+      (r.name && r.name.toLowerCase().includes(searchQuery.toLowerCase())) ||
       (r.email && r.email.toLowerCase().includes(searchQuery.toLowerCase()));
-      
+
     return matchesCat && matchesStatus && matchesSearch;
   });
 
@@ -185,34 +189,34 @@ export default function RecentResponses({ responses, searchQuery, setSearchQuery
             />
           </div>
 
-          <CustomDropdown 
-            width="160px"
-            value={selectedCategory}
-            onChange={setSelectedCategory}
-            options={[
-              { value: 'All', label: 'All Categories' },
-              { value: 'VIP', label: 'VIP' },
-              { value: 'Speaker', label: 'Speaker' },
-              { value: 'Family', label: 'Family' },
-              { value: 'Corporate', label: 'Corporate' },
-              { value: 'Sponsor', label: 'Sponsor' },
-              { value: 'Media', label: 'Media' },
-              { value: 'Staff', label: 'Staff' },
-              { value: 'Standard', label: 'Standard' }
-            ]}
-          />
+<CustomDropdown
+  width="160px"
+  value={selectedCategory}
+  onChange={setSelectedCategory}
+  options={[
+    { value: 'All', label: 'All Categories' },
+    { value: 'VIP', label: 'VIP' },
+    { value: 'Speaker', label: 'Speaker' },
+    { value: 'Family', label: 'Family' },
+    { value: 'Corporate', label: 'Corporate' },
+    { value: 'Sponsor', label: 'Sponsor' },
+    { value: 'Media', label: 'Media' },
+    { value: 'Staff', label: 'Staff' },
+    { value: 'Standard', label: 'Standard' }
+  ]}
+/>
 
-          <CustomDropdown 
-            width="140px"
-            value={selectedStatus}
-            onChange={setSelectedStatus}
-            options={[
-              { value: 'All', label: 'All Status' },
-              { value: 'Accepted', label: 'Accepted' },
-              { value: 'Declined', label: 'Declined' },
-              { value: 'Pending', label: 'Pending' }
-            ]}
-          />
+<CustomDropdown
+  width="140px"
+  value={selectedStatus}
+  onChange={setSelectedStatus}
+  options={[
+    { value: 'All', label: 'All Status' },
+    { value: 'Accepted', label: 'Accepted' },
+    { value: 'Declined', label: 'Declined' },
+    { value: 'Pending', label: 'Pending' }
+  ]}
+/>
         </div>
       </div>
 
@@ -265,18 +269,18 @@ export default function RecentResponses({ responses, searchQuery, setSearchQuery
                   {row.responseDate}
                 </td>
                 <td style={{ position: 'relative' }}>
-                  <button 
-                    type="button" 
-                    className="btn-icon" 
+                  <button
+                    type="button"
+                    className="btn-icon"
                     onClick={() => setActiveMenuId(activeMenuId === row.id ? null : row.id)}
                   >
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" style={{ width: '16px', height: '16px' }}>
                       <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />
                     </svg>
                   </button>
-                  
+
                   {activeMenuId === row.id && (
-                    <div 
+                    <div
                       ref={menuRef}
                       style={{
                         position: 'absolute',
@@ -303,7 +307,7 @@ export default function RecentResponses({ responses, searchQuery, setSearchQuery
             ))}
           </tbody>
         </table>
-        
+
         {filteredResponses.length === 0 && (
           <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-light)', fontSize: '0.9rem' }}>
             No guests found matching your search.
@@ -343,9 +347,9 @@ export default function RecentResponses({ responses, searchQuery, setSearchQuery
             <h2 style={{ marginBottom: '1.5rem', fontSize: '1.2rem', color: '#1e293b' }}>Edit RSVP Status</h2>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '1.5rem' }}>
               <label style={{ fontSize: '0.9rem', color: '#475569', fontWeight: '500' }}>Status for {activeGuest.name}</label>
-              <select 
-                className="dropdown-styled" 
-                value={editStatus} 
+              <select
+                className="dropdown-styled"
+                value={editStatus}
                 onChange={(e) => setEditStatus(e.target.value)}
                 style={{ padding: '0.5rem', width: '100%' }}
               >
