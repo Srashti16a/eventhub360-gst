@@ -1,5 +1,36 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import './Hotels.css';
+import { INITIAL_ROOMS } from './RoomAllocation';
+
+const mapHotelName = (name) => {
+  if (!name) return '';
+  if (name.includes('Grand Ballroom')) return 'Grand Ballroom Hotel & Spa';
+  if (name.includes('Azure Heights')) return 'Azure Heights Resort & Suites';
+  if (name.includes('Ritz-Central')) return 'The Ritz-Central Executive';
+  if (name.includes('Harbor View')) return 'Harbor View Boutique';
+  if (name.includes('Summit Lodge')) return 'Summit Lodge Concierge';
+  return name;
+};
+
+const doesRoomTypeMatch = (roomTypeOption, roomTypeDb) => {
+  if (!roomTypeOption || !roomTypeDb) return false;
+  const option = roomTypeOption.toLowerCase();
+  const db = roomTypeDb.toLowerCase();
+  
+  if (option === 'standard') {
+    return db.includes('standard') || db.includes('deluxe');
+  }
+  if (option === 'suite') {
+    return db.includes('suite');
+  }
+  if (option === 'executive') {
+    return db.includes('executive') || db.includes('suite');
+  }
+  if (option === 'penthouse') {
+    return db.includes('penthouse');
+  }
+  return false;
+};
 
 // Initial Seed data reflecting standard allocations matching the mockup and extra records for interactive paging
 const INITIAL_ALLOCATIONS = [
@@ -157,7 +188,7 @@ const INITIAL_HOTELS = [
   { name: 'Summit Lodge', occupancy: 80, capacity: 100 }
 ];
 
-export default function Hotels({ isBookRoomOpen, setIsBookRoomOpen }) {
+export default function Hotels({ isBookRoomOpen, setIsBookRoomOpen, rooms }) {
   const [allocations, setAllocations] = useState(INITIAL_ALLOCATIONS);
   const [hotelsData, setHotelsData] = useState(INITIAL_HOTELS);
 
@@ -166,6 +197,16 @@ export default function Hotels({ isBookRoomOpen, setIsBookRoomOpen }) {
   const [selectedHotel, setSelectedHotel] = useState('All Hotels');
   const [selectedRoomType, setSelectedRoomType] = useState('Room Type');
   const [selectedStatus, setSelectedStatus] = useState('All Status');
+
+  // Selected filter date range (applied)
+  const [filterStartDate, setFilterStartDate] = useState('2023-10-12');
+  const [filterEndDate, setFilterEndDate] = useState('2023-10-18');
+
+  // Date picker modal state
+  const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
+  const [tempStartDate, setTempStartDate] = useState('2023-10-12');
+  const [tempEndDate, setTempEndDate] = useState('2023-10-18');
+  const [dateError, setDateError] = useState('');
 
   // Pagination State
   const [currentPage, setCurrentPage] = useState(1);
@@ -188,8 +229,87 @@ export default function Hotels({ isBookRoomOpen, setIsBookRoomOpen }) {
   const [editingId, setEditingId] = useState(null);
   const [formErrors, setFormErrors] = useState({});
 
+  const availableRooms = useMemo(() => {
+    const roomsSource = rooms || INITIAL_ROOMS;
+    const selectedHotelName = mapHotelName(bookingFormData.hotel);
+    const selectedType = bookingFormData.roomType;
+    
+    const matchedRooms = roomsSource.filter(room => {
+      return room.hotel === selectedHotelName && doesRoomTypeMatch(selectedType, room.roomType);
+    });
+    
+    const filtered = matchedRooms.filter(room => {
+      const currentAlloc = isEditing ? allocations.find(a => a.id === editingId) : null;
+      const isCurrentRoomOfBooking = currentAlloc && currentAlloc.hotel === bookingFormData.hotel && currentAlloc.roomNumber === room.roomNumber;
+      
+      if (room.status !== 'Available' && !isCurrentRoomOfBooking) return false;
+      
+      const isAllocated = allocations.some(alloc => {
+        if (isEditing && alloc.id === editingId) return false;
+        return alloc.hotel === bookingFormData.hotel && alloc.roomNumber === room.roomNumber;
+      });
+      
+      return !isAllocated;
+    });
+    
+    return [...filtered].sort((a, b) => {
+      return a.roomNumber.localeCompare(b.roomNumber, undefined, { numeric: true, sensitivity: 'base' });
+    });
+  }, [rooms, bookingFormData.hotel, bookingFormData.roomType, allocations, isEditing, editingId]);
+
+  useEffect(() => {
+    const isValidRoom = availableRooms.some(r => r.roomNumber === bookingFormData.roomNumber);
+    if (!isValidRoom) {
+      setBookingFormData(prev => ({
+        ...prev,
+        roomNumber: availableRooms.length > 0 ? availableRooms[0].roomNumber : ''
+      }));
+    }
+  }, [availableRooms, bookingFormData.roomNumber]);
+
+  useEffect(() => {
+    setFormErrors(prev => {
+      const errors = { ...prev };
+      
+      if (bookingFormData.checkIn && bookingFormData.checkOut) {
+        if (new Date(bookingFormData.checkOut) < new Date(bookingFormData.checkIn)) {
+          errors.checkOut = 'Check-out date cannot be earlier than check-in date';
+        } else {
+          if (errors.checkOut === 'Check-out date cannot be earlier than check-in date' || errors.checkOut === 'Check-out must be after check-in') {
+            delete errors.checkOut;
+          }
+        }
+      }
+      
+      if (bookingFormData.guestName.trim()) {
+        delete errors.guestName;
+      }
+      if (bookingFormData.roomNumber) {
+        delete errors.roomNumber;
+      }
+      if (bookingFormData.checkIn) {
+        delete errors.checkIn;
+      }
+      if (bookingFormData.checkOut) {
+        delete errors.checkOut;
+      }
+      
+      return errors;
+    });
+  }, [bookingFormData.guestName, bookingFormData.roomNumber, bookingFormData.checkIn, bookingFormData.checkOut]);
+
+  const isFormValid = useMemo(() => {
+    const hasGuestName = !!bookingFormData.guestName.trim();
+    const hasRoomNumber = !!bookingFormData.roomNumber;
+    const hasCheckIn = !!bookingFormData.checkIn;
+    const hasCheckOut = !!bookingFormData.checkOut;
+    const isDateRangeValid = hasCheckIn && hasCheckOut && new Date(bookingFormData.checkOut) >= new Date(bookingFormData.checkIn);
+    
+    return hasGuestName && hasRoomNumber && hasCheckIn && hasCheckOut && isDateRangeValid;
+  }, [bookingFormData.guestName, bookingFormData.roomNumber, bookingFormData.checkIn, bookingFormData.checkOut]);
+
   // VIP Quick view (Assign toggle/status indicator dots helper)
-  const [vipFilterOnly, setVipFilterOnly] = useState(false);
+  const [showAllVips, setShowAllVips] = useState(false);
 
   // Utility to format dates for visual presentation: 'Oct 14, 2023'
   const formatDateString = (dateStr) => {
@@ -198,6 +318,88 @@ export default function Hotels({ isBookRoomOpen, setIsBookRoomOpen }) {
     if (isNaN(date.getTime())) return dateStr;
     const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     return `${months[date.getMonth()]} ${date.getDate()}, ${date.getFullYear()}`;
+  };
+
+  // Local date formatting helper to avoid timezone offset conversion issues
+  const toLocalDateString = (date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
+  // Helper to format date range string for presentation (e.g. 'Oct 12 - Oct 18, 2023')
+  const formatDateRangeString = (startStr, endStr) => {
+    if (!startStr && !endStr) return 'All Dates';
+    if (!startStr) return `Until ${formatDateString(endStr)}`;
+    if (!endStr) return `From ${formatDateString(startStr)}`;
+    
+    const startDate = new Date(startStr);
+    const endDate = new Date(endStr);
+    if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+      return `${startStr} - ${endStr}`;
+    }
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    
+    const startMonth = months[startDate.getMonth()];
+    const startDay = startDate.getDate();
+    const startYear = startDate.getFullYear();
+    
+    const endMonth = months[endDate.getMonth()];
+    const endDay = endDate.getDate();
+    const endYear = endDate.getFullYear();
+    
+    if (startYear === endYear) {
+      return `${startMonth} ${startDay} - ${endMonth} ${endDay}, ${startYear}`;
+    }
+    return `${startMonth} ${startDay}, ${startYear} - ${endMonth} ${endDay}, ${endYear}`;
+  };
+
+  const getTodayDateStr = () => {
+    return toLocalDateString(new Date());
+  };
+
+  const getThisWeekRange = () => {
+    const today = new Date();
+    const currentDay = today.getDay(); // 0 Sunday, 1 Monday, etc.
+    const startOfWeek = new Date(today);
+    const distanceToMonday = currentDay === 0 ? 6 : currentDay - 1;
+    startOfWeek.setDate(today.getDate() - distanceToMonday);
+
+    const endOfWeek = new Date(startOfWeek);
+    endOfWeek.setDate(startOfWeek.getDate() + 6); // Sunday
+
+    return {
+      start: toLocalDateString(startOfWeek),
+      end: toLocalDateString(endOfWeek)
+    };
+  };
+
+  const getThisMonthRange = () => {
+    const today = new Date();
+    const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+    const endOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+    return {
+      start: toLocalDateString(startOfMonth),
+      end: toLocalDateString(endOfMonth)
+    };
+  };
+
+  const handleOpenDatePicker = () => {
+    setTempStartDate(filterStartDate || '');
+    setTempEndDate(filterEndDate || '');
+    setDateError('');
+    setIsDatePickerOpen(true);
+  };
+
+  const handleApplyDatePicker = () => {
+    if (tempStartDate && tempEndDate && new Date(tempStartDate) > new Date(tempEndDate)) {
+      setDateError('Start date must be on or before end date.');
+      return;
+    }
+    setFilterStartDate(tempStartDate);
+    setFilterEndDate(tempEndDate);
+    setIsDatePickerOpen(false);
   };
 
   // Close actions dropdown when clicking elsewhere
@@ -209,13 +411,35 @@ export default function Hotels({ isBookRoomOpen, setIsBookRoomOpen }) {
     return () => window.removeEventListener('click', handleOutsideClick);
   }, []);
 
+  // Filter allocations by date range (overlap query with fallback)
+  const dateFilteredAllocations = useMemo(() => {
+    return allocations.filter(a => {
+      // Graceful Fallback: if any allocation lacks check-in/check-out dates, include it
+      if (!a.checkIn || !a.checkOut) return true;
+
+      // If active date range filters are not set, include all allocations
+      if (!filterStartDate && !filterEndDate) return true;
+
+      const checkInStr = a.checkIn;
+      const checkOutStr = a.checkOut;
+
+      if (filterStartDate && !filterEndDate) {
+        return checkOutStr >= filterStartDate;
+      }
+      if (!filterStartDate && filterEndDate) {
+        return checkInStr <= filterEndDate;
+      }
+      return checkInStr <= filterEndDate && checkOutStr >= filterStartDate;
+    });
+  }, [allocations, filterStartDate, filterEndDate]);
+
   // Recalculated metrics dynamically based on bookings list
   const metrics = useMemo(() => {
     const totalRooms = 500;
-    const assignedCount = 380 + allocations.length * 2.5; // Scaled base + current
+    const assignedCount = 380 + dateFilteredAllocations.length * 2.5; // Scaled base + current
     const occupancyPercent = ((assignedCount / totalRooms) * 100).toFixed(1);
-    const unassignedCount = Math.max(0, 112 - allocations.length);
-    const vipBooked = allocations.filter(a => a.roomType === 'Suite' || a.roomType === 'Penthouse').length + 6;
+    const unassignedCount = Math.max(0, 112 - dateFilteredAllocations.length);
+    const vipBooked = dateFilteredAllocations.filter(a => a.roomType === 'Suite' || a.roomType === 'Penthouse').length + 6;
 
     return {
       occupancy: `${occupancyPercent}%`,
@@ -225,21 +449,21 @@ export default function Hotels({ isBookRoomOpen, setIsBookRoomOpen }) {
       vipBooked: Math.min(15, vipBooked),
       vipTotal: 15
     };
-  }, [allocations]);
+  }, [dateFilteredAllocations]);
 
   // Recalculated Hotels utilization chart values dynamically
   const updatedHotelsChart = useMemo(() => {
     return hotelsData.map(h => {
-      const matchCount = allocations.filter(a => a.hotel === h.name).length;
+      const matchCount = dateFilteredAllocations.filter(a => a.hotel === h.name).length;
       // occupancy adjusts based on counts
       const dynamicOcc = Math.min(100, Math.max(10, h.occupancy + (matchCount - 2) * 5));
       return { ...h, occupancy: dynamicOcc };
     });
-  }, [allocations, hotelsData]);
+  }, [dateFilteredAllocations, hotelsData]);
 
   // Filter logic
   const filteredAllocations = useMemo(() => {
-    return allocations.filter(item => {
+    return dateFilteredAllocations.filter(item => {
       // Search match (Guest Name, Hotel Name, Room Number)
       const matchesSearch = searchQuery.trim() === '' || 
         item.guestName.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -256,12 +480,9 @@ export default function Hotels({ isBookRoomOpen, setIsBookRoomOpen }) {
       // Status Dropdown match
       const matchesStatus = selectedStatus === 'All Status' || item.status === selectedStatus;
 
-      // VIP only toggle
-      const matchesVip = !vipFilterOnly || item.roomType === 'Suite' || item.roomType === 'Penthouse';
-
-      return matchesSearch && matchesHotel && matchesRoomType && matchesStatus && matchesVip;
+      return matchesSearch && matchesHotel && matchesRoomType && matchesStatus;
     });
-  }, [allocations, searchQuery, selectedHotel, selectedRoomType, selectedStatus, vipFilterOnly]);
+  }, [dateFilteredAllocations, searchQuery, selectedHotel, selectedRoomType, selectedStatus]);
 
   // Pagination slice
   const paginatedAllocations = useMemo(() => {
@@ -271,10 +492,9 @@ export default function Hotels({ isBookRoomOpen, setIsBookRoomOpen }) {
 
   const totalPages = Math.ceil(filteredAllocations.length / itemsPerPage) || 1;
 
-  // Handle page resets when filtering
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, selectedHotel, selectedRoomType, selectedStatus, vipFilterOnly]);
+  }, [searchQuery, selectedHotel, selectedRoomType, selectedStatus, filterStartDate, filterEndDate]);
 
   // Export report as CSV file
   const handleExportCSV = () => {
@@ -386,10 +606,9 @@ export default function Hotels({ isBookRoomOpen, setIsBookRoomOpen }) {
 
   // VIP Quick selection profiles (Top list matching visual design)
   const vipAllocationsList = useMemo(() => {
-    return allocations
-      .filter(a => a.roomType === 'Suite' || a.roomType === 'Penthouse')
-      .slice(0, 3);
-  }, [allocations]);
+    const list = dateFilteredAllocations.filter(a => a.roomType === 'Suite' || a.roomType === 'Penthouse');
+    return showAllVips ? list : list.slice(0, 3);
+  }, [dateFilteredAllocations, showAllVips]);
 
   return (
     <div className="hotels-container">
@@ -404,15 +623,15 @@ export default function Hotels({ isBookRoomOpen, setIsBookRoomOpen }) {
         </div>
 
         <div className="hotels-header-actions">
-          {/* Calendar Picker Mock */}
-          <button type="button" className="date-picker-trigger" onClick={() => alert('Opening calendar date range selector...')}>
+          {/* Calendar Picker */}
+          <button type="button" className="date-picker-trigger" onClick={handleOpenDatePicker}>
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
               <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
               <line x1="16" y1="2" x2="16" y2="6" />
               <line x1="8" y1="2" x2="8" y2="6" />
               <line x1="3" y1="10" x2="21" y2="10" />
             </svg>
-            <span>Oct 12 - Oct 18, 2023</span>
+            <span>{formatDateRangeString(filterStartDate, filterEndDate)}</span>
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
               <polyline points="6 9 12 15 18 9" />
             </svg>
@@ -427,6 +646,32 @@ export default function Hotels({ isBookRoomOpen, setIsBookRoomOpen }) {
             </svg>
             <span>Export Report</span>
           </button>
+
+          {/* Book Room Button */}
+        <button
+              type="button"
+              className="btn-hotels-primary"
+              onClick={() => {
+                setBookingFormData(prev => ({
+                  ...prev,
+                  checkIn: prev.checkIn || filterStartDate,
+                  checkOut: prev.checkOut || filterEndDate
+                }));
+                setIsBookRoomOpen(true);
+              }}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '0.5rem',
+                height: '38px',
+                padding: '0 1.25rem',
+                borderRadius: '12px',
+                fontSize: '0.85rem'
+              }}
+            >
+              Book Room
+            </button>
         </div>
       </header>
 
@@ -517,15 +762,6 @@ export default function Hotels({ isBookRoomOpen, setIsBookRoomOpen }) {
                 <path d="M6 12 12 2l6 10-6 10z" />
               </svg>
             </div>
-            {/* Slide Toggle Slider */}
-            <label className="switch-toggle" title="Toggle VIP filter only">
-              <input 
-                type="checkbox" 
-                checked={vipFilterOnly} 
-                onChange={(e) => setVipFilterOnly(e.target.checked)} 
-              />
-              <span className="switch-slider"></span>
-            </label>
           </div>
           <div className="metric-card-body">
             <h3>VIP Suites Booked</h3>
@@ -581,12 +817,9 @@ export default function Hotels({ isBookRoomOpen, setIsBookRoomOpen }) {
             <h2>VIP Allocations</h2>
             <span 
               className="vip-view-all" 
-              onClick={() => {
-                setVipFilterOnly(!vipFilterOnly);
-                setSelectedRoomType(vipFilterOnly ? 'Room Type' : 'Suite');
-              }}
+              onClick={() => setShowAllVips(!showAllVips)}
             >
-              {vipFilterOnly ? 'Show All' : 'View All'}
+              {showAllVips ? 'Show Less' : 'View All'}
             </span>
           </div>
 
@@ -763,7 +996,7 @@ export default function Hotels({ isBookRoomOpen, setIsBookRoomOpen }) {
                             setActiveActionsRowId(null);
                           }}
                         >
-                          {item.status === 'Checked-In' ? '⚠️ Confirm Booking' : '✅ Check-In'}
+                          {item.status === 'Checked-In' ? 'Confirm Booking' : 'Check-In'}
                         </button>
                         <button 
                           type="button" 
@@ -773,7 +1006,7 @@ export default function Hotels({ isBookRoomOpen, setIsBookRoomOpen }) {
                             setActiveActionsRowId(null);
                           }}
                         >
-                          ✏️ Edit Allocation
+                          Edit Allocation
                         </button>
                         <button 
                           type="button" 
@@ -783,7 +1016,7 @@ export default function Hotels({ isBookRoomOpen, setIsBookRoomOpen }) {
                             setActiveActionsRowId(null);
                           }}
                         >
-                          ❌ Delete Allocation
+                          Delete Allocation
                         </button>
                       </div>
                     )}
@@ -895,17 +1128,34 @@ export default function Hotels({ isBookRoomOpen, setIsBookRoomOpen }) {
                   </select>
                 </div>
 
-                {/* Room Number field */}
+                {/* Room Number selector dropdown */}
                 <div className="hotels-form-group">
                   <label htmlFor="roomNumber">Room Number</label>
-                  <input
-                    type="text"
+                  <select
                     id="roomNumber"
                     className="hotels-form-input"
-                    placeholder="e.g. 412A"
                     value={bookingFormData.roomNumber}
                     onChange={(e) => setBookingFormData({ ...bookingFormData, roomNumber: e.target.value })}
-                  />
+                    disabled={availableRooms.length === 0}
+                  >
+                    {availableRooms.length === 0 ? (
+                      <option value="">No Rooms Available</option>
+                    ) : (
+                      <>
+                        <option value="">-- Select Room --</option>
+                        {availableRooms.map(room => (
+                          <option key={room.id} value={room.roomNumber}>
+                            {room.roomNumber} — {room.roomType}
+                          </option>
+                        ))}
+                      </>
+                    )}
+                  </select>
+                  {availableRooms.length === 0 && (
+                    <span className="hotels-form-error" style={{ color: '#ef4444', fontSize: '0.75rem', marginTop: '0.25rem', display: 'block' }}>
+                      No available rooms found for the selected hotel and room type.
+                    </span>
+                  )}
                   {formErrors.roomNumber && <span className="hotels-form-error">{formErrors.roomNumber}</span>}
                 </div>
 
@@ -960,6 +1210,7 @@ export default function Hotels({ isBookRoomOpen, setIsBookRoomOpen }) {
                     type="date"
                     id="checkOut"
                     className="hotels-form-input"
+                    min={bookingFormData.checkIn}
                     value={bookingFormData.checkOut}
                     onChange={(e) => setBookingFormData({ ...bookingFormData, checkOut: e.target.value })}
                   />
@@ -980,11 +1231,153 @@ export default function Hotels({ isBookRoomOpen, setIsBookRoomOpen }) {
               >
                 Cancel
               </button>
-              <button type="submit" className="btn-hotels-primary">
+              <button 
+                type="submit" 
+                className="btn-hotels-primary"
+                disabled={availableRooms.length === 0 || !isFormValid}
+                style={{
+                  cursor: (availableRooms.length === 0 || !isFormValid) ? 'not-allowed' : 'pointer',
+                  opacity: (availableRooms.length === 0 || !isFormValid) ? 0.6 : 1,
+                  background: (availableRooms.length === 0 || !isFormValid) ? '#cbd5e1' : undefined,
+                  boxShadow: (availableRooms.length === 0 || !isFormValid) ? 'none' : undefined
+                }}
+              >
                 {isEditing ? 'Save Changes' : 'Confirm Allocation'}
               </button>
             </div>
           </form>
+        </div>
+      )}
+
+      {/* Date Range Picker Modal */}
+      {isDatePickerOpen && (
+        <div className="hotels-modal-overlay" onClick={() => setIsDatePickerOpen(false)}>
+          <div className="hotels-modal-container" style={{ maxWidth: '420px' }} onClick={(e) => e.stopPropagation()}>
+            <div className="hotels-modal-header">
+              <h2>Select Date Range</h2>
+              <button 
+                type="button" 
+                className="btn-hotels-modal-close"
+                onClick={() => setIsDatePickerOpen(false)}
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <line x1="18" y1="6" x2="6" y2="18"></line>
+                  <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+              </button>
+            </div>
+
+            <div className="hotels-modal-body">
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                {dateError && (
+                  <div className="hotels-form-error" style={{ fontSize: '0.85rem', marginBottom: '0.5rem', fontWeight: 600 }}>
+                    ⚠️ {dateError}
+                  </div>
+                )}
+                <div className="hotels-form-group">
+                  <label htmlFor="filterStartDate">Start Date</label>
+                  <input
+                    type="date"
+                    id="filterStartDate"
+                    className="hotels-form-input"
+                    value={tempStartDate}
+                    onChange={(e) => setTempStartDate(e.target.value)}
+                  />
+                </div>
+                <div className="hotels-form-group">
+                  <label htmlFor="filterEndDate">End Date</label>
+                  <input
+                    type="date"
+                    id="filterEndDate"
+                    className="hotels-form-input"
+                    value={tempEndDate}
+                    onChange={(e) => setTempEndDate(e.target.value)}
+                  />
+                </div>
+                
+                {/* Presets */}
+                <div style={{ marginTop: '0.5rem' }}>
+                  <label style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: '0.5rem' }}>Presets</label>
+                  <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                    <button
+                      type="button"
+                      className="btn-hotels-secondary"
+                      style={{ padding: '0.35rem 0.75rem', fontSize: '0.75rem', borderRadius: '8px' }}
+                      onClick={() => {
+                        setTempStartDate(getTodayDateStr());
+                        setTempEndDate(getTodayDateStr());
+                      }}
+                    >
+                      Today
+                    </button>
+                    <button
+                      type="button"
+                      className="btn-hotels-secondary"
+                      style={{ padding: '0.35rem 0.75rem', fontSize: '0.75rem', borderRadius: '8px' }}
+                      onClick={() => {
+                        const week = getThisWeekRange();
+                        setTempStartDate(week.start);
+                        setTempEndDate(week.end);
+                      }}
+                    >
+                      This Week
+                    </button>
+                    <button
+                      type="button"
+                      className="btn-hotels-secondary"
+                      style={{ padding: '0.35rem 0.75rem', fontSize: '0.75rem', borderRadius: '8px' }}
+                      onClick={() => {
+                        const month = getThisMonthRange();
+                        setTempStartDate(month.start);
+                        setTempEndDate(month.end);
+                      }}
+                    >
+                      This Month
+                    </button>
+                    <button
+                      type="button"
+                      className="btn-hotels-secondary"
+                      style={{ padding: '0.35rem 0.75rem', fontSize: '0.75rem', borderRadius: '8px' }}
+                      onClick={() => {
+                        setTempStartDate('2023-10-12');
+                        setTempEndDate('2023-10-18');
+                      }}
+                    >
+                      Default Event Week
+                    </button>
+                    <button
+                      type="button"
+                      className="btn-hotels-secondary"
+                      style={{ padding: '0.35rem 0.75rem', fontSize: '0.75rem', borderRadius: '8px' }}
+                      onClick={() => {
+                        setTempStartDate('');
+                        setTempEndDate('');
+                      }}
+                    >
+                      All Dates
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="hotels-modal-footer">
+              <button 
+                type="button" 
+                className="btn-hotels-secondary"
+                onClick={() => setIsDatePickerOpen(false)}
+              >
+                Cancel
+              </button>
+              <button 
+                type="button" 
+                className="btn-hotels-primary"
+                onClick={handleApplyDatePicker}
+              >
+                Apply Range
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
