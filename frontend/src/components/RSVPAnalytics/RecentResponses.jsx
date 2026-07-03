@@ -1,11 +1,101 @@
 import React, { useState, useEffect, useRef } from 'react';
 
+const CustomDropdown = ({ value, options, onChange, width = '150px' }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const ref = useRef(null);
+
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (ref.current && !ref.current.contains(event.target)) {
+        setIsOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const selectedOption = options.find(o => o.value === value) || options[0];
+
+  return (
+    <div style={{ position: 'relative', width }} ref={ref}>
+      <button 
+        type="button"
+        onClick={() => setIsOpen(!isOpen)}
+        style={{
+          width: '100%',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          padding: '0.375rem 0.75rem',
+          backgroundColor: '#fff',
+          border: '1px solid var(--border-color)',
+          borderRadius: '6px',
+          fontSize: '0.8rem',
+          color: 'var(--text-main)',
+          cursor: 'pointer',
+          boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+          transition: 'all 0.2s',
+          outline: isOpen ? '2px solid var(--primary-color)' : 'none',
+        }}
+      >
+        <span>{selectedOption.label}</span>
+        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" style={{ color: '#94a3b8', transform: isOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+
+      {isOpen && (
+        <div style={{
+          position: 'absolute',
+          top: '100%',
+          left: 0,
+          right: 0,
+          marginTop: '4px',
+          backgroundColor: '#fff',
+          border: '1px solid var(--border-color)',
+          borderRadius: '6px',
+          boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+          zIndex: 50,
+          maxHeight: '250px',
+          overflowY: 'auto',
+          padding: '4px 0'
+        }}>
+          {options.map((opt) => (
+            <div 
+              key={opt.value}
+              onClick={() => { onChange(opt.value); setIsOpen(false); }}
+              style={{
+                padding: '6px 12px',
+                fontSize: '0.8rem',
+                cursor: 'pointer',
+                backgroundColor: value === opt.value ? 'var(--bg-hover)' : 'transparent',
+                color: value === opt.value ? 'var(--primary-color)' : 'var(--text-main)',
+                transition: 'background-color 0.15s',
+              }}
+              onMouseEnter={(e) => {
+                if (value !== opt.value) e.target.style.backgroundColor = 'var(--bg-hover)';
+              }}
+              onMouseLeave={(e) => {
+                if (value !== opt.value) e.target.style.backgroundColor = 'transparent';
+              }}
+            >
+              {opt.label}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
 export default function RecentResponses({ responses, searchQuery, setSearchQuery, onViewAllGuests, onDeleteGuest, onEditGuestStatus }) {
   const [selectedCategory, setSelectedCategory] = useState('All');
+  const [selectedStatus, setSelectedStatus] = useState('All');
   const [activeMenuId, setActiveMenuId] = useState(null);
   const [actionModal, setActionModal] = useState(null); // 'view', 'edit', null
   const [activeGuest, setActiveGuest] = useState(null);
   const [editStatus, setEditStatus] = useState('');
+  const [isExpanded, setIsExpanded] = useState(false);
   const menuRef = useRef(null);
 
   // Close dropdown when clicking outside
@@ -54,14 +144,25 @@ export default function RecentResponses({ responses, searchQuery, setSearchQuery
   };
 
   const filteredResponses = responses.filter(r => {
-    const matchesCat = selectedCategory === 'All' || r.category === selectedCategory;
-    const matchesSearch = !searchQuery || 
-      (r.name && r.name.toLowerCase().includes(searchQuery.toLowerCase())) || 
+const matchesCat = selectedCategory === 'All' || r.category === selectedCategory;
+
+const rsvpStatus = r.status?.toLowerCase();
+const normalizedStatus =
+  (rsvpStatus === 'accepted' || rsvpStatus === 'confirmed')
+    ? 'Accepted'
+    : (rsvpStatus === 'declined' ? 'Declined' : 'Pending');
+
+const matchesStatus =
+  selectedStatus === 'All' || normalizedStatus === selectedStatus;
+
+    const matchesSearch = !searchQuery ||
+      (r.name && r.name.toLowerCase().includes(searchQuery.toLowerCase())) ||
       (r.email && r.email.toLowerCase().includes(searchQuery.toLowerCase()));
-    return matchesCat && matchesSearch;
+
+    return matchesCat && matchesStatus && matchesSearch;
   });
 
-  const displayedResponses = filteredResponses.slice(0, 10);
+  const displayedResponses = isExpanded ? filteredResponses : filteredResponses.slice(0, 10);
 
   return (
     <div className="recent-responses-card">
@@ -88,27 +189,34 @@ export default function RecentResponses({ responses, searchQuery, setSearchQuery
             />
           </div>
 
-          <select
-            className="dropdown-styled"
-            style={{ padding: '0.375rem 2rem 0.375rem 0.75rem', fontSize: '0.8rem' }}
-            value={selectedCategory}
-            onChange={(e) => setSelectedCategory(e.target.value)}
-          >
-            <option value="All">All Categories</option>
-            <option value="VIP">VIP</option>
-            <option value="Speaker">Speaker</option>
-            <option value="Family">Family</option>
-            <option value="Corporate">Corporate</option>
-            <option value="Sponsor">Sponsor</option>
-            <option value="Media">Media</option>
-            <option value="Staff">Staff</option>
-            <option value="Standard">Standard</option>
-          </select>
-          <button type="button" className="control-btn" style={{ width: '32px', height: '32px' }} onClick={() => alert('Filter clicked.')}>
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" style={{ width: '16px', height: '16px' }}>
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
-            </svg>
-          </button>
+<CustomDropdown
+  width="160px"
+  value={selectedCategory}
+  onChange={setSelectedCategory}
+  options={[
+    { value: 'All', label: 'All Categories' },
+    { value: 'VIP', label: 'VIP' },
+    { value: 'Speaker', label: 'Speaker' },
+    { value: 'Family', label: 'Family' },
+    { value: 'Corporate', label: 'Corporate' },
+    { value: 'Sponsor', label: 'Sponsor' },
+    { value: 'Media', label: 'Media' },
+    { value: 'Staff', label: 'Staff' },
+    { value: 'Standard', label: 'Standard' }
+  ]}
+/>
+
+<CustomDropdown
+  width="140px"
+  value={selectedStatus}
+  onChange={setSelectedStatus}
+  options={[
+    { value: 'All', label: 'All Status' },
+    { value: 'Accepted', label: 'Accepted' },
+    { value: 'Declined', label: 'Declined' },
+    { value: 'Pending', label: 'Pending' }
+  ]}
+/>
         </div>
       </div>
 
@@ -142,7 +250,12 @@ export default function RecentResponses({ responses, searchQuery, setSearchQuery
                   </div>
                 </td>
                 <td>
-                  <span className={`guest-badge ${row.category?.toLowerCase() === 'vip' ? 'vip' : 'bridal-party'}`}>
+                  <span className={`guest-badge ${
+                    row.category?.toLowerCase() === 'vip' ? 'vip' :
+                    row.category?.toLowerCase() === 'speaker' ? 'speaker' :
+                    row.category?.toLowerCase() === 'family' ? 'bridal-party' :
+                    'primary-guest'
+                  }`}>
                     {row.category}
                   </span>
                 </td>
@@ -156,18 +269,18 @@ export default function RecentResponses({ responses, searchQuery, setSearchQuery
                   {row.responseDate}
                 </td>
                 <td style={{ position: 'relative' }}>
-                  <button 
-                    type="button" 
-                    className="btn-icon" 
+                  <button
+                    type="button"
+                    className="btn-icon"
                     onClick={() => setActiveMenuId(activeMenuId === row.id ? null : row.id)}
                   >
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" style={{ width: '16px', height: '16px' }}>
                       <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />
                     </svg>
                   </button>
-                  
+
                   {activeMenuId === row.id && (
-                    <div 
+                    <div
                       ref={menuRef}
                       style={{
                         position: 'absolute',
@@ -194,7 +307,7 @@ export default function RecentResponses({ responses, searchQuery, setSearchQuery
             ))}
           </tbody>
         </table>
-        
+
         {filteredResponses.length === 0 && (
           <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-light)', fontSize: '0.9rem' }}>
             No guests found matching your search.
@@ -203,9 +316,11 @@ export default function RecentResponses({ responses, searchQuery, setSearchQuery
       </div>
 
       <div className="recent-responses-footer">
-        <span className="recent-responses-footer-link" onClick={onViewAllGuests}>
-          View All Guests
-        </span>
+        {filteredResponses.length > 10 && (
+          <span className="recent-responses-footer-link" onClick={() => setIsExpanded(!isExpanded)}>
+            {isExpanded ? 'Show Less Guests' : 'View All Guests'}
+          </span>
+        )}
       </div>
 
       {/* View Details Modal */}
@@ -232,9 +347,9 @@ export default function RecentResponses({ responses, searchQuery, setSearchQuery
             <h2 style={{ marginBottom: '1.5rem', fontSize: '1.2rem', color: '#1e293b' }}>Edit RSVP Status</h2>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '1.5rem' }}>
               <label style={{ fontSize: '0.9rem', color: '#475569', fontWeight: '500' }}>Status for {activeGuest.name}</label>
-              <select 
-                className="dropdown-styled" 
-                value={editStatus} 
+              <select
+                className="dropdown-styled"
+                value={editStatus}
                 onChange={(e) => setEditStatus(e.target.value)}
                 style={{ padding: '0.5rem', width: '100%' }}
               >

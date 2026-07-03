@@ -180,7 +180,6 @@
   width: 28px;
   border-radius: var(--radius-sm) var(--radius-sm) 0 0;
   background-color: currentColor;
-  min-height: 4px;
   transition: height 0.8s cubic-bezier(0.16, 1, 0.3, 1);
   position: relative;
   cursor: pointer;

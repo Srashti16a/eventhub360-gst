@@ -26,7 +26,7 @@ export default function CategoryChart({ categories, guestsCount }) {
       <div className="distribution-layout">
         {/* Left Side List */}
         <div className="distribution-list">
-          {categories.slice(0, 3).map((cat) => (
+          {categories.map((cat) => (
             <div key={cat.id} className="distribution-list-item">
               <div className="dist-label">
                 <span
@@ -43,7 +43,9 @@ export default function CategoryChart({ categories, guestsCount }) {
         {/* Right Side Column Bar Chart */}
         <div className="chart-container">
           {categories.map((cat) => {
-            const barHeightPercentage = (cat.count / maxCount) * 100;
+            const rawPercentage = (cat.count / maxCount) * 100;
+            // Bug 2 Fix: set a minimum visible bar height of 8% for any category with at least 1 guest
+            const barHeightPercentage = cat.count === 0 ? 0 : Math.max(rawPercentage, 8);
             const barColor = getColorClass(cat.abbr);
             return (
               <div key={cat.id} className="chart-column">
@@ -55,8 +57,8 @@ export default function CategoryChart({ categories, guestsCount }) {
                 <div
                   className="chart-bar-fill"
                   style={{
-                    height: `${Math.max(barHeightPercentage, 4)}%`,
-                    color: barColor
+                    height: `${barHeightPercentage}%`,
+                    backgroundColor: barColor
                   }}
                 ></div>
                 {/* Abbreviation label */}
