@@ -59,6 +59,9 @@ model Guest {
   table           Table?             @relation(fields: [tableId], references: [id])
   seatNumber      Int?
   
+  groupId         String?
+  group           GuestGroup?        @relation(fields: [groupId], references: [id], onDelete: SetNull)
+  
   transfers       TransferSchedule[]
   
   createdAt       DateTime           @default(now())
@@ -194,3 +197,20 @@ model RouteOptimizationLog {
   generatedBy        String
   createdAt          DateTime @default(now())
 }
+
+model GuestGroup {
+  id                 String   @id @default(uuid())
+  name               String
+  category           String
+  status             String   @default("Active") // "Active", "Draft", "Archived"
+  primaryGuestId     String?
+  location           String?
+  transportation     String?
+  specialRequirement String?
+  
+  members            Guest[]
+  
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+}
+

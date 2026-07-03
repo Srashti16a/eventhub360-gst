@@ -58,6 +58,7 @@ async function main() {
   });
 
   // Parent tables
+  await prisma.guestGroup.deleteMany({ where: { name: { startsWith: '[Demo]' } } });
   await prisma.guest.deleteMany({ where: { email: { endsWith: '@demoseed.com' } } });
   await prisma.event.deleteMany({ where: { title: { startsWith: '[Demo]' } } });
   await prisma.hotel.deleteMany({ where: { name: { startsWith: '[Demo]' } } });
@@ -98,6 +99,30 @@ async function main() {
   const tableBeta = await prisma.table.create({ data: { name: '[Demo] Table Beta', capacity: 8 } });
   const tableGamma = await prisma.table.create({ data: { name: '[Demo] Table Gamma', capacity: 8 } });
   const demoTables = [tableAlpha, tableBeta, tableGamma];
+
+  // 5b. Create Demo Guest Groups
+  console.log('Creating demo guest groups...');
+  const groupExecutive = await prisma.guestGroup.create({
+    data: {
+      name: '[Demo] Vanderbilt Family',
+      category: 'Family',
+      status: 'Active',
+      location: 'New York, USA',
+      transportation: 'Private Fleet',
+      specialRequirement: 'Arthur requires early check-in (before 11 AM) for allergy storage.'
+    }
+  });
+
+  const groupLuxury = await prisma.guestGroup.create({
+    data: {
+      name: '[Demo] Global Tech Partners',
+      category: 'Corporate',
+      status: 'Active',
+      location: 'San Francisco, USA',
+      transportation: 'Shuttle Bus',
+      specialRequirement: 'Requires standard corporate group invoice at departure.'
+    }
+  });
 
   // 6. Create Demo Guests (~60 guests)
   console.log('Generating 60 demo guests...');
@@ -141,7 +166,8 @@ async function main() {
       eventId: eventExecutive.id,
       assignedHotelId: hotel ? hotel.id : null,
       tableId: table ? table.id : null,
-      seatNumber
+      seatNumber,
+      groupId: i <= 4 ? groupExecutive.id : null
     });
   }
 
@@ -158,20 +184,37 @@ async function main() {
       email: `${name.toLowerCase().replace(/\s+/g, '.')}@demoseed.com`,
       phone: `+1 (555) 911-${2000 + i}`,
       status,
-      isVip,
       isSpeaker: false,
       isBridalParty: false,
       isPrimaryGuest: isVip,
       eventId: eventLuxury.id,
       assignedHotelId: hotel ? hotel.id : null,
       tableId: null,
-      seatNumber: null
+      seatNumber: null,
+      groupId: i <= 4 ? groupLuxury.id : null
     });
   }
 
   // Bulk create in database
   for (const g of guestsToCreate) {
     await prisma.guest.create({ data: g });
+  }
+
+  // Update primary contacts for groups
+  const firstExecGuest = await prisma.guest.findFirst({ where: { groupId: groupExecutive.id } });
+  if (firstExecGuest) {
+    await prisma.guestGroup.update({
+      where: { id: groupExecutive.id },
+      data: { primaryGuestId: firstExecGuest.id }
+    });
+  }
+
+  const firstLuxGuest = await prisma.guest.findFirst({ where: { groupId: groupLuxury.id } });
+  if (firstLuxGuest) {
+    await prisma.guestGroup.update({
+      where: { id: groupLuxury.id },
+      data: { primaryGuestId: firstLuxGuest.id }
+    });
   }
 
   // 7. Create Demo Transportation Module Data
