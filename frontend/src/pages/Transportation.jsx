@@ -1,7 +1,7 @@
-import React, { useState, useMemo, useEffect, useRef } from 'react';
+import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import './Transportation.css';
 import AllocationMatrix from '../components/Transportation/AllocationMatrix';
-import { getDrivers, getTransfers, getActivityLogs, getDashboardOverview, getVehicles } from '../services/transportationService';
+import { getDrivers, getTransfers, getActivityLogs, getDashboardOverview, getVehicles, createDriver, updateDriver, deleteDriver } from '../services/transportationService';
 
 // Initial Seed data for drivers & fleet
 const INITIAL_DRIVERS = [
@@ -166,8 +166,8 @@ export default function Transportation({ activeTab: propActiveTab }) {
       .catch(err => console.error("Error loading events in Transportation:", err));
   }, []);
 
-  // Fetch all overview metrics when active event is loaded/changes
-  useEffect(() => {
+  // Fetch data function
+  const loadData = useCallback(() => {
     if (!activeEvent) return;
 
     Promise.all([
@@ -190,6 +190,7 @@ export default function Transportation({ activeTab: propActiveTab }) {
             return {
               id: d.id,
               driverName: d.fullName,
+              phoneNumber: d.phoneNumber || '',
               driverId: assignedVehicle ? assignedVehicle.licenseNumber : `EH-${100 + index}`,
               avatar: d.fullName.toLowerCase().includes('sarah') 
                 ? 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&auto=format&fit=crop&q=80'
@@ -259,6 +260,13 @@ export default function Transportation({ activeTab: propActiveTab }) {
       .catch(err => console.error("Error loading dynamic transportation data:", err));
   }, [activeEvent]);
 
+  // Sync data on mount and set polling interval to keep everything updated in sync
+  useEffect(() => {
+    loadData();
+    const interval = setInterval(loadData, 5000);
+    return () => clearInterval(interval);
+  }, [loadData]);
+
   // Search filter
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -267,6 +275,15 @@ export default function Transportation({ activeTab: propActiveTab }) {
   const [chatMessages, setChatMessages] = useState({});
   const [typedMessage, setTypedMessage] = useState('');
   const [activeTab, setActiveTab] = useState(propActiveTab || 'overview');
+
+  // Driver modal states
+  const [showDriverModal, setShowDriverModal] = useState(null); // 'add' | 'edit' | null
+  const [editingDriver, setEditingDriver] = useState(null);
+  const [driverForm, setDriverForm] = useState({
+    fullName: '',
+    phoneNumber: '',
+    status: 'Available'
+  });
 
   // Synchronize prop changes to local tab state
   useEffect(() => {
@@ -356,14 +373,10 @@ export default function Transportation({ activeTab: propActiveTab }) {
   }, [selectedDriverForChat, chatMessages]);
 
   // Search and dropdown filter for Drivers table
-  const filteredDrivers = useMemo(() => {
+  const computedDrivers = useMemo(() => {
     return drivers.filter(d => {
       const matchesSearch = searchQuery.trim() === '' ||
-        d.driverName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        d.vehicle.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        d.driverId.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        d.status.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        d.route.toLowerCase().includes(searchQuery.toLowerCase());
+        d.driverName.toLowerCase().includes(searchQuery.toLowerCase());
 
       const matchesStatus = statusFilter === 'All Statuses' || d.status === statusFilter;
 
@@ -431,6 +444,77 @@ export default function Transportation({ activeTab: propActiveTab }) {
   // Open Chat Dialogue
   const openChatForDriver = (driver) => {
     setSelectedDriverForChat(driver);
+  };
+
+  const handleAddDriverClick = () => {
+    setDriverForm({
+      fullName: '',
+      phoneNumber: '',
+      status: 'Available'
+    });
+    setShowDriverModal('add');
+  };
+
+  const handleEditDriverClick = (driver) => {
+    setEditingDriver(driver);
+    setDriverForm({
+      fullName: driver.driverName,
+      phoneNumber: driver.phoneNumber || '',
+      status: driver.status
+    });
+    setShowDriverModal('edit');
+  };
+
+  const handleDeleteDriverClick = (driver) => {
+    if (window.confirm(`Are you sure you want to delete driver ${driver.driverName}? This will remove their fleet assignments.`)) {
+      deleteDriver(driver.id)
+        .then(res => {
+          if (res.success) {
+            loadData();
+          } else {
+            alert(res.error?.message || 'Failed to delete driver');
+          }
+        })
+        .catch(err => console.error("Error deleting driver:", err));
+    }
+  };
+
+  const handleDriverFormSubmit = (e) => {
+    e.preventDefault();
+    if (!driverForm.fullName.trim()) return;
+
+    if (showDriverModal === 'add') {
+      createDriver({
+        fullName: driverForm.fullName,
+        phoneNumber: driverForm.phoneNumber,
+        status: driverForm.status
+      })
+        .then(res => {
+          if (res.success) {
+            loadData();
+            setShowDriverModal(null);
+          } else {
+            alert(res.error?.message || 'Failed to add driver');
+          }
+        })
+        .catch(err => console.error("Error creating driver:", err));
+    } else if (showDriverModal === 'edit' && editingDriver) {
+      updateDriver(editingDriver.id, {
+        fullName: driverForm.fullName,
+        phoneNumber: driverForm.phoneNumber,
+        status: driverForm.status
+      })
+        .then(res => {
+          if (res.success) {
+            loadData();
+            setShowDriverModal(null);
+            setEditingDriver(null);
+          } else {
+            alert(res.error?.message || 'Failed to update driver');
+          }
+        })
+        .catch(err => console.error("Error updating driver:", err));
+    }
   };
 
   return (
@@ -1032,13 +1116,28 @@ export default function Transportation({ activeTab: propActiveTab }) {
               <span style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', fontSize: '0.8rem' }}>🔍</span>
               <input
                 type="text"
-                placeholder="Search drivers or status..."
+                placeholder="Search drivers..."
                 className="alloc-search-input"
                 style={{ width: '220px', padding: '0.45rem 0.75rem 0.45rem 2rem', borderRadius: '8px', fontSize: '0.8rem' }}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
             </div>
+            <button
+              type="button"
+              className="btn-trans-export"
+              style={{
+                padding: '0.45rem 0.9rem',
+                fontSize: '0.8rem',
+                borderRadius: '8px',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.35rem'
+              }}
+              onClick={handleAddDriverClick}
+            >
+              <span>+ Add Driver</span>
+            </button>
           </div>
         </div>
 
@@ -1055,7 +1154,7 @@ export default function Transportation({ activeTab: propActiveTab }) {
               </tr>
             </thead>
             <tbody>
-              {filteredDrivers.map(item => (
+              {computedDrivers.map(item => (
                 <tr key={item.id}>
                   {/* Driver Profile */}
                   <td>
@@ -1088,21 +1187,40 @@ export default function Transportation({ activeTab: propActiveTab }) {
                   {/* Route details */}
                   <td style={{ fontSize: '0.8rem', color: '#64748b' }}>{item.route}</td>
 
-                  {/* Actions Column triggers Message Dialogue */}
-                  <td style={{ textAlign: 'center' }}>
-                    <button 
-                      type="button" 
-                      className="btn-message-driver" 
-                      title="Direct Message Driver"
-                      onClick={() => openChatForDriver(item)}
-                    >
-                      💬
-                    </button>
+                  {/* Actions Column triggers Message/Edit/Delete Dialogue */}
+                  <td>
+                    <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center', alignItems: 'center' }}>
+                      <button 
+                        type="button" 
+                        className="btn-message-driver" 
+                        title="Edit Driver"
+                        onClick={() => handleEditDriverClick(item)}
+                      >
+                        ✏️
+                      </button>
+                      <button 
+                        type="button" 
+                        className="btn-message-driver" 
+                        title="Delete Driver"
+                        style={{ color: '#ef4444' }}
+                        onClick={() => handleDeleteDriverClick(item)}
+                      >
+                        🗑️
+                      </button>
+                      <button 
+                        type="button" 
+                        className="btn-message-driver" 
+                        title="Direct Message Driver"
+                        onClick={() => openChatForDriver(item)}
+                      >
+                        💬
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
 
-              {filteredDrivers.length === 0 && (
+              {computedDrivers.length === 0 && (
                 <tr>
                   <td colSpan="5" style={{ textAlign: 'center', padding: '3rem', color: '#94a3b8', fontWeight: 600 }}>
                     No driver fleet assignments match criteria.
@@ -1120,61 +1238,7 @@ export default function Transportation({ activeTab: propActiveTab }) {
         <AllocationMatrix 
           eventId={activeEvent.id} 
           onAssignmentUpdate={() => {
-            getDashboardOverview(activeEvent.id).then(overviewRes => {
-              if (overviewRes.success && overviewRes.data) {
-                setDashboardOverview(overviewRes.data);
-                if (overviewRes.data.chartData) {
-                  setChartData(overviewRes.data.chartData);
-                }
-              }
-            });
-            getVehicles().then(vehiclesRes => {
-              if (vehiclesRes.success && vehiclesRes.data) {
-                setVehiclesData(vehiclesRes.data);
-              }
-            });
-            getActivityLogs().then(logsRes => {
-              if (logsRes.success && logsRes.data) {
-                const mappedLogs = logsRes.data.map(l => ({
-                  id: l.id,
-                  title: l.activityType,
-                  desc: l.message,
-                  time: formatLogTime(l.createdAt),
-                  status: l.severity === 'Critical' ? 'red' : l.severity === 'Warning' ? 'orange' : 'green'
-                }));
-                setLogs(mappedLogs);
-              }
-            });
-            getDrivers().then(driversRes => {
-              if (driversRes.success && driversRes.data) {
-                const mappedDrivers = driversRes.data.map((d, index) => {
-                  const assignedVehicle = d.vehicles && d.vehicles[0] ? d.vehicles[0] : null;
-                  const activeTransfer = d.transfers?.find(t => t.status === 'In Transit') || d.transfers?.[0];
-                  const route = activeTransfer 
-                    ? (activeTransfer.route?.routeName || activeTransfer.transferType) 
-                    : (d.status === 'Active' ? 'Airport ➔ Grand Hall' : '—');
-                  const guestNames = d.transfers ? d.transfers.map(t => t.guest?.name).filter(Boolean) : [];
-
-                  return {
-                    id: d.id,
-                    driverName: d.fullName,
-                    driverId: assignedVehicle ? assignedVehicle.licenseNumber : `EH-${100 + index}`,
-                    avatar: d.fullName.toLowerCase().includes('sarah') 
-                      ? 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&auto=format&fit=crop&q=80'
-                      : d.fullName.toLowerCase().includes('james')
-                      ? 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&auto=format&fit=crop&q=80'
-                      : d.fullName.toLowerCase().includes('michael')
-                      ? 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100&auto=format&fit=crop&q=80'
-                      : 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&auto=format&fit=crop&q=80',
-                    vehicle: assignedVehicle ? `${assignedVehicle.name}` : 'Unassigned',
-                    status: d.status,
-                    route,
-                    guestNames
-                  };
-                });
-                setDrivers(mappedDrivers);
-              }
-            });
+            loadData();
           }} 
         />
       )}
@@ -1225,6 +1289,122 @@ export default function Transportation({ activeTab: propActiveTab }) {
                 required
               />
               <button type="submit" className="btn-chat-send">Send</button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Add / Edit Driver Modal */}
+      {showDriverModal && (
+        <div className="chat-overlay" onClick={() => {
+          setShowDriverModal(null);
+          setEditingDriver(null);
+        }}>
+          <div className="chat-box" onClick={e => e.stopPropagation()} style={{ width: '400px' }}>
+            <div className="chat-header">
+              <h3 className="chat-title">{showDriverModal === 'add' ? 'Add New Driver' : 'Edit Driver Details'}</h3>
+              <button 
+                type="button" 
+                className="chat-close-btn"
+                onClick={() => {
+                  setShowDriverModal(null);
+                  setEditingDriver(null);
+                }}
+              >
+                ✕
+              </button>
+            </div>
+            
+            <form onSubmit={handleDriverFormSubmit} style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+                <label style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>Full Name</label>
+                <input
+                  type="text"
+                  required
+                  value={driverForm.fullName}
+                  onChange={e => setDriverForm({ ...driverForm, fullName: e.target.value })}
+                  style={{
+                    padding: '0.6rem 0.75rem',
+                    border: '1px solid #cbd5e1',
+                    borderRadius: '8px',
+                    fontSize: '0.85rem'
+                  }}
+                  placeholder="Enter driver name"
+                />
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+                <label style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>Phone Number</label>
+                <input
+                  type="text"
+                  value={driverForm.phoneNumber}
+                  onChange={e => setDriverForm({ ...driverForm, phoneNumber: e.target.value })}
+                  style={{
+                    padding: '0.6rem 0.75rem',
+                    border: '1px solid #cbd5e1',
+                    borderRadius: '8px',
+                    fontSize: '0.85rem'
+                  }}
+                  placeholder="Enter phone number"
+                />
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+                <label style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>Status</label>
+                <select
+                  value={driverForm.status}
+                  onChange={e => setDriverForm({ ...driverForm, status: e.target.value })}
+                  style={{
+                    padding: '0.6rem 0.75rem',
+                    border: '1px solid #cbd5e1',
+                    borderRadius: '8px',
+                    fontSize: '0.85rem',
+                    backgroundColor: '#ffffff'
+                  }}
+                >
+                  <option value="Available">Available</option>
+                  <option value="Active">Active</option>
+                  <option value="Resting">Resting</option>
+                  <option value="On-Break">On-Break</option>
+                </select>
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1rem' }}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowDriverModal(null);
+                    setEditingDriver(null);
+                  }}
+                  style={{
+                    padding: '0.6rem 1.25rem',
+                    backgroundColor: '#f1f5f9',
+                    border: 'none',
+                    borderRadius: '8px',
+                    fontWeight: 600,
+                    fontSize: '0.85rem',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  style={{
+                    padding: '0.6rem 1.25rem',
+                    background: 'linear-gradient(135deg, #ff7a45 0%, #ff4d4f 100%)',
+                    color: '#ffffff',
+                    border: 'none',
+                    borderRadius: '8px',
+                    fontWeight: 600,
+                    fontSize: '0.85rem',
+                    cursor: 'pointer',
+                    boxShadow: '0 4px 12px rgba(255, 77, 79, 0.2)'
+                  }}
+                >
+                  {showDriverModal === 'add' ? 'Add Driver' : 'Save Changes'}
+                </button>
+              </div>
             </form>
           </div>
         </div>

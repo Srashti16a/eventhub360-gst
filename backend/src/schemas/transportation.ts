@@ -102,3 +102,23 @@ export const updateMaintenanceSchema = z.object({
     cost: z.number().nonnegative().optional(),
   }),
 });
+
+export const createDriverSchema = z.object({
+  body: z.object({
+    fullName: z.string({ required_error: 'fullName is required' }).min(1, 'Name cannot be empty'),
+    phoneNumber: z.string().optional().default(''),
+    status: z.string().optional().default('Available'),
+  }),
+});
+
+export const updateDriverSchema = z.object({
+  params: z.object({
+    id: z.string().uuid('Invalid ID in path'),
+  }),
+  body: z.object({
+    fullName: z.string({ required_error: 'fullName is required' }).min(1, 'Name cannot be empty'),
+    phoneNumber: z.string().optional().default(''),
+    status: z.string().optional().default('Available'),
+  }),
+});
+

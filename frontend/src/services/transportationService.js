@@ -107,3 +107,16 @@ export async function assignGuestToVehicle(payload) {
 export async function unassignGuestFromVehicle(payload) {
   return api.post('/transportation/unassign-guest', payload);
 }
+
+export async function createDriver(payload) {
+  return api.post('/transportation/drivers', payload);
+}
+
+export async function updateDriver(id, payload) {
+  return api.put(`/transportation/drivers/${id}`, payload);
+}
+
+export async function deleteDriver(id) {
+  return api.delete(`/transportation/drivers/${id}`);
+}
+

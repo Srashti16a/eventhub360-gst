@@ -162,8 +162,15 @@ export default function GuestManagement() {
 
   // Fetch stats when guests change
   useEffect(() => {
-    fetchStats();
-  }, [guests]);
+    // Listen for guest updates to refresh analytics data
+    const handleGuestUpdate = () => {
+      fetchStats();
+    };
+    window.addEventListener('guest-updated', handleGuestUpdate);
+    return () => {
+      window.removeEventListener('guest-updated', handleGuestUpdate);
+    };
+  }, []);
 
   // Stats mapped to database stats
   const stats = {
@@ -244,6 +251,10 @@ export default function GuestManagement() {
           setIsAddEditOpen(false);
           setEditingGuest(null);
           showToast(isEdit ? `Guest "${formData.name}" updated successfully!` : `Guest "${formData.name}" created successfully!`);
+          // Notify other pages (e.g., Analytics) to refresh data
+          if (typeof window !== 'undefined' && window.dispatchEvent) {
+            window.dispatchEvent(new Event('guest-updated'));
+          }
         } else {
           const errMsg = res.error?.details
             ? res.error.details.map(d => `${d.field}: ${d.message}`).join(', ')
@@ -289,6 +300,10 @@ export default function GuestManagement() {
           fetchStats();
           setSelectedGuestIds(prev => prev.filter(id => id !== guestId));
           showToast(`Guest "${guestName}" deleted successfully.`);
+          // Notify other pages to refresh data
+          if (typeof window !== 'undefined' && window.dispatchEvent) {
+            window.dispatchEvent(new Event('guest-updated'));
+          }
         } else {
           showToast(`Error deleting guest: ${res.error?.message || 'Unknown error'}`, 'error');
         }

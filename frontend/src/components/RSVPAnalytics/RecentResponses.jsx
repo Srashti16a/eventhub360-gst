@@ -88,6 +88,8 @@ const CustomDropdown = ({ value, options, onChange, width = '150px' }) => {
   );
 };
 
+const PAGE_SIZE = 4;
+
 export default function RecentResponses({ responses, searchQuery, setSearchQuery, onViewAllGuests, onDeleteGuest, onEditGuestStatus }) {
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [selectedStatus, setSelectedStatus] = useState('All');
@@ -95,7 +97,7 @@ export default function RecentResponses({ responses, searchQuery, setSearchQuery
   const [actionModal, setActionModal] = useState(null); // 'view', 'edit', null
   const [activeGuest, setActiveGuest] = useState(null);
   const [editStatus, setEditStatus] = useState('');
-  const [isExpanded, setIsExpanded] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
   const menuRef = useRef(null);
 
   // Close dropdown when clicking outside
@@ -162,7 +164,35 @@ const matchesStatus =
     return matchesCat && matchesStatus && matchesSearch;
   });
 
-  const displayedResponses = isExpanded ? filteredResponses : filteredResponses.slice(0, 10);
+  // Reset to page 1 whenever filters/search change
+  useEffect(() => { setCurrentPage(1); }, [selectedCategory, selectedStatus, searchQuery]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredResponses.length / PAGE_SIZE));
+  const startIdx = (currentPage - 1) * PAGE_SIZE;
+  const endIdx = Math.min(startIdx + PAGE_SIZE, filteredResponses.length);
+  const displayedResponses = filteredResponses.slice(startIdx, endIdx);
+
+  // Smart windowed page list: show first 2, last 2, and 2 around current, with ellipsis
+  const getPageNumbers = () => {
+    if (totalPages <= 7) return Array.from({ length: totalPages }, (_, i) => i + 1);
+    const pages = new Set();
+    // Always show first 2
+    pages.add(1); pages.add(2);
+    // Always show last 2
+    pages.add(totalPages - 1); pages.add(totalPages);
+    // Show window around current page
+    for (let i = Math.max(1, currentPage - 1); i <= Math.min(totalPages, currentPage + 1); i++) {
+      pages.add(i);
+    }
+    const sorted = Array.from(pages).sort((a, b) => a - b);
+    // Insert '...' where there are gaps
+    const result = [];
+    for (let i = 0; i < sorted.length; i++) {
+      if (i > 0 && sorted[i] - sorted[i - 1] > 1) result.push('...');
+      result.push(sorted[i]);
+    }
+    return result;
+  };
 
   return (
     <div className="recent-responses-card">
@@ -315,13 +345,47 @@ const matchesStatus =
         )}
       </div>
 
-      <div className="recent-responses-footer">
-        {filteredResponses.length > 10 && (
-          <span className="recent-responses-footer-link" onClick={() => setIsExpanded(!isExpanded)}>
-            {isExpanded ? 'Show Less Guests' : 'View All Guests'}
-          </span>
-        )}
-      </div>
+      {/* Pagination Footer — identical classes to GuestManagement page */}
+      {filteredResponses.length > 0 && (
+        <div className="pagination-row">
+          <div className="pagination-info">
+            <span>
+              Showing {startIdx + 1}-{endIdx} of {filteredResponses.length} guests
+            </span>
+          </div>
+          <div className="pagination-controls">
+            <button
+              type="button"
+              className="pagination-btn"
+              disabled={currentPage === 1}
+              onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+            >&lt;</button>
+
+            {getPageNumbers().map((p, idx) =>
+              p === '...' ? (
+                <span key={`ellipsis-${idx}`} className="pagination-ellipsis">...</span>
+              ) : (
+                <button
+                  key={p}
+                  type="button"
+                  className={`pagination-btn ${currentPage === p ? 'active' : ''}`}
+                  onClick={() => setCurrentPage(p)}
+                >
+                  {p}
+                </button>
+              )
+            )}
+
+            {/* Next */}
+            <button
+              type="button"
+              className="pagination-btn"
+              disabled={currentPage === totalPages}
+              onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+            >&gt;</button>
+          </div>
+        </div>
+      )}
 
       {/* View Details Modal */}
       {actionModal === 'view' && activeGuest && (

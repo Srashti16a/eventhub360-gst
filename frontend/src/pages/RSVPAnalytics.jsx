@@ -45,6 +45,11 @@ export default function RSVPAnalytics({ onViewAllGuests }) {
 
   useEffect(() => {
     fetchData();
+    const handleGuestUpdate = () => fetchData();
+    window.addEventListener('guest-updated', handleGuestUpdate);
+    return () => {
+      window.removeEventListener('guest-updated', handleGuestUpdate);
+    };
   }, []);
 
   const handleDeleteGuest = async (id) => {
