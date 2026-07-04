@@ -10,6 +10,7 @@
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:seed": "prisma db seed",
+    "prisma:seed:demo": "ts-node prisma/demoSeed.ts",
     "test": "jest --runInBand --detectOpenHandles"
   },
   "prisma": {

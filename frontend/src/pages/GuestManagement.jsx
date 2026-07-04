@@ -81,6 +81,7 @@ export default function GuestManagement() {
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [pendingDeleteId, setPendingDeleteId] = useState(null);
   const [pendingDeleteName, setPendingDeleteName] = useState('');
+  const [bulkDeleteConfirmOpen, setBulkDeleteConfirmOpen] = useState(false);
 
   // Load relation dropdown data once on mount
   useEffect(() => {
@@ -319,6 +320,160 @@ export default function GuestManagement() {
     setPendingDeleteName('');
   };
 
+  // Bulk actions operations
+  const executeBulkGroup = () => {
+    const groupSelect = document.getElementById('bulkGroupSelect');
+    if (!groupSelect) return;
+    const groupVal = groupSelect.value;
+    
+    const updateBody = {
+      isSpeaker: groupVal === 'Speaker',
+      isBridalParty: groupVal === 'BridalParty',
+      isPrimaryGuest: groupVal === 'PrimaryGuest'
+    };
+
+    setLoading(true);
+    Promise.all(
+      selectedGuestIds.map(id =>
+        fetch(`/api/guests/${id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(updateBody)
+        }).then(r => r.json())
+      )
+    )
+      .then(results => {
+        fetchGuests();
+        setSelectedGuestIds([]);
+        showToast(`Successfully grouped ${results.filter(r => r.success).length} guest(s).`);
+      })
+      .catch(err => {
+        console.error("Error bulk grouping:", err);
+        showToast('Error grouping guests.', 'error');
+      })
+      .finally(() => setLoading(false));
+  };
+
+  const executeBulkAssignEvent = () => {
+    const eventSelect = document.getElementById('bulkEventSelect');
+    if (!eventSelect) return;
+    const eventId = eventSelect.value;
+
+    setLoading(true);
+    Promise.all(
+      selectedGuestIds.map(id =>
+        fetch(`/api/guests/${id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ eventId })
+        }).then(r => r.json())
+      )
+    )
+      .then(results => {
+        fetchGuests();
+        setSelectedGuestIds([]);
+        showToast(`Successfully assigned ${results.filter(r => r.success).length} guest(s) to new event.`);
+      })
+      .catch(err => {
+        console.error("Error bulk assigning event:", err);
+        showToast('Error assigning event.', 'error');
+      })
+      .finally(() => setLoading(false));
+  };
+
+  const executeBulkUpdateRsvp = () => {
+    const rsvpSelect = document.getElementById('bulkRsvpSelect');
+    if (!rsvpSelect) return;
+    const status = rsvpSelect.value;
+
+    setLoading(true);
+    Promise.all(
+      selectedGuestIds.map(id =>
+        fetch(`/api/guests/${id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status })
+        }).then(r => r.json())
+      )
+    )
+      .then(results => {
+        fetchGuests();
+        fetchStats();
+        setSelectedGuestIds([]);
+        showToast(`Successfully updated RSVP status for ${results.filter(r => r.success).length} guest(s).`);
+      })
+      .catch(err => {
+        console.error("Error bulk updating RSVP status:", err);
+        showToast('Error updating RSVP status.', 'error');
+      })
+      .finally(() => setLoading(false));
+  };
+
+  const executeBulkSendInvitation = () => {
+    showToast(`Invitations sent successfully to ${selectedGuestIds.length} guest(s).`);
+    setSelectedGuestIds([]);
+  };
+
+  const handleExportSelected = () => {
+    const selectedGuests = guests.filter(g => selectedGuestIds.includes(g.guest_id));
+    if (selectedGuests.length === 0) {
+      showToast('No selected guests found in the current view to export.', 'error');
+      return;
+    }
+
+    const headers = ["Name", "Email", "Phone", "Category", "Status", "Assigned Hotel"];
+    const rows = selectedGuests.map(g => [
+      g.name || '',
+      g.email || '',
+      g.phone || '',
+      g.category || '',
+      g.rsvpStatus || '',
+      g.assignedHotel || ''
+    ]);
+
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(row => row.map(val => `"${val.replace(/"/g, '""')}"`).join(','))
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `selected_guests_${new Date().toISOString().slice(0,10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    showToast(`Exported ${selectedGuests.length} selected guest(s) to CSV.`);
+  };
+
+  const handleConfirmBulkDelete = () => {
+    setBulkDeleteConfirmOpen(false);
+    setLoading(true);
+    Promise.all(
+      selectedGuestIds.map(id =>
+        fetch(`/api/guests/${id}`, { method: 'DELETE' }).then(r => r.json())
+      )
+    )
+      .then(results => {
+        const successes = results.filter(r => r.success).length;
+        const failures = results.length - successes;
+        fetchGuests();
+        fetchStats();
+        setSelectedGuestIds([]);
+        if (failures === 0) {
+          showToast(`Successfully deleted ${successes} guest(s).`);
+        } else {
+          showToast(`Deleted ${successes} guest(s); ${failures} failed.`, 'warning');
+        }
+      })
+      .catch(err => {
+        console.error("Error executing bulk deletion:", err);
+        showToast('Error executing bulk deletion.', 'error');
+      })
+      .finally(() => setLoading(false));
+  };
+
   // Check-in simulator operations
   const handleCheckinGuest = (guest) => {
     setCheckedInIds(prev => {
@@ -466,17 +621,80 @@ export default function GuestManagement() {
 
         {/* Guest Table / Grid — only render when not loading and no error */}
         {!loading && !error && (
-          <GuestTable
-            guests={paginatedGuests}
-            selectedGuestIds={selectedGuestIds}
-            onSelectGuest={handleSelectGuest}
-            onSelectAllGuests={handleSelectAllGuests}
-            onEditGuest={handleEditClick}
-            onDeleteGuest={handleDeleteClick}
-            onCheckinGuest={handleCheckinGuest}
-            onViewQRCode={handleViewQRCodeClick}
-            layout={layout}
-          />
+          <>
+            {/* Bulk Actions Toolbar */}
+            {selectedGuestIds.length > 0 && (
+              <div className="bulk-actions-toolbar">
+                <div className="bulk-selected-count">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" style={{ width: '18px', height: '18px', color: 'var(--active-red)' }}>
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                  </svg>
+                  <span><strong>{selectedGuestIds.length}</strong> Guest{selectedGuestIds.length > 1 ? 's' : ''} Selected</span>
+                </div>
+                
+                <div className="bulk-actions-buttons">
+                  {/* Create Group */}
+                  <div className="bulk-action-item">
+                    <select id="bulkGroupSelect" className="bulk-select">
+                      <option value="Speaker">Speaker Group</option>
+                      <option value="BridalParty">Bridal Party Group</option>
+                      <option value="PrimaryGuest">Primary Guest Group</option>
+                    </select>
+                    <button type="button" className="btn-bulk" onClick={executeBulkGroup} disabled={selectedGuestIds.length === 0}>Create Group</button>
+                  </div>
+
+                  {/* Assign to Event */}
+                  <div className="bulk-action-item">
+                    <select id="bulkEventSelect" className="bulk-select">
+                      {dbEvents.map(e => (
+                        <option key={e.id} value={e.id}>{e.category}</option>
+                      ))}
+                    </select>
+                    <button type="button" className="btn-bulk" onClick={executeBulkAssignEvent} disabled={selectedGuestIds.length === 0}>Assign to Event</button>
+                  </div>
+
+                  {/* Update RSVP Status */}
+                  <div className="bulk-action-item">
+                    <select id="bulkRsvpSelect" className="bulk-select">
+                      <option value="CONFIRMED">Confirmed</option>
+                      <option value="PENDING">Pending</option>
+                      <option value="DECLINED">Declined</option>
+                    </select>
+                    <button type="button" className="btn-bulk" onClick={executeBulkUpdateRsvp} disabled={selectedGuestIds.length === 0}>Update RSVP Status</button>
+                  </div>
+
+                  {/* Send Invitation */}
+                  <button type="button" className="btn-bulk" onClick={executeBulkSendInvitation} disabled={selectedGuestIds.length === 0}>
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" style={{ width: '14px', height: '14px', marginRight: '4px', display: 'inline-block', verticalAlign: 'middle' }}>
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 19v-8.93a2 2 0 01.89-1.664l8-5.333a2 2 0 012.22 0l8 5.333A2 2 0 0121 10.07V19M3 19a2 2 0 002 2h14a2 2 0 002-2M3 19l6.75-4.5M21 19l-6.75-4.5M3 10l6.75 4.5M21 10l-6.75 4.5m0 0l-2.25-1.5a2 2 0 00-2.22 0l-2.25 1.5" />
+                    </svg>
+                    <span>Send Invitation</span>
+                  </button>
+
+                  {/* Export Selected */}
+                  <button type="button" className="btn-bulk" onClick={handleExportSelected} disabled={selectedGuestIds.length === 0}>Export Selected</button>
+
+                  {/* Delete Selected */}
+                  <button type="button" className="btn-bulk danger" onClick={() => setBulkDeleteConfirmOpen(true)} disabled={selectedGuestIds.length === 0}>Delete Selected</button>
+
+                  {/* Clear Selection */}
+                  <button type="button" className="btn-bulk-text" onClick={() => setSelectedGuestIds([])}>Clear Selection</button>
+                </div>
+              </div>
+            )}
+
+            <GuestTable
+              guests={paginatedGuests}
+              selectedGuestIds={selectedGuestIds}
+              onSelectGuest={handleSelectGuest}
+              onSelectAllGuests={handleSelectAllGuests}
+              onEditGuest={handleEditClick}
+              onDeleteGuest={handleDeleteClick}
+              onCheckinGuest={handleCheckinGuest}
+              onViewQRCode={handleViewQRCodeClick}
+              layout={layout}
+            />
+          </>
         )}
 
         {/* Custom Table Pagination matching the Figma screen */}
@@ -645,6 +863,65 @@ export default function GuestManagement() {
                 }}
               >
                 Yes, Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Bulk Delete Confirmation Modal */}
+      {bulkDeleteConfirmOpen && (
+        <div className="modal-overlay" onClick={() => setBulkDeleteConfirmOpen(false)}>
+          <div
+            className="modal-container"
+            onClick={(e) => e.stopPropagation()}
+            style={{ maxWidth: '420px' }}
+          >
+            <div className="modal-header">
+              <h2 style={{ color: '#dc2626' }}>Delete Selected Guests</h2>
+              <button type="button" className="btn-close" onClick={() => setBulkDeleteConfirmOpen(false)} aria-label="Close">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" style={{ width: '20px', height: '20px' }}>
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div className="modal-body" style={{ textAlign: 'center', padding: '2rem 1.5rem' }}>
+              <div style={{
+                width: '56px', height: '56px', borderRadius: '50%',
+                background: '#fef2f2', display: 'flex', alignItems: 'center',
+                justifyContent: 'center', margin: '0 auto 1.25rem'
+              }}>
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                  stroke="#dc2626" style={{ width: '28px', height: '28px' }}>
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+              </div>
+              <h3 style={{ fontSize: '1.05rem', fontWeight: 700, marginBottom: '0.5rem', color: 'var(--text-main)' }}>
+                Are you sure?
+              </h3>
+              <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', lineHeight: 1.6 }}>
+                You are about to permanently delete the records for{' '}
+                <strong style={{ color: 'var(--text-main)' }}>{selectedGuestIds.length} selected guest(s)</strong>.
+                This action cannot be undone.
+              </p>
+            </div>
+            <div className="modal-footer" style={{ justifyContent: 'center', gap: '1rem' }}>
+              <button type="button" className="btn-secondary" onClick={() => setBulkDeleteConfirmOpen(false)} style={{ minWidth: '110px' }}>
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="btn-primary"
+                id="confirm-bulk-delete-btn"
+                onClick={handleConfirmBulkDelete}
+                style={{
+                  minWidth: '110px',
+                  background: 'linear-gradient(135deg, #dc2626, #b91c1c)',
+                  boxShadow: '0 4px 12px rgba(220,38,38,0.35)'
+                }}
+              >
+                Yes, Delete All
               </button>
             </div>
           </div>

@@ -65,7 +65,7 @@ export default function GuestTable({
       .toUpperCase();
   };
 
-  const isAllSelected = guests.length > 0 && selectedGuestIds.length === guests.length;
+  const isAllSelected = guests.length > 0 && guests.every((g) => selectedGuestIds.includes(g.guest_id));
 
   if (layout === 'grid') {
     return (
@@ -79,6 +79,14 @@ export default function GuestTable({
             <div key={g.guest_id} className="guest-grid-card">
               <div className="guest-grid-card-header">
                 <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+                  <label className="custom-checkbox" style={{ marginRight: '2px', display: 'flex' }}>
+                    <input
+                      type="checkbox"
+                      checked={selectedGuestIds.includes(g.guest_id)}
+                      onChange={() => onSelectGuest(g.guest_id)}
+                    />
+                    <span className="checkbox-checkmark"></span>
+                  </label>
                   {g.avatarUrl ? (
                     <img src={g.avatarUrl} alt={g.name} className="guest-avatar" />
                   ) : (

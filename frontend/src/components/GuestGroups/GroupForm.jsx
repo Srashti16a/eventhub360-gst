@@ -141,23 +141,25 @@ export default function GroupForm({ initialData, allGuests, onSubmit, onCancel }
           </select>
         </div>
 
-        <div className="form-group">
-          <label htmlFor="primaryGuestSelect">Primary Guest Contact</label>
-          <select
-            id="primaryGuestSelect"
-            name="primaryGuestId"
-            className="form-input"
-            value={formData.primaryGuestId}
-            onChange={handleChange}
-          >
-            <option value="">Unassigned</option>
-            {allGuests.map((g) => (
-              <option key={g.guest_id} value={g.guest_id}>
-                {g.name}
-              </option>
-            ))}
-          </select>
-        </div>
+        {initialData && (
+          <div className="form-group">
+            <label htmlFor="primaryGuestSelect">Primary Guest Contact</label>
+            <select
+              id="primaryGuestSelect"
+              name="primaryGuestId"
+              className="form-input"
+              value={formData.primaryGuestId}
+              onChange={handleChange}
+            >
+              <option value="">Unassigned</option>
+              {initialData.members?.map((g) => (
+                <option key={g.id} value={g.id}>
+                  {g.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
 
         <div className="form-group">
           <label htmlFor="locationInput">Primary Location</label>

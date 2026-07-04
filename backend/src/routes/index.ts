@@ -6,6 +6,7 @@ import dashboardRoutes from './dashboardRoutes';
 import seatingRoutes from './seatingRoutes';
 import campaignRoutes from './campaignRoutes';
 import transportationRoutes from './transportationRoutes';
+import groupRoutes from './groupRoutes';
 
 const router = Router();
 
@@ -16,5 +17,6 @@ router.use('/hotels', hotelRoutes);
 router.use('/seating', seatingRoutes);
 router.use('/campaigns', campaignRoutes);
 router.use('/transportation', transportationRoutes);
+router.use('/groups', groupRoutes);
 
 export default router;
