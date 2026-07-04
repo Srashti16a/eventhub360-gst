@@ -162,6 +162,7 @@ export default function GuestManagement() {
 
   // Fetch stats when guests change
   useEffect(() => {
+    fetchStats(); // Fetch initial statistics on mount!
     // Listen for guest updates to refresh analytics data
     const handleGuestUpdate = () => {
       fetchStats();
@@ -346,6 +347,9 @@ export default function GuestManagement() {
         fetchGuests();
         setSelectedGuestIds([]);
         showToast(`Successfully grouped ${results.filter(r => r.success).length} guest(s).`);
+        if (typeof window !== 'undefined' && window.dispatchEvent) {
+          window.dispatchEvent(new Event('guest-updated'));
+        }
       })
       .catch(err => {
         console.error("Error bulk grouping:", err);
@@ -373,6 +377,9 @@ export default function GuestManagement() {
         fetchGuests();
         setSelectedGuestIds([]);
         showToast(`Successfully assigned ${results.filter(r => r.success).length} guest(s) to new event.`);
+        if (typeof window !== 'undefined' && window.dispatchEvent) {
+          window.dispatchEvent(new Event('guest-updated'));
+        }
       })
       .catch(err => {
         console.error("Error bulk assigning event:", err);
@@ -398,9 +405,11 @@ export default function GuestManagement() {
     )
       .then(results => {
         fetchGuests();
-        fetchStats();
         setSelectedGuestIds([]);
         showToast(`Successfully updated RSVP status for ${results.filter(r => r.success).length} guest(s).`);
+        if (typeof window !== 'undefined' && window.dispatchEvent) {
+          window.dispatchEvent(new Event('guest-updated'));
+        }
       })
       .catch(err => {
         console.error("Error bulk updating RSVP status:", err);
@@ -459,12 +468,14 @@ export default function GuestManagement() {
         const successes = results.filter(r => r.success).length;
         const failures = results.length - successes;
         fetchGuests();
-        fetchStats();
         setSelectedGuestIds([]);
         if (failures === 0) {
           showToast(`Successfully deleted ${successes} guest(s).`);
         } else {
           showToast(`Deleted ${successes} guest(s); ${failures} failed.`, 'warning');
+        }
+        if (typeof window !== 'undefined' && window.dispatchEvent) {
+          window.dispatchEvent(new Event('guest-updated'));
         }
       })
       .catch(err => {
