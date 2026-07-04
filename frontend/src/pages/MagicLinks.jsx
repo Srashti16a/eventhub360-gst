@@ -94,15 +94,22 @@ export default function MagicLinks() {
   const [tableSearch, setTableSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('All'); // 'All', 'Active', 'Expiring Soon', 'Expired'
   const [isFilterDropdownOpen, setIsFilterDropdownOpen] = useState(false);
-  
+
   // Selection and deletion states
   const [selectedLinks, setSelectedLinks] = useState(new Set());
+  // Bulk action dialogs visibility
+  const [showExpireSelectedDialog, setShowExpireSelectedDialog] = useState(false);
+  const [showReactivateSelectedDialog, setShowReactivateSelectedDialog] = useState(false);
   const [deleteSingleId, setDeleteSingleId] = useState(null);
   const [showDeleteSelectedDialog, setShowDeleteSelectedDialog] = useState(false);
 
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 5;
+  // Bulk Generate modal state
+  const [showBulkGenerateDialog, setShowBulkGenerateDialog] = useState(false);
+  const [bulkSearch, setBulkSearch] = useState('');
+  const [bulkSelectedGuestIds, setBulkSelectedGuestIds] = useState(new Set());
 
   // Trigger temporary visual feedback toasts
   const triggerToast = (message) => {
@@ -127,8 +134,8 @@ export default function MagicLinks() {
             category: g.isVip
               ? 'VIP'
               : g.isBridalParty
-              ? 'Family'
-              : 'Corporate',
+                ? 'Family'
+                : 'Corporate',
             avatarColor: g.avatarColor || '#4b5563'
           }));
           setRegisteredGuests(mappedGuests);
@@ -147,19 +154,19 @@ export default function MagicLinks() {
 
   // Filter guest options from database based on user typing
   const filteredGuestOptions = useMemo(() => {
-  if (!guestSearch.trim()) return [];
+    if (!guestSearch.trim()) return [];
 
-  const q = guestSearch.toLowerCase();
+    const q = guestSearch.toLowerCase();
 
-  const result = registeredGuests.filter(g =>
-    (g.name || "").toLowerCase().includes(q) ||
-    (g.category || "").toLowerCase().includes(q)
-  );
+    const result = registeredGuests.filter(g =>
+      (g.name || "").toLowerCase().includes(q) ||
+      (g.category || "").toLowerCase().includes(q)
+    );
 
-  console.log("Filtered Guests:", result);
+    console.log("Filtered Guests:", result);
 
-  return result;
-}, [guestSearch, registeredGuests]);
+    return result;
+  }, [guestSearch, registeredGuests]);
 
   // Compute Expiry Date string based on selection
   const getExpiryDateString = (setting) => {
@@ -280,6 +287,36 @@ export default function MagicLinks() {
     triggerToast('Magic link has been revoked/deactivated.');
   };
 
+  // Bulk Expire handler (set selected links to Expired)
+  const handleExpireSelected = () => {
+    setActiveLinks(prev => prev.map(link => {
+      if (selectedLinks.has(link.id)) {
+        return {
+          ...link,
+          status: 'Expired',
+          expiryDate: new Date().toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' })
+        };
+      }
+      return link;
+    }));
+    triggerToast(`${selectedLinks.size} magic link(s) expired.`);
+    setSelectedLinks(new Set());
+    setShowExpireSelectedDialog(false);
+  };
+
+  // Bulk Reactivate handler (set selected links to Active)
+  const handleReactivateSelected = () => {
+    setActiveLinks(prev => prev.map(link => {
+      if (selectedLinks.has(link.id)) {
+        return { ...link, status: 'Active' };
+      }
+      return link;
+    }));
+    triggerToast(`${selectedLinks.size} magic link(s) reactivated.`);
+    setSelectedLinks(new Set());
+    setShowReactivateSelectedDialog(false);
+  };
+
   // Delete single link handler
   const handleDeleteLink = (id) => {
     setActiveLinks(prev => prev.filter(link => link.id !== id));
@@ -301,10 +338,10 @@ export default function MagicLinks() {
   };
 
   const handleSelectAll = () => {
-    if (selectedLinks.size === paginatedLinks.length) {
+    if (selectedLinks.size === filteredActiveLinks.length) {
       setSelectedLinks(new Set());
     } else {
-      setSelectedLinks(new Set(paginatedLinks.map(link => link.id)));
+      setSelectedLinks(new Set(filteredActiveLinks.map(link => link.id)));
     }
   };
 
@@ -314,6 +351,54 @@ export default function MagicLinks() {
     setSelectedLinks(new Set());
     setShowDeleteSelectedDialog(false);
     triggerToast(`${selectedLinks.size} magic link(s) deleted.`);
+  };
+  // Open Bulk Generate modal
+  const openBulkGenerateModal = () => setShowBulkGenerateDialog(true);
+  const closeBulkGenerateModal = () => {
+    setShowBulkGenerateDialog(false);
+    setBulkSearch('');
+    setBulkSelectedGuestIds(new Set());
+  };
+
+  // Toggle guest selection in bulk modal
+  const toggleBulkGuest = (guestId) => {
+    setBulkSelectedGuestIds(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(guestId)) {
+        newSet.delete(guestId);
+      } else {
+        newSet.add(guestId);
+      }
+      return newSet;
+    });
+  };
+
+  // Confirm Bulk Generate
+  const handleBulkGenerateConfirm = () => {
+    const selectedGuests = registeredGuests.filter(g => bulkSelectedGuestIds.has(g.guest_id));
+    const unlinked = selectedGuests.filter(g => !activeLinks.some(link => link.guestId === g.guest_id));
+    if (unlinked.length === 0) {
+      triggerToast('All selected guests already have active magic links.');
+      return;
+    }
+    const newGenerated = unlinked.map((guest, idx) => {
+      const code = Math.random().toString(16).substring(2, 10);
+      return {
+        id: `ml_bulk_${Date.now()}_${idx}`,
+        guestId: guest.guest_id,
+        guestName: guest.name,
+        category: guest.category,
+        avatarColor: guest.avatarColor,
+        linkUrl: `event.hub/ml/${code}`,
+        createdDate: new Date().toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' }),
+        expiryDate: getExpiryDateString(expirationSettings),
+        status: 'Active',
+        uses: 0
+      };
+    });
+    setActiveLinks(prev => [...newGenerated, ...prev]);
+    triggerToast(`Successfully generated ${newGenerated.length} magic link(s)!`);
+    closeBulkGenerateModal();
   };
 
   // Share simulations
@@ -388,45 +473,45 @@ export default function MagicLinks() {
   const getPageNumbers = () => {
     const pages = [];
     const range = 1; // Show 1 page before and after current page
-    
+
     // Always add page 1
     pages.push(1);
-    
+
     // Determine the range around current page
     const start = Math.max(2, currentPage - range);
     const end = Math.min(totalPages - 1, currentPage + range);
-    
+
     // Add ... if there's a gap between page 1 and start
     if (start > 2) {
       pages.push('...');
     }
-    
+
     // Add pages in range
     for (let i = start; i <= end; i++) {
       pages.push(i);
     }
-    
+
     // Add ... if there's a gap between end and last page
     if (end < totalPages - 1) {
       pages.push('...');
     }
-    
+
     // Add last page (if totalPages > 1)
     if (totalPages > 1 && pages[pages.length - 1] !== totalPages) {
       pages.push(totalPages);
     }
-    
+
     return pages;
   };
 
   // Active stats calculations
   const totalActiveCount = useMemo(() => {
-  return filteredActiveLinks.filter(l => l.status === 'Active').length;
-}, [filteredActiveLinks]);
+    return filteredActiveLinks.filter(l => l.status === 'Active').length;
+  }, [filteredActiveLinks]);
 
   const expiringSoonCount = useMemo(() => {
-  return filteredActiveLinks.filter(l => l.status === 'Expiring Soon').length;
-}, [filteredActiveLinks]);
+    return filteredActiveLinks.filter(l => l.status === 'Expiring Soon').length;
+  }, [filteredActiveLinks]);
 
   return (
     <div className="magic-links-container">
@@ -771,7 +856,7 @@ export default function MagicLinks() {
             <button
               type="button"
               className="btn-secondary"
-              onClick={handleBulkGenerate}
+              onClick={openBulkGenerateModal}
             >
               <span>Bulk Generate</span>
             </button>
@@ -998,26 +1083,85 @@ export default function MagicLinks() {
               </svg>
             </button>
 
-            {/* Delete Selected Button */}
+            {/* Bulk Actions Bar */}
             {selectedLinks.size > 0 && (
-              <button
-                type="button"
-                className="control-btn"
-                style={{
-                  background: '#ef4444',
-                  color: '#fff',
-                  fontWeight: '600',
-                  fontSize: '0.8rem',
-                  padding: '0.45rem 1rem',
-                  borderRadius: '6px',
-                  border: 'none',
-                  cursor: 'pointer'
-                }}
-                onClick={() => setShowDeleteSelectedDialog(true)}
-                title={`Delete ${selectedLinks.size} selected link(s)`}
-              >
-                🗑️ Delete ({selectedLinks.size})
-              </button>
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                width: '100%',
+                gap: '0.5rem',
+                alignItems: 'center',
+                border: '2px solid #1c1b1bff',
+                borderRadius: '8px',
+                padding: '1rem 1.2rem'
+              }}>
+                {/* Expire Selected */}
+                <button
+                  type="button"
+                  className="control-btn"
+                  style={{
+                    background: '#ff7a45',
+                    color: '#fff',
+                    fontWeight: '600',
+                    fontSize: '0.8rem',
+                    padding: '1rem 2rem',
+                    minWidth: '140px',
+                    whiteSpace: 'nowrap',
+                    flexShrink: 0,
+                    borderRadius: '6px',
+                    border: 'none',
+                    cursor: 'pointer'
+                  }}
+                  onClick={() => setShowExpireSelectedDialog(true)}
+                  title={`Expire ${selectedLinks.size} selected link(s)`}
+                >
+                  ⏰ Expire ({selectedLinks.size})
+                </button>
+                {/* Reactivate Selected */}
+                <button
+                  type="button"
+                  className="control-btn"
+                  style={{
+                    background: '#48a55aff',
+                    color: '#ffffffff',
+                    fontWeight: '600',
+                    fontSize: '0.8rem',
+                    padding: '1rem 2rem',
+                    minWidth: '140px',
+                    whiteSpace: 'nowrap',
+                    flexShrink: 0,
+                    borderRadius: '6px',
+                    border: 'none',
+                    cursor: 'pointer'
+                  }}
+                  onClick={() => setShowReactivateSelectedDialog(true)}
+                  title={`Reactivate ${selectedLinks.size} selected link(s)`}
+                >
+                  ♻️ Reactivate ({selectedLinks.size})
+                </button>
+                {/* Delete Selected */}
+                <button
+                  type="button"
+                  className="control-btn"
+                  style={{
+                    background: '#ef4444',
+                    color: '#fff',
+                    fontWeight: '600',
+                    fontSize: '0.8rem',
+                    padding: '1rem 2rem',
+                    minWidth: '140px',
+                    whiteSpace: 'nowrap',
+                    flexShrink: 0,
+                    borderRadius: '6px',
+                    border: 'none',
+                    cursor: 'pointer'
+                  }}
+                  onClick={() => setShowDeleteSelectedDialog(true)}
+                  title={`Delete ${selectedLinks.size} selected link(s)`}
+                >
+                  🗑️ Delete ({selectedLinks.size})
+                </button>
+              </div>
             )}
           </div>
         </div>
@@ -1030,7 +1174,7 @@ export default function MagicLinks() {
                 <th style={{ width: '40px' }}>
                   <input
                     type="checkbox"
-                    checked={selectedLinks.size > 0 && selectedLinks.size === paginatedLinks.length}
+                    checked={selectedLinks.size > 0 && selectedLinks.size === filteredActiveLinks.length}
                     onChange={handleSelectAll}
                     style={{ cursor: 'pointer' }}
                   />
@@ -1309,7 +1453,7 @@ export default function MagicLinks() {
                   border: '1px solid #e2e8f0',
                   backgroundColor: '#f8fafc',
                   cursor: 'pointer',
-                  fontWeight: '600'
+                  fontWeight: '6'
                 }}
               >
                 Cancel
@@ -1328,6 +1472,217 @@ export default function MagicLinks() {
                 }}
               >
                 Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Expire Selected Confirmation Dialog */}
+      {showExpireSelectedDialog && selectedLinks.size > 0 && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000
+        }}>
+          <div style={{
+            backgroundColor: '#fff',
+            borderRadius: '12px',
+            padding: '2rem',
+            boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)',
+            maxWidth: '400px',
+            width: '90%'
+          }}>
+            <h3 style={{ marginTop: 0, marginBottom: '1rem', color: 'var(--text-main)' }}>Expire {selectedLinks.size} Magic Link(s)?</h3>
+            <p style={{ color: 'var(--text-light)', marginBottom: '2rem' }}>
+              Are you sure you want to expire the selected magic link(s)? This will set their status to "Expired".
+            </p>
+            <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
+              <button
+                type="button"
+                onClick={() => setShowExpireSelectedDialog(false)}
+                style={{
+                  padding: '0.5rem 1rem',
+                  borderRadius: '6px',
+                  border: '1px solid #e2e8f0',
+                  backgroundColor: '#f8fafc',
+                  cursor: 'pointer',
+                  fontWeight: '600'
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleExpireSelected}
+                style={{
+                  padding: '0.5rem 1rem',
+                  borderRadius: '6px',
+                  border: 'none',
+                  backgroundColor: '#ff7a45',
+                  color: '#fff',
+                  cursor: 'pointer',
+                  fontWeight: '600'
+                }}
+              >
+                Expire
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Reactivate Selected Confirmation Dialog */}
+      {showReactivateSelectedDialog && selectedLinks.size > 0 && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000
+        }}>
+          <div style={{
+            backgroundColor: '#fff',
+            borderRadius: '12px',
+            padding: '2rem',
+            boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)',
+            maxWidth: '400px',
+            width: '90%'
+          }}>
+            <h3 style={{ marginTop: 0, marginBottom: '1rem', color: 'var(--text-main)' }}>Reactivate {selectedLinks.size} Magic Link(s)?</h3>
+            <p style={{ color: 'var(--text-light)', marginBottom: '2rem' }}>
+              Reactivate the selected magic link(s) by setting their status back to "Active".
+            </p>
+            <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
+              <button
+                type="button"
+                onClick={() => setShowReactivateSelectedDialog(false)}
+                style={{
+                  padding: '0.5rem 1rem',
+                  borderRadius: '6px',
+                  border: '1px solid #e2e8f0',
+                  backgroundColor: '#f8fafc',
+                  cursor: 'pointer',
+                  fontWeight: '600'
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleReactivateSelected}
+                style={{
+                  padding: '0.5rem 1rem',
+                  borderRadius: '6px',
+                  border: 'none',
+                  backgroundColor: '#34d371ff',
+                  color: '#fff',
+                  cursor: 'pointer',
+                  fontWeight: '600'
+                }}
+              >
+                Reactivate
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showBulkGenerateDialog && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000
+        }}>
+          <div style={{
+            backgroundColor: '#fff',
+            borderRadius: '12px',
+            padding: '2rem',
+            boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)',
+            maxWidth: '500px',
+            width: '90%'
+          }}>
+            <h3 style={{ marginTop: 0, marginBottom: '1rem', color: 'var(--text-main)' }}>Generate Magic Links</h3>
+            <input
+              type="text"
+              placeholder="Search guests..."
+              value={bulkSearch}
+              onChange={e => setBulkSearch(e.target.value)}
+              style={{
+                width: '100%',
+                padding: '0.5rem',
+                marginBottom: '1rem',
+                border: '1px solid #e2e8f0',
+                borderRadius: '4px'
+              }}
+            />
+            <div style={{ maxHeight: '300px', overflowY: 'auto', marginBottom: '1rem' }}>
+              {registeredGuests
+                .filter(g => {
+                  const q = bulkSearch.toLowerCase();
+                  return g.name.toLowerCase().includes(q) || g.category.toLowerCase().includes(q);
+                })
+                .map(g => (
+                  <div key={g.guest_id} style={{ display: 'flex', alignItems: 'center', padding: '0.5rem 0', borderBottom: '1px solid #f1f5f9' }}>
+                    <input
+                      type="checkbox"
+                      checked={bulkSelectedGuestIds.has(g.guest_id)}
+                      onChange={() => toggleBulkGuest(g.guest_id)}
+                      style={{ marginRight: '0.75rem' }}
+                    />
+                    <span>{g.name} ({g.category})</span>
+                  </div>
+                ))}
+            </div>
+            <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
+              <button
+                type="button"
+                onClick={closeBulkGenerateModal}
+                style={{
+                  padding: '0.5rem 1rem',
+                  borderRadius: '6px',
+                  border: '1px solid #e2e8f0',
+                  backgroundColor: '#f8fafc',
+                  cursor: 'pointer',
+                  fontWeight: '600'
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleBulkGenerateConfirm}
+                disabled={bulkSelectedGuestIds.size === 0}
+                style={{
+                  padding: '0.5rem 1rem',
+                  borderRadius: '6px',
+                  border: 'none',
+                  backgroundColor: bulkSelectedGuestIds.size === 0 ? '#ccc' : '#ff7a45',
+                  color: '#fff',
+                  cursor: bulkSelectedGuestIds.size === 0 ? 'not-allowed' : 'pointer',
+                  fontWeight: '600'
+                }}
+              >
+                Generate ({bulkSelectedGuestIds.size})
               </button>
             </div>
           </div>

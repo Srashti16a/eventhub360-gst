@@ -43,9 +43,8 @@ export default function CategoryChart({ categories, guestsCount }) {
         {/* Right Side Column Bar Chart */}
         <div className="chart-container">
           {categories.map((cat) => {
-            const rawPercentage = (cat.count / maxCount) * 100;
-            // Bug 2 Fix: set a minimum visible bar height of 8% for any category with at least 1 guest
-            const barHeightPercentage = cat.count === 0 ? 0 : Math.max(rawPercentage, 8);
+            // Fix 2: logarithmic scale so smaller counts are clearly visible and proportional
+            const logPercentage = cat.count === 0 ? 0 : (Math.log(cat.count + 1) / Math.log(maxCount + 1)) * 100;
             const barColor = getColorClass(cat.abbr);
             return (
               <div key={cat.id} className="chart-column">
@@ -57,12 +56,11 @@ export default function CategoryChart({ categories, guestsCount }) {
                 <div
                   className="chart-bar-fill"
                   style={{
-                    height: `${barHeightPercentage}%`,
+                    height: `${logPercentage}%`,
+                    minHeight: cat.count === 0 ? '0px' : '12px',
                     backgroundColor: barColor
                   }}
                 ></div>
-                {/* Abbreviation label */}
-                <span className="chart-axis-label">{cat.abbr}</span>
               </div>
             );
           })}
