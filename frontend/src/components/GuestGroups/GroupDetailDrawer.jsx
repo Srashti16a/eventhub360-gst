@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import api from '../../services/api';
 
 export default function GroupDetailDrawer({
   group,
@@ -22,8 +23,7 @@ export default function GroupDetailDrawer({
       return;
     }
     setSearching(true);
-    fetch(`/api/groups/${group.group_id}/search-guests?q=${encodeURIComponent(searchQuery)}`)
-      .then((r) => r.json())
+    api.get(`/groups/${group.group_id}/search-guests?q=${encodeURIComponent(searchQuery)}`)
       .then((res) => {
         if (res.success) {
           setSearchResults(res.data);

@@ -5,6 +5,7 @@ import GroupTable from '../components/GuestGroups/GroupTable';
 import GroupDetailDrawer from '../components/GuestGroups/GroupDetailDrawer';
 import GroupModal from '../components/GuestGroups/GroupModal';
 import GuestForm from '../components/GuestManagement/GuestForm';
+import api from '../services/api';
 
 export default function GuestGroups() {
   const [groups, setGroups] = useState([]);
@@ -20,8 +21,7 @@ export default function GuestGroups() {
   const itemsPerPage = 4;
 
   const fetchGroups = () => {
-    fetch('/api/groups')
-      .then((r) => r.json())
+    api.get('/groups')
       .then((res) => {
         if (res.success) {
           const mapped = res.data.map((group) => {
@@ -100,8 +100,6 @@ export default function GuestGroups() {
 
   const handleSaveGroup = (formData) => {
     const isEdit = !!editingGroup;
-    const url = isEdit ? `/api/groups/${editingGroup.id}` : '/api/groups';
-    const method = isEdit ? 'PUT' : 'POST';
 
     if (!formData.name || !formData.name.trim()) {
       alert("Group name is required");
@@ -118,12 +116,11 @@ export default function GuestGroups() {
       primaryGuestId: isEdit ? (formData.primaryGuestId || null) : null
     };
 
-    fetch(url, {
-      method,
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    })
-      .then((r) => r.json())
+    const promise = isEdit
+      ? api.put(`/groups/${editingGroup.id}`, payload)
+      : api.post('/groups', payload);
+
+    promise
       .then((res) => {
         if (res.success) {
           fetchGroups();
@@ -133,7 +130,10 @@ export default function GuestGroups() {
           alert('Error: ' + (res.error?.message || 'Failed to save group details'));
         }
       })
-      .catch((err) => console.error('Error saving group:', err));
+      .catch((err) => {
+        console.error('Error saving group:', err);
+        alert('Error: ' + (err.message || 'Failed to save group details'));
+      });
   };
 
   const handleEditClick = (group) => {
@@ -143,8 +143,7 @@ export default function GuestGroups() {
 
   const handleDeleteGroup = (groupId) => {
     if (window.confirm('Are you sure you want to delete this guest cohort?')) {
-      fetch(`/api/groups/${groupId}`, { method: 'DELETE' })
-        .then((r) => r.json())
+      api.delete(`/groups/${groupId}`)
         .then((res) => {
           if (res.success) {
             fetchGroups();
@@ -155,17 +154,15 @@ export default function GuestGroups() {
             alert('Error: ' + (res.error?.message || 'Failed to delete group'));
           }
         })
-        .catch((err) => console.error('Error deleting group:', err));
+        .catch((err) => {
+          console.error('Error deleting group:', err);
+          alert('Error: ' + (err.message || 'Failed to delete group'));
+        });
     }
   };
 
   const handleAddMember = (groupId, guestId) => {
-    fetch(`/api/groups/${groupId}/members`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ guestId })
-    })
-      .then((r) => r.json())
+    api.post(`/groups/${groupId}/members`, { guestId })
       .then((res) => {
         if (res.success) {
           fetchGroups();
@@ -173,12 +170,14 @@ export default function GuestGroups() {
           alert('Error: ' + (res.error?.message || 'Failed to add member'));
         }
       })
-      .catch((err) => console.error('Error adding member:', err));
+      .catch((err) => {
+        console.error('Error adding member:', err);
+        alert('Error: ' + (err.message || 'Failed to add member'));
+      });
   };
 
   const handleRemoveMember = (groupId, guestId) => {
-    fetch(`/api/groups/${groupId}/members/${guestId}`, { method: 'DELETE' })
-      .then((r) => r.json())
+    api.delete(`/groups/${groupId}/members/${guestId}`)
       .then((res) => {
         if (res.success) {
           fetchGroups();
@@ -186,7 +185,10 @@ export default function GuestGroups() {
           alert('Error: ' + (res.error?.message || 'Failed to remove member'));
         }
       })
-      .catch((err) => console.error('Error removing member:', err));
+      .catch((err) => {
+        console.error('Error removing member:', err);
+        alert('Error: ' + (err.message || 'Failed to remove member'));
+      });
   };
 
   const handleEditMemberClick = (member) => {
@@ -195,8 +197,7 @@ export default function GuestGroups() {
 
   const handleSaveMember = (formData) => {
     setSavingMember(true);
-    fetch('/api/events')
-      .then((r) => r.json())
+    api.get('/events')
       .then((resEvents) => {
         let eventId = '';
         if (resEvents.success && resEvents.data.length > 0) {
@@ -204,8 +205,7 @@ export default function GuestGroups() {
           eventId = match ? match.id : resEvents.data[0].id;
         }
 
-        fetch('/api/hotels')
-          .then((r) => r.json())
+        api.get('/hotels')
           .then((resHotels) => {
             let assignedHotelId = null;
             if (resHotels.success && formData.assignedHotel && formData.assignedHotel !== '—') {
@@ -228,12 +228,7 @@ export default function GuestGroups() {
               seatNumber: formData.seat_no ? parseInt(formData.seat_no) : null
             };
 
-            fetch(`/api/guests/${editingMember.id}`, {
-              method: 'PUT',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(payload)
-            })
-              .then((r) => r.json())
+            api.put(`/guests/${editingMember.id}`, payload)
               .then((guestRes) => {
                 if (guestRes.success) {
                   fetchGroups();
@@ -247,6 +242,7 @@ export default function GuestGroups() {
       })
       .catch((err) => {
         console.error('Error saving member:', err);
+        alert('Error: ' + (err.message || 'Failed to save member details'));
         setSavingMember(false);
       });
   };
