@@ -92,15 +92,22 @@ export default function GuestCategories() {
       if (res.success) {
         // Map backend guest to frontend format
         const mapped = res.data.map(bg => {
-          // Check if DB explicitly provided a category string field (this fixes the mismatch if the schema uses 'category')
-          let category = bg.category || bg.guestCategory || 'Guest';
-          
-          // Only fallback to boolean flags if no explicit category string was provided
-          if (bg.isVip) category = 'VIP';
-          else if (bg.isSpeaker) category = 'Speaker';
-          else if (bg.isBridalParty && bg.isPrimaryGuest) category = 'Staff';
-          else if (bg.isBridalParty) category = 'Sponsor';
-          else if (bg.isPrimaryGuest) category = 'Media';
+          let category = 'Guest';
+          if (bg.category && bg.category !== 'Guest' && bg.category !== 'Corporate' && bg.category !== 'Family') {
+            category = bg.category;
+          } else if (bg.guestCategory && bg.guestCategory !== 'Guest') {
+            category = bg.guestCategory;
+          } else if (bg.isSpeaker) {
+            category = 'Speaker';
+          } else if (bg.isVip) {
+            category = 'VIP';
+          } else if (bg.isBridalParty && bg.isPrimaryGuest) {
+            category = 'Staff';
+          } else if (bg.isBridalParty) {
+            category = 'Sponsor';
+          } else if (bg.isPrimaryGuest) {
+            category = 'Media';
+          }
           
           // Override if stored in localStorage
           const localMapping = localStorage.getItem(`guest_cat_${bg.id}`);
@@ -188,12 +195,7 @@ export default function GuestCategories() {
       }
 
       const matchingEvent = dbEvents.find(e => e.category === formData.eventName) || dbEvents[0];
-      const eventId = matchingEvent ? matchingEvent.id : null;
-      
-      if (!eventId) {
-        showToast('No active events found in the database.', 'error');
-        return;
-      }
+      const eventId = matchingEvent ? matchingEvent.id : undefined;
 
       const payload = {
         name: formData.name,
@@ -217,10 +219,8 @@ export default function GuestCategories() {
         const guestId = isEdit ? editingGuest.guest_id : res.data.id;
         
         // Persist local category override
-        if (formData.category !== 'VIP' && formData.category !== 'Speaker') {
+        if (formData.category) {
           localStorage.setItem(`guest_cat_${guestId}`, formData.category);
-        } else {
-          localStorage.removeItem(`guest_cat_${guestId}`);
         }
         
         await fetchGuests();
@@ -320,7 +320,7 @@ export default function GuestCategories() {
             Guests <span style={{ margin: '0 0.35rem', color: 'var(--text-light)' }}>&gt;</span> <span style={{ color: '#ff4d4f' }}>Categories</span>
           </div>
           <h1>Guest Categories</h1>
-          <p>Manage attendee classifications and priority levels for your upcoming high-profile events.</p>
+          <p>Categorized breakdown of all {totalGuestsCount.toLocaleString()} registered attendees across active classifications.</p>
         </div>
         
         <button

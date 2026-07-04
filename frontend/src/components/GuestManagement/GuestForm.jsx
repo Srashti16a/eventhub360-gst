@@ -85,16 +85,15 @@ export default function GuestForm({ initialData, onSubmit, onCancel, saving }) {
   const validate = () => {
     const newErrors = {};
     if (!formData.name.trim()) newErrors.name = 'Guest Name is required';
-    if (!formData.phone.trim()) newErrors.phone = 'Phone number is required';
-    if (formData.phone.trim() && formData.phone.trim().length < 5) newErrors.phone = 'Phone number must be at least 5 characters';
-    
-    // Validate email format if provided
-    if (formData.email.trim()) {
+    if (!formData.email.trim()) {
+      newErrors.email = 'Email address is required';
+    } else {
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       if (!emailRegex.test(formData.email.trim())) {
         newErrors.email = 'Please enter a valid email address';
       }
     }
+    if (formData.phone.trim() && formData.phone.trim().length < 5) newErrors.phone = 'Phone number must be at least 5 characters';
     
     // Validate RSVP Pax
     if (formData.pax < 0) {
@@ -137,7 +136,7 @@ export default function GuestForm({ initialData, onSubmit, onCancel, saving }) {
         </div>
 
         <div className="form-group">
-          <label htmlFor="phone">Phone Number *</label>
+          <label htmlFor="phone">Phone Number</label>
           <input
             id="phone"
             type="tel"
@@ -160,13 +159,18 @@ export default function GuestForm({ initialData, onSubmit, onCancel, saving }) {
             onChange={handleChange}
           >
             <option value="VIP">VIP</option>
+            <option value="Speaker">Speaker</option>
+            <option value="Sponsor">Sponsor</option>
+            <option value="Media">Media</option>
+            <option value="Staff">Staff</option>
+            <option value="Guest">Guest</option>
             <option value="Corporate">Corporate</option>
             <option value="Family">Family</option>
           </select>
         </div>
 
         <div className="form-group">
-          <label htmlFor="email">Email Address (UI helper)</label>
+          <label htmlFor="email">Email Address *</label>
           <input
             id="email"
             type="email"

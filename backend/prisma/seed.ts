@@ -109,7 +109,7 @@ async function main() {
       email: 'j.vanderbilt@luxmail.com',
       phone: '+1 (555) 012-3456',
       status: 'CONFIRMED',
-      isVip: true,
+      isVip: false,
       isSpeaker: true,
       isBridalParty: false,
       isPrimaryGuest: false,
@@ -219,6 +219,9 @@ async function main() {
     phone: string;
     status: string;
     isVip: boolean;
+    isSpeaker: boolean;
+    isBridalParty: boolean;
+    isPrimaryGuest: boolean;
     eventId: string;
     assignedHotelId: string | null;
   }
@@ -228,8 +231,24 @@ async function main() {
   // Generate Confirmed
   for (let i = 0; i < targetConfirmedCount; i++) {
     const fullName = getName();
-    const isVip = vipsCreated < targetVipsNeeded;
-    if (isVip) vipsCreated++;
+    let isVip = false;
+    let isSpeaker = false;
+    let isBridalParty = false;
+    let isPrimaryGuest = false;
+
+    if (vipsCreated < targetVipsNeeded) {
+      isVip = true;
+      vipsCreated++;
+    } else if (i % 14 === 0) {
+      isBridalParty = true; // Sponsor
+    } else if (i % 17 === 0) {
+      isPrimaryGuest = true; // Media
+    } else if (i % 23 === 0) {
+      isBridalParty = true;
+      isPrimaryGuest = true; // Staff
+    } else if (i % 29 === 0) {
+      isSpeaker = true;
+    }
 
     // Randomize event & hotel
     const event = events[Math.floor(Math.random() * events.length)];
@@ -242,6 +261,9 @@ async function main() {
       phone: generatePhone(),
       status: 'CONFIRMED',
       isVip,
+      isSpeaker,
+      isBridalParty,
+      isPrimaryGuest,
       eventId: event.id,
       assignedHotelId: hotel.id
     });
@@ -250,8 +272,24 @@ async function main() {
   // Generate Pending
   for (let i = 0; i < targetPendingCount; i++) {
     const fullName = getName();
-    const isVip = vipsCreated < targetVipsNeeded;
-    if (isVip) vipsCreated++;
+    let isVip = false;
+    let isSpeaker = false;
+    let isBridalParty = false;
+    let isPrimaryGuest = false;
+
+    if (vipsCreated < targetVipsNeeded) {
+      isVip = true;
+      vipsCreated++;
+    } else if (i % 14 === 0) {
+      isBridalParty = true; // Sponsor
+    } else if (i % 17 === 0) {
+      isPrimaryGuest = true; // Media
+    } else if (i % 23 === 0) {
+      isBridalParty = true;
+      isPrimaryGuest = true; // Staff
+    } else if (i % 29 === 0) {
+      isSpeaker = true;
+    }
 
     const event = events[Math.floor(Math.random() * events.length)];
     const hotel = Math.random() > 0.5 ? hotels[Math.floor(Math.random() * hotels.length)] : null;
@@ -263,6 +301,9 @@ async function main() {
       phone: generatePhone(),
       status: 'PENDING',
       isVip,
+      isSpeaker,
+      isBridalParty,
+      isPrimaryGuest,
       eventId: event.id,
       assignedHotelId: hotel ? hotel.id : null
     });
@@ -271,8 +312,24 @@ async function main() {
   // Generate Declined
   for (let i = 0; i < targetDeclinedCount; i++) {
     const fullName = getName();
-    const isVip = vipsCreated < targetVipsNeeded;
-    if (isVip) vipsCreated++;
+    let isVip = false;
+    let isSpeaker = false;
+    let isBridalParty = false;
+    let isPrimaryGuest = false;
+
+    if (vipsCreated < targetVipsNeeded) {
+      isVip = true;
+      vipsCreated++;
+    } else if (i % 10 === 0) {
+      isSpeaker = true;
+    } else if (i % 8 === 0) {
+      isBridalParty = true;
+      isPrimaryGuest = true; // Staff
+    } else if (i % 5 === 0) {
+      isBridalParty = true; // Sponsor
+    } else if (i % 7 === 0) {
+      isPrimaryGuest = true; // Media
+    }
 
     const event = events[Math.floor(Math.random() * events.length)];
 
@@ -283,6 +340,9 @@ async function main() {
       phone: generatePhone(),
       status: 'DECLINED',
       isVip,
+      isSpeaker,
+      isBridalParty,
+      isPrimaryGuest,
       eventId: event.id,
       assignedHotelId: null
     });
