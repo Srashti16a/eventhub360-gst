@@ -7,6 +7,7 @@ import seatingRoutes from './seatingRoutes';
 import campaignRoutes from './campaignRoutes';
 import transportationRoutes from './transportationRoutes';
 import groupRoutes from './groupRoutes';
+import qrPassRoutes from './qrPassRoutes';
 
 const router = Router();
 
@@ -18,5 +19,6 @@ router.use('/seating', seatingRoutes);
 router.use('/campaigns', campaignRoutes);
 router.use('/transportation', transportationRoutes);
 router.use('/groups', groupRoutes);
+router.use('/qr-passes', qrPassRoutes);
 
 export default router;

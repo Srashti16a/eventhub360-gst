@@ -6,21 +6,8 @@ import prisma from '../config/prisma';
 // ==========================================
 export const listDrivers = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const drivers = await prisma.driver.findMany({
-      include: {
-        vehicles: true,
-        transfers: {
-          include: {
-            guest: true,
-            route: true
-          }
-        }
-      },
-      orderBy: {
-        fullName: 'asc',
-      },
-    });
-    res.json({ success: true, data: drivers });
+    // Driver module is deprecated; return empty list
+    res.json({ success: true, data: [] });
   } catch (error) {
     next(error);
   }
@@ -29,9 +16,6 @@ export const listDrivers = async (req: Request, res: Response, next: NextFunctio
 export const listVehicles = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const vehicles = await prisma.vehicle.findMany({
-      include: {
-        driver: true,
-      },
       orderBy: {
         name: 'asc',
       },
@@ -56,7 +40,6 @@ export const listAssignments = async (req: Request, res: Response, next: NextFun
       where,
       include: {
         vehicle: true,
-        driver: true,
         event: true,
       },
       orderBy: {
@@ -71,16 +54,13 @@ export const listAssignments = async (req: Request, res: Response, next: NextFun
 
 export const assignFleet = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { vehicleId, driverId, eventId } = req.body;
+    const { vehicleId, eventId } = req.body;
 
     // Check if duplicate assignment exists
-    const existing = await prisma.fleetAssignment.findUnique({
+    const existing = await prisma.fleetAssignment.findFirst({
       where: {
-        eventId_vehicleId_driverId: {
-          eventId,
-          vehicleId,
-          driverId,
-        },
+        eventId,
+        vehicleId,
       },
     });
 
@@ -92,25 +72,18 @@ export const assignFleet = async (req: Request, res: Response, next: NextFunctio
     const assignment = await prisma.fleetAssignment.create({
       data: {
         vehicleId,
-        driverId,
         eventId,
         status: 'Active',
       },
       include: {
         vehicle: true,
-        driver: true,
       },
     });
 
-    // Update statuses
+    // Update status
     await prisma.vehicle.update({
       where: { id: vehicleId },
       data: { status: 'On Route' },
-    });
-
-    await prisma.driver.update({
-      where: { id: driverId },
-      data: { status: 'Active' },
     });
 
     // Log Activity
@@ -118,9 +91,8 @@ export const assignFleet = async (req: Request, res: Response, next: NextFunctio
       data: {
         activityType: 'Assignment Update',
         severity: 'Info',
-        message: `Driver ${assignment.driver.fullName} assigned to Vehicle ${assignment.vehicle.name}`,
+        message: `Vehicle ${assignment.vehicle.name} assigned`,
         vehicleId,
-        driverId,
       },
     });
 
@@ -136,7 +108,6 @@ export const deleteAssignment = async (req: Request, res: Response, next: NextFu
     const assignment = await prisma.fleetAssignment.findUnique({
       where: { id },
       include: {
-        driver: true,
         vehicle: true,
       },
     });
@@ -150,7 +121,7 @@ export const deleteAssignment = async (req: Request, res: Response, next: NextFu
       where: { id },
     });
 
-    // Reset driver and vehicle statuses if they aren't assigned elsewhere
+    // Reset vehicle status if not assigned elsewhere
     const otherAssignmentsForVehicle = await prisma.fleetAssignment.count({
       where: { vehicleId: assignment.vehicleId },
     });
@@ -161,24 +132,13 @@ export const deleteAssignment = async (req: Request, res: Response, next: NextFu
       });
     }
 
-    const otherAssignmentsForDriver = await prisma.fleetAssignment.count({
-      where: { driverId: assignment.driverId },
-    });
-    if (otherAssignmentsForDriver === 0) {
-      await prisma.driver.update({
-        where: { id: assignment.driverId },
-        data: { status: 'Available' },
-      });
-    }
-
     // Log Activity
     await prisma.fleetActivityLog.create({
       data: {
         activityType: 'Assignment Update',
         severity: 'Info',
-        message: `Removed assignment: Driver ${assignment.driver.fullName} from Vehicle ${assignment.vehicle.name}`,
+        message: `Removed assignment: Vehicle ${assignment.vehicle.name}`,
         vehicleId: assignment.vehicleId,
-        driverId: assignment.driverId,
       },
     });
 
@@ -282,7 +242,6 @@ export const listTransfers = async (req: Request, res: Response, next: NextFunct
         event: true,
         route: true,
         vehicle: true,
-        driver: true,
       },
       orderBy: {
         scheduledTime: 'asc',
@@ -304,7 +263,6 @@ export const getTransferDetails = async (req: Request, res: Response, next: Next
         event: true,
         route: true,
         vehicle: true,
-        driver: true,
       },
     });
 
@@ -321,7 +279,7 @@ export const getTransferDetails = async (req: Request, res: Response, next: Next
 
 export const scheduleTransfer = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { guestId, eventId, transferType, pickupLocation, dropoffLocation, scheduledTime, routeId, vehicleId, driverId, status } = req.body;
+    const { guestId, eventId, transferType, pickupLocation, dropoffLocation, scheduledTime, routeId, vehicleId, status } = req.body;
 
     const transfer = await prisma.transferSchedule.create({
       data: {
@@ -333,13 +291,11 @@ export const scheduleTransfer = async (req: Request, res: Response, next: NextFu
         scheduledTime,
         routeId,
         vehicleId,
-        driverId,
         status: status || 'Scheduled',
       },
       include: {
         guest: true,
         vehicle: true,
-        driver: true,
       },
     });
 
@@ -347,9 +303,6 @@ export const scheduleTransfer = async (req: Request, res: Response, next: NextFu
     if (status === 'In Transit') {
       if (vehicleId) {
         await prisma.vehicle.update({ where: { id: vehicleId }, data: { status: 'On Route' } });
-      }
-      if (driverId) {
-        await prisma.driver.update({ where: { id: driverId }, data: { status: 'Active' } });
       }
     }
 
@@ -359,7 +312,6 @@ export const scheduleTransfer = async (req: Request, res: Response, next: NextFu
         severity: 'Info',
         message: `New transfer scheduled for guest ${transfer.guest.name}`,
         vehicleId,
-        driverId,
       },
     });
 
@@ -372,7 +324,7 @@ export const scheduleTransfer = async (req: Request, res: Response, next: NextFu
 export const updateTransfer = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
-    const { pickupLocation, dropoffLocation, scheduledTime, routeId, vehicleId, driverId, status } = req.body;
+    const { pickupLocation, dropoffLocation, scheduledTime, routeId, vehicleId, status } = req.body;
 
     const current = await prisma.transferSchedule.findUnique({
       where: { id },
@@ -391,7 +343,6 @@ export const updateTransfer = async (req: Request, res: Response, next: NextFunc
         scheduledTime,
         routeId,
         vehicleId,
-        driverId,
         status,
       },
       include: {
@@ -404,15 +355,9 @@ export const updateTransfer = async (req: Request, res: Response, next: NextFunc
       if (vehicleId) {
         await prisma.vehicle.update({ where: { id: vehicleId }, data: { status: 'On Route' } });
       }
-      if (driverId) {
-        await prisma.driver.update({ where: { id: driverId }, data: { status: 'Active' } });
-      }
     } else if (status === 'Completed' || status === 'Cancelled') {
       if (current.vehicleId) {
         await prisma.vehicle.update({ where: { id: current.vehicleId }, data: { status: 'Available' } });
-      }
-      if (current.driverId) {
-        await prisma.driver.update({ where: { id: current.driverId }, data: { status: 'Available' } });
       }
     }
 
@@ -422,7 +367,6 @@ export const updateTransfer = async (req: Request, res: Response, next: NextFunc
         severity: 'Info',
         message: `Transfer schedule updated for guest ${updated.guest.name} to status: ${status}`,
         vehicleId: vehicleId || current.vehicleId,
-        driverId: driverId || current.driverId,
       },
     });
 
@@ -457,7 +401,6 @@ export const deleteTransfer = async (req: Request, res: Response, next: NextFunc
         severity: 'Info',
         message: `Deleted transfer schedule for guest ${current.guest.name}`,
         vehicleId: current.vehicleId,
-        driverId: current.driverId,
       },
     });
 
@@ -470,30 +413,7 @@ export const deleteTransfer = async (req: Request, res: Response, next: NextFunc
 // ==========================================
 // 5. Driver & Vehicle Status Management
 // ==========================================
-export const updateDriverStatus = async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const { id } = req.params;
-    const { status } = req.body;
-
-    const driver = await prisma.driver.update({
-      where: { id },
-      data: { status },
-    });
-
-    await prisma.fleetActivityLog.create({
-      data: {
-        activityType: 'Driver Status Change',
-        severity: 'Info',
-        message: `Driver ${driver.fullName} status updated to: ${status}`,
-        driverId: id,
-      },
-    });
-
-    res.json({ success: true, data: driver });
-  } catch (error) {
-    next(error);
-  }
-};
+// Driver status management removed as Driver model no longer exists.
 
 export const updateVehicleStatus = async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -644,7 +564,6 @@ export const listActivityLogs = async (req: Request, res: Response, next: NextFu
       take: 20,
       include: {
         vehicle: true,
-        driver: true,
       },
       orderBy: {
         createdAt: 'desc',
@@ -663,9 +582,8 @@ export const getDashboardOverview = async (req: Request, res: Response, next: Ne
   try {
     const { eventId } = req.params;
 
-    const [totalVehicles, activeDrivers, onRouteVehicles, availableVehicles, latestAnalytics, transfers] = await Promise.all([
+    const [totalVehicles, onRouteVehicles, availableVehicles, latestAnalytics, transfers] = await Promise.all([
       prisma.vehicle.count(),
-      prisma.driver.count({ where: { status: 'Active' } }),
       prisma.vehicle.count({ where: { status: 'On Route' } }),
       prisma.vehicle.count({ where: { status: 'Available' } }),
       prisma.fleetAnalytics.findFirst({
@@ -677,6 +595,8 @@ export const getDashboardOverview = async (req: Request, res: Response, next: Ne
         include: { vehicle: true },
       }),
     ]);
+
+    const activeDrivers = 0; // Driver model removed
 
     // Calculate default efficiency rating if no cache
     const efficiency = totalVehicles > 0 ? Number((90 + (onRouteVehicles * 0.5)).toFixed(1)) : 94.5;
@@ -728,19 +648,19 @@ export const triggerAnalyticsRefresh = async (req: Request, res: Response, next:
   try {
     const { eventId } = req.params;
 
-    const [totalVehicles, activeDrivers, onRouteVehicles] = await Promise.all([
+    const [totalVehicles, onRouteVehicles] = await Promise.all([
       prisma.vehicle.count(),
-      prisma.driver.count({ where: { status: 'Active' } }),
       prisma.vehicle.count({ where: { status: 'On Route' } }),
     ]);
 
+    const activeDrivers = 0; // Driver model removed
     const efficiency = totalVehicles > 0 ? Number((90 + (onRouteVehicles * 0.5)).toFixed(1)) : 94.5;
 
     const analytics = await prisma.fleetAnalytics.upsert({
       where: {
         eventId_recordedDate: {
           eventId,
-          recordedDate: new Date(), // Prisma matches exact datetime, so to make it unique per day we clear time or query first
+          recordedDate: new Date(),
         },
       },
       update: {
@@ -778,7 +698,6 @@ export const listAllocVehicles = async (req: Request, res: Response, next: NextF
 
     const vehicles = await prisma.vehicle.findMany({
       include: {
-        driver: true,
         transfers: {
           where: {
             eventId,
@@ -852,11 +771,10 @@ export const assignGuest = async (req: Request, res: Response, next: NextFunctio
       return;
     }
 
-    // Get vehicle to check capacity and get its driverId
+    // Get vehicle to check capacity (driver no longer tracked)
     const vehicle = await prisma.vehicle.findUnique({
       where: { id: vehicleId },
       include: {
-        driver: true,
         transfers: {
           where: { eventId, status: { in: ['Scheduled', 'In Transit'] } }
         }
@@ -889,27 +807,23 @@ export const assignGuest = async (req: Request, res: Response, next: NextFunctio
       }
     });
 
-    const driverId = vehicle.driverId;
-
     let transfer;
     if (existingTransfer) {
-      // Update existing transfer with vehicle and driver
+      // Update existing transfer with vehicle (no driver)
       transfer = await prisma.transferSchedule.update({
         where: { id: existingTransfer.id },
         data: {
           vehicleId,
-          driverId,
           status: 'In Transit' // Transition to In Transit on assignment
         }
       });
     } else {
-      // Create a new transfer schedule
+      // Create a new transfer schedule (no driver)
       transfer = await prisma.transferSchedule.create({
         data: {
           guestId,
           eventId,
           vehicleId,
-          driverId,
           transferType: 'VIP Transport',
           pickupLocation: 'Airport',
           dropoffLocation: 'Event Venue',
@@ -934,8 +848,7 @@ export const assignGuest = async (req: Request, res: Response, next: NextFunctio
         activityType: 'Assignment Update',
         severity: 'Info',
         message: `Assigned guest ${guest?.name || 'Unknown'} to vehicle ${vehicle.name}`,
-        vehicleId,
-        driverId
+        vehicleId
       }
     });
 
@@ -974,7 +887,6 @@ export const unassignGuest = async (req: Request, res: Response, next: NextFunct
       where: { id: transfer.id },
       data: {
         vehicleId: null,
-        driverId: null,
         status: 'Scheduled'
       }
     });
@@ -1017,92 +929,4 @@ export const unassignGuest = async (req: Request, res: Response, next: NextFunct
 // ==========================================
 // 10. CRUD Drivers
 // ==========================================
-export const createDriver = async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const { fullName, phoneNumber, status } = req.body;
-    const driver = await prisma.driver.create({
-      data: {
-        fullName,
-        phoneNumber: phoneNumber || '',
-        status: status || 'Available',
-      },
-    });
-
-    // Log Activity
-    await prisma.fleetActivityLog.create({
-      data: {
-        activityType: 'Driver Created',
-        severity: 'Info',
-        message: `Driver ${driver.fullName} was created`,
-        driverId: driver.id,
-      },
-    });
-
-    res.status(201).json({ success: true, data: driver });
-  } catch (error) {
-    next(error);
-  }
-};
-
-export const updateDriver = async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const { id } = req.params;
-    const { fullName, phoneNumber, status } = req.body;
-
-    const driver = await prisma.driver.update({
-      where: { id },
-      data: {
-        fullName,
-        phoneNumber: phoneNumber || '',
-        status: status || 'Available',
-      },
-    });
-
-    // Log Activity
-    await prisma.fleetActivityLog.create({
-      data: {
-        activityType: 'Driver Updated',
-        severity: 'Info',
-        message: `Driver ${driver.fullName} details were updated`,
-        driverId: id,
-      },
-    });
-
-    res.json({ success: true, data: driver });
-  } catch (error) {
-    next(error);
-  }
-};
-
-export const deleteDriver = async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const { id } = req.params;
-
-    const driver = await prisma.driver.findUnique({
-      where: { id },
-    });
-
-    if (!driver) {
-      res.status(404).json({ success: false, error: { message: 'Driver not found' } });
-      return;
-    }
-
-    await prisma.driver.delete({
-      where: { id },
-    });
-
-    // Log Activity
-    await prisma.fleetActivityLog.create({
-      data: {
-        activityType: 'Driver Deleted',
-        severity: 'Info',
-        message: `Driver ${driver.fullName} was deleted`,
-      },
-    });
-
-    res.json({ success: true, message: 'Driver deleted successfully' });
-  } catch (error) {
-    next(error);
-  }
-};
-
+// Driver CRUD endpoints removed after Driver model deletion

@@ -3,7 +3,7 @@ import { z } from 'zod';
 export const createAssignmentSchema = z.object({
   body: z.object({
     vehicleId: z.string({ required_error: 'vehicleId is required' }).uuid('Invalid vehicle ID'),
-    driverId: z.string({ required_error: 'driverId is required' }).uuid('Invalid driver ID'),
+    // driverId removed as Driver model no longer exists
     eventId: z.string({ required_error: 'eventId is required' }).uuid('Invalid event ID'),
   }),
 });
@@ -40,7 +40,7 @@ export const createTransferSchema = z.object({
     scheduledTime: z.string({ required_error: 'scheduledTime is required' }).transform((val) => new Date(val)),
     routeId: z.string().uuid().nullable().optional(),
     vehicleId: z.string().uuid().nullable().optional(),
-    driverId: z.string().uuid().nullable().optional(),
+    // driverId removed as Driver model no longer exists
     status: z.enum(['Scheduled', 'In Transit', 'Completed', 'Cancelled']).optional().default('Scheduled'),
   }),
 });
@@ -61,7 +61,7 @@ export const updateTransferSchema = z.object({
     scheduledTime: z.string().transform((val) => new Date(val)).optional(),
     routeId: z.string().uuid().nullable().optional(),
     vehicleId: z.string().uuid().nullable().optional(),
-    driverId: z.string().uuid().nullable().optional(),
+    // driverId removed as Driver model no longer exists
     status: z.enum(['Scheduled', 'In Transit', 'Completed', 'Cancelled']).optional(),
   }),
 });
@@ -103,22 +103,5 @@ export const updateMaintenanceSchema = z.object({
   }),
 });
 
-export const createDriverSchema = z.object({
-  body: z.object({
-    fullName: z.string({ required_error: 'fullName is required' }).min(1, 'Name cannot be empty'),
-    phoneNumber: z.string().optional().default(''),
-    status: z.string().optional().default('Available'),
-  }),
-});
-
-export const updateDriverSchema = z.object({
-  params: z.object({
-    id: z.string().uuid('Invalid ID in path'),
-  }),
-  body: z.object({
-    fullName: z.string({ required_error: 'fullName is required' }).min(1, 'Name cannot be empty'),
-    phoneNumber: z.string().optional().default(''),
-    status: z.string().optional().default('Available'),
-  }),
-});
+// Driver schemas removed as Driver model no longer exists
 
