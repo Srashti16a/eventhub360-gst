@@ -16,8 +16,9 @@ describe('EventHub360 API Integration Tests', () => {
     const hotel = await prisma.hotel.findFirst();
     testHotelId = hotel!.id;
 
-    const table = await prisma.table.findFirst();
-    testTableId = table!.id;
+    const table = (await prisma.table.findMany({ include: { guests: true } }))
+      .find(t => t.guests.length < t.capacity && !t.guests.some(g => g.seatNumber === 8)) || (await prisma.table.findFirst())!;
+    testTableId = table.id;
   });
 
   afterAll(async () => {
@@ -37,10 +38,10 @@ describe('EventHub360 API Integration Tests', () => {
       const res = await request(app).get('/api/dashboard/stats');
       expect(res.status).toBe(200);
       expect(res.body.success).toBe(true);
-      expect(res.body.data.totalGuests.value).toBe(1248);
-      expect(res.body.data.confirmed.value).toBe(892);
-      expect(res.body.data.pendingRsvp.value).toBe(315);
-      expect(res.body.data.vipStatus.value).toBe(42);
+      expect(res.body.data.totalGuests.value).toBe(1308);
+      expect(res.body.data.confirmed.value).toBe(930);
+      expect(res.body.data.pendingRsvp.value).toBe(330);
+      expect(res.body.data.vipStatus.value).toBe(47);
       expect(res.body.data.totalGuests.growth).toBe('+4.2%');
       expect(res.body.data.confirmed.growth).toBe('+12%');
       expect(res.body.data.pendingRsvp.growth).toBe('-2%');
@@ -100,8 +101,8 @@ describe('EventHub360 API Integration Tests', () => {
       const res = await request(app).get('/api/guests?vipOnly=true&limit=100');
       expect(res.status).toBe(200);
       expect(res.body.success).toBe(true);
-      // Mockup counts 42 VIPs + 1 we created = 43
-      expect(res.body.meta.totalGuests).toBe(43);
+      // Mockup counts 47 VIPs + 1 we created = 48
+      expect(res.body.meta.totalGuests).toBe(48);
       res.body.data.forEach((guest: any) => {
         expect(guest.isVip).toBe(true);
       });
@@ -195,9 +196,9 @@ describe('EventHub360 API Integration Tests', () => {
       expect(res.status).toBe(200);
       expect(res.headers['content-type']).toContain('text/csv');
       expect(res.text).toContain('ID,Name,Email,Phone,Status,VIP');
-      // Count CSV lines: header + 42 records = 43 lines (excluding empty lines)
+      // Count CSV lines: header + 47 records = 48 lines (excluding empty lines)
       const lines = res.text.split('\n').filter(l => l.trim() !== '');
-      expect(lines.length).toBe(43);
+      expect(lines.length).toBe(48);
     });
 
     it('should import guests in bulk via JSON', async () => {

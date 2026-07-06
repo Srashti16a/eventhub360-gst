@@ -47,7 +47,7 @@ export const getGroup = async (req: Request, res: Response, next: NextFunction) 
 
 export const createGroup = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { name, category, status, location, transportation, specialRequirement } = req.body;
+    const { name, category, status, location, transportation, specialRequirement, isVipGroup } = req.body;
 
     if (!name || name.trim() === '') {
       res.status(400).json({ success: false, error: { message: 'Group name is required' } });
@@ -59,6 +59,7 @@ export const createGroup = async (req: Request, res: Response, next: NextFunctio
         name,
         category,
         status: status || 'Active',
+        isVipGroup: isVipGroup !== undefined ? Boolean(isVipGroup) : false,
         location: location || null,
         transportation: transportation || null,
         specialRequirement: specialRequirement || null,
@@ -81,7 +82,7 @@ export const createGroup = async (req: Request, res: Response, next: NextFunctio
 export const updateGroup = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
-    const { name, category, status, location, transportation, specialRequirement, primaryGuestId } = req.body;
+    const { name, category, status, location, transportation, specialRequirement, primaryGuestId, isVipGroup } = req.body;
 
     if (name !== undefined && (!name || name.trim() === '')) {
       res.status(400).json({ success: false, error: { message: 'Group name cannot be empty' } });
@@ -114,6 +115,7 @@ export const updateGroup = async (req: Request, res: Response, next: NextFunctio
         name: name !== undefined ? name : undefined,
         category: category !== undefined ? category : undefined,
         status: status !== undefined ? status : undefined,
+        isVipGroup: isVipGroup !== undefined ? Boolean(isVipGroup) : undefined,
         location: location !== undefined ? location : undefined,
         transportation: transportation !== undefined ? transportation : undefined,
         specialRequirement: specialRequirement !== undefined ? specialRequirement : undefined,

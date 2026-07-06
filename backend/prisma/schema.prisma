@@ -203,6 +203,7 @@ model GuestGroup {
   name               String
   category           String
   status             String   @default("Active") // "Active", "Draft", "Archived"
+  isVipGroup         Boolean  @default(false)
   primaryGuestId     String?
   location           String?
   transportation     String?
@@ -213,4 +214,5 @@ model GuestGroup {
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 }
+
 

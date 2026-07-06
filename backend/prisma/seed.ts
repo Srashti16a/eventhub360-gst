@@ -1,6 +1,8 @@
 import { PrismaClient } from '@prisma/client';
+import { runDemoSeed } from './demoSeed';
 
 const prisma = new PrismaClient();
+
 
 const firstNames = [
   'Liam', 'Olivia', 'Noah', 'Emma', 'Oliver', 'Ava', 'Elijah', 'Charlotte', 'William', 'Sophia',
@@ -31,6 +33,7 @@ const avatars = [
 
 async function main() {
   console.log('Clearing database...');
+  await prisma.guestGroup.deleteMany();
   await prisma.fleetAssignment.deleteMany();
   await prisma.transferSchedule.deleteMany();
   await prisma.fleetActivityLog.deleteMany();
@@ -437,6 +440,9 @@ async function main() {
   await prisma.fleetActivityLog.create({ data: { activityType: 'Maintenance Alert', severity: 'Critical', message: 'Vehicle #240 fuel warning', vehicleId: vehicle3.id, driverId: driver3.id } });
 
   console.log('Seeding completed successfully!');
+  
+  console.log('Running Demo Dataset Seeding...');
+  await runDemoSeed();
 }
 
 main()

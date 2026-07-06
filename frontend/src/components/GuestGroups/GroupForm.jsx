@@ -10,6 +10,7 @@ export default function GroupForm({ initialData, allGuests, onSubmit, onCancel }
     // Helper display fields matching drawer cards
     category: 'Family', // Family, Corporate, Wedding Party, Non-Profit
     status: 'Active', // Active, Draft, Archived
+    isVipGroup: false,
     primaryGuestId: '',
     location: '',
     transportation: '',
@@ -26,6 +27,7 @@ export default function GroupForm({ initialData, allGuests, onSubmit, onCancel }
         eventName: initialData.eventName || 'Corporate Gala',
         category: initialData.category || 'Family',
         status: initialData.status || 'Active',
+        isVipGroup: initialData.isVipGroup || false,
         primaryGuestId: initialData.primaryGuestId || '',
         location: initialData.location || '',
         transportation: initialData.transportation || '',
@@ -35,10 +37,11 @@ export default function GroupForm({ initialData, allGuests, onSubmit, onCancel }
   }, [initialData]);
 
   const handleChange = (e) => {
-    const { name, value } = e.target;
+    const { name, type, checked, value } = e.target;
+    const val = type === 'checkbox' ? checked : value;
     setFormData((prev) => ({
       ...prev,
-      [name]: value
+      [name]: val
     }));
     if (errors[name]) {
       setErrors((prev) => ({ ...prev, [name]: null }));
@@ -141,6 +144,8 @@ export default function GroupForm({ initialData, allGuests, onSubmit, onCancel }
           </select>
         </div>
 
+
+
         {initialData && (
           <div className="form-group">
             <label htmlFor="primaryGuestSelect">Primary Guest Contact</label>
@@ -198,6 +203,20 @@ export default function GroupForm({ initialData, allGuests, onSubmit, onCancel }
             onChange={handleChange}
             placeholder="e.g. Requires early check-in or allergy accommodation..."
           />
+        </div>
+
+        <div className="form-group form-grid-full" style={{ display: 'flex', alignItems: 'center', marginTop: '0.5rem', marginBottom: '0.5rem' }}>
+          <label className="toggle-wrapper" style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <input
+              type="checkbox"
+              className="toggle-input"
+              name="isVipGroup"
+              checked={formData.isVipGroup}
+              onChange={handleChange}
+            />
+            <div className="toggle-switch"></div>
+            <span className="toggle-label" style={{ fontSize: '0.85rem', fontWeight: '600' }}>VIP Group</span>
+          </label>
         </div>
       </div>
 

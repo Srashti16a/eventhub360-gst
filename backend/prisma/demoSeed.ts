@@ -2,7 +2,7 @@ import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
-async function main() {
+export async function runDemoSeed() {
   console.log('--- Starting Demo Dataset Seeding ---');
 
   // 1. Temporarily drop triggers so we can clean up old demo data
@@ -107,11 +107,13 @@ async function main() {
       name: '[Demo] Vanderbilt Family',
       category: 'Family',
       status: 'Active',
+      isVipGroup: true,
       location: 'New York, USA',
       transportation: 'Private Fleet',
       specialRequirement: 'Arthur requires early check-in (before 11 AM) for allergy storage.'
     }
   });
+
 
   const groupLuxury = await prisma.guestGroup.create({
     data: {
@@ -526,11 +528,14 @@ async function main() {
   console.log('--- Demo Seeding Completed Successfully ---');
 }
 
-main()
-  .catch((e) => {
-    console.error(e);
-    process.exit(1);
-  })
-  .finally(async () => {
-    await prisma.$disconnect();
-  });
+if (require.main === module) {
+  runDemoSeed()
+    .catch((e) => {
+      console.error(e);
+      process.exit(1);
+    })
+    .finally(async () => {
+      await prisma.$disconnect();
+    });
+}
+
