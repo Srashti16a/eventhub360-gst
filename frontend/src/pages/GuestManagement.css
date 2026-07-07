@@ -1375,3 +1375,15 @@
 .btn-bulk-text:hover {
   color: var(--text-muted);
 }
+
+/* ── View Guest Details — first dropdown item highlight ── */
+.dropdown-menu-custom .dropdown-item-custom:first-child {
+  color: var(--active-red);
+  font-weight: 700;
+  border-bottom: 1px solid #f1f5f9;
+  margin-bottom: 2px;
+}
+.dropdown-menu-custom .dropdown-item-custom:first-child:hover {
+  background: #fff7f7;
+  color: #c0392b;
+}

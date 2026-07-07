@@ -9,6 +9,7 @@ export default function GuestTable({
   onDeleteGuest,
   onCheckinGuest,
   onViewQRCode,
+  onViewDetails,
   layout
 }) {
   const [activeMenuId, setActiveMenuId] = useState(null);
@@ -115,6 +116,9 @@ export default function GuestTable({
                   </button>
                   {activeMenuId === g.guest_id && (
                     <div className="dropdown-menu-custom" style={{ top: '100%', right: 0 }}>
+                      <button type="button" className="dropdown-item-custom" onClick={() => { setActiveMenuId(null); onViewDetails(g); }}>
+                        View Guest Details
+                      </button>
                       <button type="button" className="dropdown-item-custom" onClick={() => onEditGuest(g)}>
                         Edit Guest
                       </button>
@@ -311,6 +315,13 @@ export default function GuestTable({
                       </button>
                       {activeMenuId === g.guest_id && (
                         <div className="dropdown-menu-custom">
+                          <button
+                            type="button"
+                            className="dropdown-item-custom"
+                            onClick={() => { setActiveMenuId(null); onViewDetails(g); }}
+                          >
+                            View Guest Details
+                          </button>
                           <button
                             type="button"
                             className="dropdown-item-custom"

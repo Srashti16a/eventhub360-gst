@@ -4,6 +4,8 @@ import GuestGroups from './pages/GuestGroups';
 import GuestCategories from './pages/GuestCategories';
 import RSVPAnalytics from './pages/RSVPAnalytics';
 import MagicLinks from './pages/MagicLinks';
+import CommunicationCenter from './pages/CommunicationCenter';
+import GuestProfile from './pages/GuestProfile';
 import Hotels from './pages/Hotels';
 import RoomAllocation, { INITIAL_ROOMS, INITIAL_UNASSIGNED } from './pages/RoomAllocation';
 import Transportation from './pages/Transportation';
@@ -194,6 +196,7 @@ export default function App() {
   const [isAccommodationDropdownOpen, setIsAccommodationDropdownOpen] = useState(true);
   const [isTransportationDropdownOpen, setIsTransportationDropdownOpen] = useState(true);
   const [isBookRoomOpen, setIsBookRoomOpen] = useState(false);
+  const [selectedGuestProfile, setSelectedGuestProfile] = useState(null);
   const [rooms, setRooms] = useState(() => {
     const saved = localStorage.getItem('eh360_rooms');
     if (saved) {
@@ -211,7 +214,7 @@ export default function App() {
 
   const handleGuestsClick = () => {
     setIsGuestsDropdownOpen(!isGuestsDropdownOpen);
-    const isCurrentlyGuest = ['guests', 'groups', 'categories', 'magic_links'].includes(activeView);
+    const isCurrentlyGuest = ['guests', 'groups', 'categories', 'magic_links', 'comm_center', 'guest_profile'].includes(activeView);
     if (!isCurrentlyGuest) {
       setActiveView('guests');
     }
@@ -260,7 +263,8 @@ export default function App() {
         { name: 'Registry', view: 'guests' },
         { name: 'Groups', view: 'groups' },
         { name: 'Directory', view: 'categories' },
-        { name: 'Magic Links', view: 'magic_links' }
+        { name: 'Magic Links', view: 'magic_links' },
+        { name: 'Comm Center', view: 'comm_center' }
       ]
     },
     { name: 'Events', icon: <EventsIcon />, view: 'events' },
@@ -659,13 +663,25 @@ export default function App() {
         {/* Dynamic Screen Area */}
         <main style={{ flex: 1, overflowY: 'auto', backgroundColor: '#f8fafc' }}>
           {activeView === 'guests' ? (
-            <GuestManagement />
+            <GuestManagement 
+              onViewGuestProfile={(guest) => {
+                setSelectedGuestProfile(guest);
+                setActiveView('guest_profile');
+              }}
+            />
           ) : activeView === 'groups' ? (
             <GuestGroups />
           ) : activeView === 'categories' ? (
             <GuestCategories />
           ) : activeView === 'magic_links' ? (
             <MagicLinks />
+          ) : activeView === 'comm_center' ? (
+            <CommunicationCenter />
+          ) : activeView === 'guest_profile' ? (
+            <GuestProfile 
+              guest={selectedGuestProfile} 
+              onBack={() => setActiveView('guests')} 
+            />
           ) : activeView === 'room_allocation' ? (
             <RoomAllocation 
               rooms={rooms}
