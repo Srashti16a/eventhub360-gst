@@ -16,8 +16,9 @@ describe('EventHub360 API Integration Tests', () => {
     const hotel = await prisma.hotel.findFirst();
     testHotelId = hotel!.id;
 
-    const table = await prisma.table.findFirst();
-    testTableId = table!.id;
+    const table = (await prisma.table.findMany({ include: { guests: true } }))
+      .find(t => t.guests.length < t.capacity && !t.guests.some(g => g.seatNumber === 8)) || (await prisma.table.findFirst())!;
+    testTableId = table.id;
   });
 
   afterAll(async () => {
@@ -37,10 +38,10 @@ describe('EventHub360 API Integration Tests', () => {
       const res = await request(app).get('/api/dashboard/stats');
       expect(res.status).toBe(200);
       expect(res.body.success).toBe(true);
-      expect(res.body.data.totalGuests.value).toBe(1248);
-      expect(res.body.data.confirmed.value).toBe(892);
-      expect(res.body.data.pendingRsvp.value).toBe(315);
-      expect(res.body.data.vipStatus.value).toBe(42);
+      expect(res.body.data.totalGuests.value).toBe(1308);
+      expect(res.body.data.confirmed.value).toBe(930);
+      expect(res.body.data.pendingRsvp.value).toBe(330);
+      expect(res.body.data.vipStatus.value).toBe(47);
       expect(res.body.data.totalGuests.growth).toBe('+4.2%');
       expect(res.body.data.confirmed.growth).toBe('+12%');
       expect(res.body.data.pendingRsvp.growth).toBe('-2%');
@@ -100,8 +101,8 @@ describe('EventHub360 API Integration Tests', () => {
       const res = await request(app).get('/api/guests?vipOnly=true&limit=100');
       expect(res.status).toBe(200);
       expect(res.body.success).toBe(true);
-      // Mockup counts 42 VIPs + 1 we created = 43
-      expect(res.body.meta.totalGuests).toBe(43);
+      // Mockup counts 47 VIPs + 1 we created = 48
+      expect(res.body.meta.totalGuests).toBe(48);
       res.body.data.forEach((guest: any) => {
         expect(guest.isVip).toBe(true);
       });
@@ -195,9 +196,9 @@ describe('EventHub360 API Integration Tests', () => {
       expect(res.status).toBe(200);
       expect(res.headers['content-type']).toContain('text/csv');
       expect(res.text).toContain('ID,Name,Email,Phone,Status,VIP');
-      // Count CSV lines: header + 42 records = 43 lines (excluding empty lines)
+      // Count CSV lines: header + 47 records = 48 lines (excluding empty lines)
       const lines = res.text.split('\n').filter(l => l.trim() !== '');
-      expect(lines.length).toBe(43);
+      expect(lines.length).toBe(48);
     });
 
     it('should import guests in bulk via JSON', async () => {
@@ -478,6 +479,78 @@ describe('EventHub360 API Integration Tests', () => {
     });
   });
 
+  describe('Communication Center APIs', () => {
+    let createdCampaignId: string;
+
+    it('should retrieve campaign dashboard stats', async () => {
+      const res = await request(app).get('/api/campaigns/stats');
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(res.body.data).toHaveProperty('deliverabilityRate');
+      expect(res.body.data).toHaveProperty('avgOpenRate');
+      expect(res.body.data).toHaveProperty('activeCampaigns');
+    });
+
+    it('should retrieve campaign analytics', async () => {
+      const res = await request(app).get('/api/campaigns/analytics');
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(res.body.data).toHaveProperty('deliveryRate');
+      expect(res.body.data).toHaveProperty('openRate');
+      expect(res.body.data).toHaveProperty('clickRate');
+    });
+
+    it('should retrieve audience segments (derived)', async () => {
+      const res = await request(app).get('/api/campaigns/segments');
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(res.body.data.length).toBeGreaterThan(0);
+      expect(res.body.data[0]).toHaveProperty('memberCount');
+    });
+
+    it('should create a new campaign', async () => {
+      const res = await request(app)
+        .post('/api/campaigns')
+        .send({
+          title: 'Test Campaign Integration',
+          subject: 'Test Subject',
+          description: 'Test Body',
+          channel: 'EMAIL',
+          targetType: 'VIP',
+          status: 'DRAFT'
+        });
+
+      expect(res.status).toBe(201);
+      expect(res.body.success).toBe(true);
+      expect(res.body.data.title).toBe('Test Campaign Integration');
+      
+      createdCampaignId = res.body.data.id;
+    });
+
+    it('should retrieve campaigns list with filters', async () => {
+      const res = await request(app).get('/api/campaigns?channel=EMAIL');
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(res.body.data.length).toBeGreaterThan(0);
+    });
+
+    it('should retrieve campaign by id', async () => {
+      const res = await request(app).get(`/api/campaigns/${createdCampaignId}`);
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(res.body.data.title).toBe('Test Campaign Integration');
+    });
+
+    it('should delete campaign by id', async () => {
+      const res = await request(app).delete(`/api/campaigns/${createdCampaignId}`);
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+
+      const check = await request(app).get(`/api/campaigns/${createdCampaignId}`);
+      expect(check.status).toBe(404);
+    });
+  });
+
   describe('Communications & Comm Center APIs', () => {
     let testLogId: string;
 
@@ -551,4 +624,117 @@ describe('EventHub360 API Integration Tests', () => {
       expect(res.body.data[0].channel).toBe('WHATSAPP');
     });
   });
+
+  describe('QR Pass Center APIs', () => {
+    let createdQRPassId: string;
+    let qrToken: string;
+    let testGuestId: string;
+
+    beforeAll(async () => {
+      // Find a test guest
+      const guest = await prisma.guest.findFirst();
+      testGuestId = guest!.id;
+    });
+
+    it('should retrieve qr pass stats', async () => {
+      const res = await request(app).get('/api/qr-passes/stats');
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(res.body.data).toHaveProperty('totalPassesGenerated');
+      expect(res.body.data).toHaveProperty('securityHealthRate');
+    });
+
+    it('should retrieve security health stats', async () => {
+      const res = await request(app).get('/api/qr-passes/security-health');
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(res.body.data).toHaveProperty('validPasses');
+      expect(res.body.data).toHaveProperty('healthPercentage');
+    });
+
+    it('should create a new QR Pass', async () => {
+      // First ensure no duplicate pass exists
+      await prisma.qRPass.deleteMany({
+        where: { guestId: testGuestId, eventId: testEventId }
+      });
+
+      const res = await request(app)
+        .post('/api/qr-passes')
+        .send({
+          guestId: testGuestId,
+          eventId: testEventId,
+          passType: 'VIP'
+        });
+
+      expect(res.status).toBe(201);
+      expect(res.body.success).toBe(true);
+      expect(res.body.data.passType).toBe('VIP');
+      expect(res.body.data.status).toBe('ACTIVE');
+
+      createdQRPassId = res.body.data.id;
+      qrToken = res.body.data.qrCode;
+    });
+
+    it('should list QR passes with query filter', async () => {
+      const res = await request(app).get('/api/qr-passes?passType=VIP');
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(res.body.data.length).toBeGreaterThan(0);
+    });
+
+    it('should verify / scan a QR pass', async () => {
+      const res = await request(app)
+        .post('/api/qr-passes/verify')
+        .send({
+          qrToken,
+          scanLocation: 'Main Entrance Gate A',
+          scannerName: 'Guard 1'
+        });
+
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(res.body.data.securityValidation).toBe('VALID_ACCESS');
+    });
+
+    it('should retrieve recent scan logs', async () => {
+      const res = await request(app).get('/api/qr-passes/recent-scans');
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(res.body.data.length).toBeGreaterThan(0);
+      expect(res.body.data[0].scanLocation).toBe('Main Entrance Gate A');
+    });
+
+    it('should get pass details by ID', async () => {
+      const res = await request(app).get(`/api/qr-passes/${createdQRPassId}`);
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(res.body.data.guestDetails.id).toBe(testGuestId);
+    });
+
+    it('should download a pass and increment download count', async () => {
+      const res = await request(app).get(`/api/qr-passes/${createdQRPassId}/download`);
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(res.body.data.downloadCount).toBe(1);
+    });
+
+    it('should send pass through simulated channel and create delivery logs', async () => {
+      const res = await request(app)
+        .post(`/api/qr-passes/${createdQRPassId}/send`)
+        .send({ channel: 'EMAIL' });
+
+      expect(res.status).toBe(200);
+      expect(res.body.data.qrPassId).toBe(createdQRPassId);
+    });
+
+    it('should delete pass by id', async () => {
+      const res = await request(app).delete(`/api/qr-passes/${createdQRPassId}`);
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+
+      const check = await request(app).get(`/api/qr-passes/${createdQRPassId}`);
+      expect(check.status).toBe(404);
+    });
+  });
 });
+

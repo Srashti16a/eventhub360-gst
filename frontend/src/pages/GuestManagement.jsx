@@ -539,6 +539,35 @@ export default function GuestManagement() {
   const paginatedGuests = guests;
   const totalPages = meta.totalPages || 1;
 
+
+  const getVisiblePages = () => {
+    const pages = [];
+    const maxVisible = 5;
+    
+    if (totalPages <= maxVisible) {
+      for (let i = 1; i <= totalPages; i++) {
+        pages.push(i);
+      }
+    } else {
+      let start = currentPage - 2;
+      let end = currentPage + 2;
+      
+      if (start < 1) {
+        start = 1;
+        end = maxVisible;
+      } else if (end > totalPages) {
+        end = totalPages;
+        start = totalPages - maxVisible + 1;
+      }
+      
+      for (let i = start; i <= end; i++) {
+        pages.push(i);
+      }
+    }
+    
+    return pages;
+  };
+
   return (
     <div className="guest-mgmt-container">
       {/* Toast Notification */}
@@ -727,14 +756,14 @@ export default function GuestManagement() {
               &lt;
             </button>
             
-            {Array.from({ length: totalPages }, (_, i) => (
+            {getVisiblePages().map((page) => (
               <button
-                key={i + 1}
+                key={page}
                 type="button"
-                className={`pagination-btn ${currentPage === i + 1 ? 'active' : ''}`}
-                onClick={() => setCurrentPage(i + 1)}
+                className={`pagination-btn ${currentPage === page ? 'active' : ''}`}
+                onClick={() => setCurrentPage(page)}
               >
-                {i + 1}
+                {page}
               </button>
             ))}
 

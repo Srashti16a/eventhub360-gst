@@ -18,6 +18,9 @@ model Event {
   fleetAnalytics   FleetAnalytics[]
   entrances        Entrance[]
   checkIns         CheckIn[]
+
+  campaigns        Campaign[]
+  qrPasses         QRPass[]
   createdAt        DateTime          @default(now())
   updatedAt        DateTime          @updatedAt
 }
@@ -75,19 +78,108 @@ model Guest {
   
   createdAt       DateTime           @default(now())
   updatedAt       DateTime           @updatedAt
+  // Guest profile related relations
+  accommodation   GuestAccommodation?
+  transportation  GuestTransportation?
+  seating         GuestSeating?
+  communications  GuestCommunication[]
+  dietaryPreferences GuestDietaryPreference[]
+  specialRequests GuestSpecialRequest[]
+  conciergeNotes  GuestConciergeNote[]
+  communicationHistory CommunicationHistory[]
+  qrPasses        QRPass[]
 }
 
-model Driver {
-  id          String             @id @default(uuid())
-  fullName    String
-  phoneNumber String
-  status      String             @default("Available") // "Available", "Active", "Off Duty", "Resting", "On Break", "Offline"
-  vehicles    Vehicle[]
-  assignments FleetAssignment[]
-  transfers   TransferSchedule[]
-  activityLogs FleetActivityLog[]
-  createdAt   DateTime           @default(now())
-  updatedAt   DateTime           @updatedAt
+// Enums for communication and transportation statuses
+enum CommunicationType {
+  EMAIL
+  WHATSAPP
+  SMS
+  PHONE_CALL
+}
+
+enum TransportationStatus {
+  SCHEDULED
+  IN_TRANSIT
+  COMPLETED
+  CANCELLED
+}
+
+model GuestAccommodation {
+  id                 String   @id @default(uuid())
+  guestId            String   @unique
+  hotelName          String?
+  roomType           String?
+  roomNumber         String?
+  reservationStatus  String?
+  checkIn            DateTime?
+  checkOut           DateTime?
+  guest              Guest    @relation(fields: [guestId], references: [id], onDelete: Cascade)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+}
+
+model GuestTransportation {
+  id                 String   @id @default(uuid())
+  guestId            String   @unique
+  pickupLocation     String?
+  dropLocation       String?
+  vehicle            String?
+  driverName         String?
+  driverPhone        String?
+  pickupTime         DateTime?
+  trackingLink       String?
+  transportationStatus TransportationStatus?
+  guest              Guest    @relation(fields: [guestId], references: [id], onDelete: Cascade)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+}
+
+model GuestSeating {
+  id                 String   @id @default(uuid())
+  guestId            String   @unique
+  floor              String?
+  section            String?
+  tableNumber        String?
+  seatNumber         String?
+  seatingMapImage    String?
+  guest              Guest    @relation(fields: [guestId], references: [id], onDelete: Cascade)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+}
+
+model GuestCommunication {
+  id                 String   @id @default(uuid())
+  guestId            String
+  communicationType  CommunicationType
+  title              String
+  description        String
+  createdAt          DateTime @default(now())
+  deliveryStatus     DeliveryStatus
+  guest              Guest    @relation(fields: [guestId], references: [id], onDelete: Cascade)
+}
+
+model GuestConciergeNote {
+  id                 String   @id @default(uuid())
+  guestId            String
+  note               String
+  createdBy          String
+  createdAt          DateTime @default(now())
+  guest              Guest    @relation(fields: [guestId], references: [id], onDelete: Cascade)
+}
+
+model GuestDietaryPreference {
+  id                 String   @id @default(uuid())
+  guestId            String
+  preference         String
+  guest              Guest    @relation(fields: [guestId], references: [id], onDelete: Cascade)
+}
+
+model GuestSpecialRequest {
+  id                 String   @id @default(uuid())
+  guestId            String
+  request            String
+  guest              Guest    @relation(fields: [guestId], references: [id], onDelete: Cascade)
 }
 
 model Vehicle {
@@ -97,8 +189,7 @@ model Vehicle {
   licenseNumber String                 @unique
   capacity      Int
   status        String                 @default("Available") // "On Route", "Staged", "Maintenance", "Available"
-  driverId      String?
-  driver        Driver?                @relation(fields: [driverId], references: [id])
+
   assignments   FleetAssignment[]
   transfers     TransferSchedule[]
   maintenances  VehicleMaintenance[]
@@ -112,15 +203,14 @@ model FleetAssignment {
   id         String   @id @default(uuid())
   vehicleId  String
   vehicle    Vehicle  @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
-  driverId   String
-  driver     Driver   @relation(fields: [driverId], references: [id], onDelete: Cascade)
+
   eventId    String
   event      Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
   status     String   @default("Active") // "Active", "Completed", "Cancelled"
   assignedAt DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
-  @@unique([eventId, vehicleId, driverId])
+
 }
 
 model TransportRoute {
@@ -151,8 +241,7 @@ model TransferSchedule {
   route           TransportRoute? @relation(fields: [routeId], references: [id], onDelete: SetNull)
   vehicleId       String?
   vehicle         Vehicle?        @relation(fields: [vehicleId], references: [id], onDelete: SetNull)
-  driverId        String?
-  driver          Driver?         @relation(fields: [driverId], references: [id], onDelete: SetNull)
+
   status          String          @default("Scheduled") // "Scheduled", "In Transit", "Completed", "Cancelled"
   createdAt       DateTime        @default(now())
   updatedAt       DateTime        @updatedAt
@@ -165,8 +254,7 @@ model FleetActivityLog {
   message      String
   vehicleId    String?
   vehicle      Vehicle? @relation(fields: [vehicleId], references: [id], onDelete: SetNull)
-  driverId     String?
-  driver       Driver?  @relation(fields: [driverId], references: [id], onDelete: SetNull)
+
   createdAt    DateTime @default(now())
 }
 
@@ -212,6 +300,7 @@ model GuestGroup {
   name               String
   category           String
   status             String   @default("Active") // "Active", "Draft", "Archived"
+  isVipGroup         Boolean  @default(false)
   primaryGuestId     String?
   location           String?
   transportation     String?
@@ -321,3 +410,125 @@ model RouteConfiguration {
   updatedAt        DateTime             @updatedAt
 }
 
+enum CampaignStatus {
+  DRAFT
+  SCHEDULED
+  SENDING
+  SENT
+  FAILED
+}
+
+enum CampaignTargetType {
+  GUEST_GROUP
+  VIP
+  SPEAKERS
+  CONFIRMED
+  PENDING
+  ALL_GUESTS
+}
+
+model Campaign {
+  id             String                 @id @default(uuid())
+  title          String
+  subject        String?
+  description    String?
+  channel        CommunicationType      // Reuses existing CommunicationType enum
+  targetType     CampaignTargetType
+  targetId       String?                // References GuestGroup.id if targetType is GUEST_GROUP
+  eventId        String?
+  event          Event?                 @relation(fields: [eventId], references: [id], onDelete: SetNull)
+  scheduledAt    DateTime?
+  status         CampaignStatus         @default(DRAFT)
+  createdBy      String                 @default("system")
+  communications CommunicationHistory[]
+  createdAt      DateTime               @default(now())
+  updatedAt      DateTime               @updatedAt
+}
+
+model CommunicationHistory {
+  id            String            @id @default(uuid())
+  guestId       String
+  guest         Guest             @relation(fields: [guestId], references: [id], onDelete: Cascade)
+  campaignId    String?
+  campaign      Campaign?         @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+  channel       CommunicationType // Reuses existing CommunicationType enum
+  status        DeliveryStatus    @default(PENDING) // Reuses existing DeliveryStatus enum
+  sentAt        DateTime          @default(now())
+  openedAt      DateTime?
+  clickedAt     DateTime?
+  failureReason String?
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+}
+
+enum QRPassType {
+  VIP
+  ATTENDEE
+  STAFF
+  SPEAKER
+  VENDOR
+  MEDIA
+}
+
+enum QRPassStatus {
+  ACTIVE
+  SCANNED
+  REVOKED
+  EXPIRED
+}
+
+enum ScanStatus {
+  SUCCESS
+  FAILED_EXPIRED
+  FAILED_REVOKED
+  FAILED_DUPLICATE
+  FAILED_INVALID
+}
+
+model QRPass {
+  id            String            @id @default(uuid())
+  guestId       String
+  guest         Guest             @relation(fields: [guestId], references: [id], onDelete: Cascade)
+  eventId       String
+  event         Event             @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  passType      QRPassType
+  status        QRPassStatus      @default(ACTIVE)
+  qrCode        String            @unique // Unique QR token (UUID)
+  passNumber    String            @unique // Unique human-readable code
+  expiresAt     DateTime?
+  generatedAt   DateTime          @default(now())
+  lastScannedAt DateTime?
+  downloadCount Int               @default(0)
+  createdBy     String            @default("system")
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+  
+  scanHistory   ScanHistory[]
+  deliveryLogs  PassDeliveryLog[]
+
+  @@unique([guestId, eventId]) // Prevent duplicate passes for the same guest and event
+}
+
+model ScanHistory {
+  id           String       @id @default(uuid())
+  qrPassId     String
+  qrPass       QRPass       @relation(fields: [qrPassId], references: [id], onDelete: Cascade)
+  scanLocation String?
+  scannerName  String?
+  deviceId     String?
+  scanTime     DateTime     @default(now())
+  scanStatus   ScanStatus
+  notes        String?
+  createdAt    DateTime     @default(now())
+}
+
+model PassDeliveryLog {
+  id            String            @id @default(uuid())
+  qrPassId      String
+  qrPass            QRPass            @relation(fields: [qrPassId], references: [id], onDelete: Cascade)
+  channel       CommunicationType // Reuses existing CommunicationType enum
+  status        String            // "SENT", "FAILED"
+  sentAt        DateTime          @default(now())
+  failureReason String?
+  createdAt     DateTime          @default(now())
+}

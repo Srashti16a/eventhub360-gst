@@ -76,6 +76,27 @@ export default function GroupTable({
                         {group.name ? group.name[0].toUpperCase() : '?'}
                       </div>
                       <span className="group-name-text">{group.name}</span>
+                      {group.isVipGroup && (
+                        <span
+                          style={{
+                            marginLeft: '0.5rem',
+                            backgroundColor: '#fffbeb',
+                            color: '#b45309',
+                            border: '1px solid #fde68a',
+                            borderRadius: '4px',
+                            padding: '1px 5px',
+                            fontSize: '0.65rem',
+                            fontWeight: '800',
+                            textTransform: 'uppercase',
+                            letterSpacing: '0.05em',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '2px'
+                          }}
+                        >
+                          ⭐ VIP
+                        </span>
+                      )}
                     </div>
                   </td>
                   <td>

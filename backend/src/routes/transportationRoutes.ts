@@ -1,6 +1,5 @@
 import { Router } from 'express';
 import {
-  listDrivers,
   listVehicles,
   listAssignments,
   assignFleet,
@@ -13,7 +12,6 @@ import {
   scheduleTransfer,
   updateTransfer,
   deleteTransfer,
-  updateDriverStatus,
   updateVehicleStatus,
   listMaintenances,
   scheduleMaintenance,
@@ -24,10 +22,7 @@ import {
   listAllocVehicles,
   listGuestQueue,
   assignGuest,
-  unassignGuest,
-  createDriver,
-  updateDriver,
-  deleteDriver
+  unassignGuest
 } from '../controllers/transportationController';
 import { validate } from '../middlewares/validation';
 import {
@@ -41,18 +36,12 @@ import {
   deleteTransferSchema,
   updateStatusSchema,
   createMaintenanceSchema,
-  updateMaintenanceSchema,
-  createDriverSchema,
-  updateDriverSchema
+  updateMaintenanceSchema
 } from '../schemas/transportation';
 
 const router = Router();
 
 // Drivers & Vehicles Lists
-router.get('/drivers', listDrivers);
-router.post('/drivers', validate(createDriverSchema), createDriver);
-router.put('/drivers/:id', validate(updateDriverSchema), updateDriver);
-router.delete('/drivers/:id', deleteDriver);
 router.get('/vehicles', listVehicles);
 
 // Fleet Assignments
@@ -73,7 +62,6 @@ router.put('/transfers/:id', validate(updateTransferSchema), updateTransfer);
 router.delete('/transfers/:id', validate(deleteTransferSchema), deleteTransfer);
 
 // Drivers & Vehicles Status Management
-router.put('/drivers/:id/status', validate(updateStatusSchema), updateDriverStatus);
 router.put('/vehicles/:id/status', validate(updateStatusSchema), updateVehicleStatus);
 
 // Vehicle Maintenance

@@ -10,6 +10,7 @@ import groupRoutes from './groupRoutes';
 import cateringRoutes from './cateringRoutes';
 import checkInRoutes from './checkInRoutes';
 import communicationRoutes from './communicationRoutes';
+import qrPassRoutes from './qrPassRoutes';
 
 const router = Router();
 
@@ -24,5 +25,6 @@ router.use('/groups', groupRoutes);
 router.use('/catering', cateringRoutes);
 router.use('/checkin', checkInRoutes);
 router.use('/communications', communicationRoutes);
+router.use('/qr-passes', qrPassRoutes);
 
 export default router;

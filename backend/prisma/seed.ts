@@ -1,4 +1,12 @@
-import { PrismaClient, VipTier, CheckInStatus, CommunicationChannel, DeliveryStatus } from '@prisma/client';
+import {
+  PrismaClient,
+  VipTier,
+  CheckInStatus,
+  CommunicationChannel,
+  DeliveryStatus,
+} from '@prisma/client';
+
+import { runDemoSeed } from './demoSeed';
 
 const prisma = new PrismaClient();
 
@@ -33,13 +41,13 @@ async function main() {
   console.log('Clearing database...');
   await prisma.checkIn.deleteMany();
   await prisma.communicationLog.deleteMany();
+  await prisma.guestGroup.deleteMany();
   await prisma.fleetAssignment.deleteMany();
   await prisma.transferSchedule.deleteMany();
   await prisma.fleetActivityLog.deleteMany();
   await prisma.vehicleMaintenance.deleteMany();
   await prisma.routeOptimizationLog.deleteMany();
   await prisma.vehicle.deleteMany();
-  await prisma.driver.deleteMany();
   await prisma.transportRoute.deleteMany();
   await prisma.fleetAnalytics.deleteMany();
   await prisma.guest.deleteMany();
@@ -115,7 +123,7 @@ async function main() {
   }
 
   console.log('Creating specific mockup guests...');
-  
+
   // 1. Jameson Vanderbilt
   const guestJameson = await prisma.guest.create({
     data: {
@@ -295,7 +303,7 @@ async function main() {
   // - Pending: 315 total. (Currently: Eleanor = 1). Need 314.
   // - Declined: 41 total. (Currently: Julian = 1). Need 40.
   // - VIP: 42 total. (Currently: Samantha, Marcus, David = 3). Need 39.
-  
+
   const targetConfirmedCount = 886;
   const targetPendingCount = 314;
   const targetDeclinedCount = 40;
@@ -344,7 +352,7 @@ async function main() {
     }
     return 'None';
   };
-  
+
   // Helper to generate a random phone number
   const generatePhone = () => {
     const area = Math.floor(100 + Math.random() * 900);
@@ -565,7 +573,7 @@ async function main() {
   const now = new Date();
   for (let i = 0; i < checkInTargetCount; i++) {
     const guest = confirmedGuests[i];
-    
+
     // Distribute entrances: 50% Main Ballroom, 30% North Gate, 20% VIP Lounge
     let entrance = entranceBallroom;
     let staff = staffMichael;
@@ -602,26 +610,21 @@ async function main() {
   console.log(`Successfully seeded ${checkInTargetCount} check-in entries.`);
 
   console.log('Creating transportation seed data...');
-  // 1. Create Drivers
-  const driver1 = await prisma.driver.create({ data: { fullName: 'James Whitaker', phoneNumber: '+1 (555) 019-2831', status: 'Active' } });
-  const driver2 = await prisma.driver.create({ data: { fullName: 'Sarah Jenkins', phoneNumber: '+1 (555) 021-9872', status: 'Resting' } });
-  const driver3 = await prisma.driver.create({ data: { fullName: "Michael O'Brien", phoneNumber: '+1 (555) 034-7711', status: 'On Break' } });
-  const driver4 = await prisma.driver.create({ data: { fullName: 'David Chen', phoneNumber: '+1 (555) 012-4433', status: 'Active' } });
 
-  // 2. Create Vehicles linked to Drivers
-  const vehicle1 = await prisma.vehicle.create({ data: { name: 'Mercedes V-Class (2024)', type: 'Van', licenseNumber: 'EH-092', capacity: 7, status: 'On Route', driverId: driver1.id } });
-  const vehicle2 = await prisma.vehicle.create({ data: { name: 'Tesla Model X (White)', type: 'SUV', licenseNumber: 'EH-104', capacity: 5, status: 'Available', driverId: driver2.id } });
-  const vehicle3 = await prisma.vehicle.create({ data: { name: 'Sprinter Exec-Bus B12', type: 'Minibus', licenseNumber: 'EH-058', capacity: 15, status: 'Available', driverId: driver3.id } });
-  const vehicle4 = await prisma.vehicle.create({ data: { name: 'Executive Sedan S1', type: 'Sedan', licenseNumber: 'EH-112', capacity: 4, status: 'On Route', driverId: driver4.id } });
+  // 1. Create Vehicles
+  const vehicle1 = await prisma.vehicle.create({ data: { name: 'Mercedes V-Class (2024)', type: 'Van', licenseNumber: 'EH-092', capacity: 7, status: 'On Route' } });
+  const vehicle2 = await prisma.vehicle.create({ data: { name: 'Tesla Model X (White)', type: 'SUV', licenseNumber: 'EH-104', capacity: 5, status: 'Available' } });
+  const vehicle3 = await prisma.vehicle.create({ data: { name: 'Sprinter Exec-Bus B12', type: 'Minibus', licenseNumber: 'EH-058', capacity: 15, status: 'Available' } });
+  const vehicle4 = await prisma.vehicle.create({ data: { name: 'Executive Sedan S1', type: 'Sedan', licenseNumber: 'EH-112', capacity: 4, status: 'On Route' } });
 
-  // 3. Create Transport Routes
+  // 2. Create Transport Routes
   const route1 = await prisma.transportRoute.create({ data: { routeName: 'Airport ➔ Grand Hall', startLocation: 'Airport', endLocation: 'Grand Hall', distanceKm: 25.5, durationMins: 35, status: 'Active' } });
   const route2 = await prisma.transportRoute.create({ data: { routeName: 'Terminal 1 ➔ Main Gate', startLocation: 'Terminal 1', endLocation: 'Main Gate', distanceKm: 8.2, durationMins: 15, status: 'Active' } });
   const route3 = await prisma.transportRoute.create({ data: { routeName: 'Shuttle Loop C', startLocation: 'Hotel Area', endLocation: 'Convention Center', distanceKm: 3.5, durationMins: 10, status: 'Active' } });
 
-  // 4. Create Fleet Assignments
-  await prisma.fleetAssignment.create({ data: { vehicleId: vehicle1.id, driverId: driver1.id, eventId: eventGala.id, status: 'Active' } });
-  await prisma.fleetAssignment.create({ data: { vehicleId: vehicle4.id, driverId: driver4.id, eventId: eventGala.id, status: 'Active' } });
+  // 3. Create Fleet Assignments
+  await prisma.fleetAssignment.create({ data: { vehicleId: vehicle1.id, eventId: eventGala.id, status: 'Active' } });
+  await prisma.fleetAssignment.create({ data: { vehicleId: vehicle4.id, eventId: eventGala.id, status: 'Active' } });
 
   // 5. Create Transfer Schedules for Vips/Guests
   const allVips = await prisma.guest.findMany({ where: { isVip: true }, take: 20 });
@@ -633,13 +636,13 @@ async function main() {
   for (let i = 0; i < 7; i++) {
     const scheduledDate = new Date();
     scheduledDate.setDate(scheduledDate.getDate() - i);
-    
+
     // Create 3 transfers on each day to populate the chart
     for (let j = 0; j < 3; j++) {
       const vipIndex = (i * 3 + j) % allVips.length;
       const vehicle = vehiclesList[j % vehiclesList.length];
       const route = routesList[j % routesList.length];
-      
+
       await prisma.transferSchedule.create({
         data: {
           guestId: allVips[vipIndex].id,
@@ -650,17 +653,16 @@ async function main() {
           scheduledTime: scheduledDate,
           routeId: route.id,
           vehicleId: vehicle.id,
-          driverId: vehicle.driverId || driver1.id,
           status: i === 0 ? (j === 0 ? 'In Transit' : 'Scheduled') : 'Completed'
         }
       });
     }
   }
 
-  // 6. Create Fleet Activity Logs
-  await prisma.fleetActivityLog.create({ data: { activityType: 'Route Completed', severity: 'Info', message: 'Fleet 12 arrived at Venue A', vehicleId: vehicle1.id, driverId: driver1.id } });
-  await prisma.fleetActivityLog.create({ data: { activityType: 'Dispatch Alert', severity: 'Warning', message: 'New arrival scheduled for 15:30', vehicleId: vehicle2.id, driverId: driver2.id } });
-  await prisma.fleetActivityLog.create({ data: { activityType: 'Maintenance Alert', severity: 'Critical', message: 'Vehicle #240 fuel warning', vehicleId: vehicle3.id, driverId: driver3.id } });
+  // 5. Create Fleet Activity Logs
+  await prisma.fleetActivityLog.create({ data: { activityType: 'Route Completed', severity: 'Info', message: 'Fleet 12 arrived at Venue A', vehicleId: vehicle1.id } });
+  await prisma.fleetActivityLog.create({ data: { activityType: 'Dispatch Alert', severity: 'Warning', message: 'New arrival scheduled for 15:30', vehicleId: vehicle2.id } });
+  await prisma.fleetActivityLog.create({ data: { activityType: 'Maintenance Alert', severity: 'Critical', message: 'Vehicle #240 fuel warning', vehicleId: vehicle3.id } });
 
   console.log('Creating default route configurations...');
   await prisma.routeConfiguration.createMany({
@@ -672,7 +674,7 @@ async function main() {
 
   console.log('Creating communication logs...');
   const commNow = new Date();
-  
+
   // 1. Julian Thorne
   const guestJulianObj = allVips.find(g => g.name.includes('Julian'));
   await prisma.communicationLog.create({
@@ -879,6 +881,9 @@ async function main() {
   console.log('Successfully seeded route configs and 160 communication log entries.');
 
   console.log('Seeding completed successfully!');
+
+  console.log('Running Demo Dataset Seeding...');
+  await runDemoSeed();
 }
 
 main()

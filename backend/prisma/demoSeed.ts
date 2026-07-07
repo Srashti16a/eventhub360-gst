@@ -2,7 +2,7 @@ import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
-async function main() {
+export async function runDemoSeed() {
   console.log('--- Starting Demo Dataset Seeding ---');
 
   // 1. Temporarily drop triggers so we can clean up old demo data
@@ -11,7 +11,6 @@ async function main() {
   await prisma.$executeRawUnsafe(`DROP TRIGGER IF EXISTS trigger_protect_demo_events ON "Event"`);
   await prisma.$executeRawUnsafe(`DROP TRIGGER IF EXISTS trigger_protect_demo_hotels ON "Hotel"`);
   await prisma.$executeRawUnsafe(`DROP TRIGGER IF EXISTS trigger_protect_demo_tables ON "Table"`);
-  await prisma.$executeRawUnsafe(`DROP TRIGGER IF EXISTS trigger_protect_demo_drivers ON "Driver"`);
   await prisma.$executeRawUnsafe(`DROP TRIGGER IF EXISTS trigger_protect_demo_vehicles ON "Vehicle"`);
   await prisma.$executeRawUnsafe(`DROP TRIGGER IF EXISTS trigger_protect_demo_routes ON "TransportRoute"`);
   await prisma.$executeRawUnsafe(`DROP TRIGGER IF EXISTS trigger_protect_demo_schedules ON "TransferSchedule"`);
@@ -63,7 +62,6 @@ async function main() {
   await prisma.event.deleteMany({ where: { title: { startsWith: '[Demo]' } } });
   await prisma.hotel.deleteMany({ where: { name: { startsWith: '[Demo]' } } });
   await prisma.table.deleteMany({ where: { name: { startsWith: '[Demo]' } } });
-  await prisma.driver.deleteMany({ where: { fullName: { startsWith: '[Demo]' } } });
   await prisma.vehicle.deleteMany({ where: { name: { startsWith: '[Demo]' } } });
   await prisma.transportRoute.deleteMany({ where: { routeName: { startsWith: '[Demo]' } } });
 
@@ -107,11 +105,13 @@ async function main() {
       name: '[Demo] Vanderbilt Family',
       category: 'Family',
       status: 'Active',
+      isVipGroup: true,
       location: 'New York, USA',
       transportation: 'Private Fleet',
       specialRequirement: 'Arthur requires early check-in (before 11 AM) for allergy storage.'
     }
   });
+
 
   const groupLuxury = await prisma.guestGroup.create({
     data: {
@@ -219,11 +219,9 @@ async function main() {
 
   // 7. Create Demo Transportation Module Data
   console.log('Creating demo transportation details...');
-  const driver1 = await prisma.driver.create({ data: { fullName: '[Demo] Driver Alan Probst', phoneNumber: '+1 (555) 880-1111', status: 'Active' } });
-  const driver2 = await prisma.driver.create({ data: { fullName: '[Demo] Driver Lisa Vance', phoneNumber: '+1 (555) 880-2222', status: 'Available' } });
 
-  const vehicle1 = await prisma.vehicle.create({ data: { name: '[Demo] Tesla Model Y', type: 'SUV', licenseNumber: 'DEMO-001', capacity: 5, status: 'Available', driverId: driver1.id } });
-  const vehicle2 = await prisma.vehicle.create({ data: { name: '[Demo] Executive Sprinter', type: 'Van', licenseNumber: 'DEMO-002', capacity: 9, status: 'Available', driverId: driver2.id } });
+  const vehicle1 = await prisma.vehicle.create({ data: { name: '[Demo] Tesla Model Y', type: 'SUV', licenseNumber: 'DEMO-001', capacity: 5, status: 'Available' } });
+  const vehicle2 = await prisma.vehicle.create({ data: { name: '[Demo] Executive Sprinter', type: 'Van', licenseNumber: 'DEMO-002', capacity: 9, status: 'Available' } });
 
   const route1 = await prisma.transportRoute.create({ data: { routeName: '[Demo] Airport Shuttle', startLocation: 'Airport Terminal A', endLocation: 'Grand Palace Resort', distanceKm: 12.8, durationMins: 20, status: 'Active' } });
 
@@ -231,7 +229,6 @@ async function main() {
   await prisma.fleetAssignment.create({
     data: {
       vehicleId: vehicle1.id,
-      driverId: driver1.id,
       eventId: eventExecutive.id,
       status: 'Active'
     }
@@ -250,7 +247,6 @@ async function main() {
         scheduledTime: new Date(Date.now() + 1800000), // in 30 mins
         routeId: route1.id,
         vehicleId: vehicle1.id,
-        driverId: driver1.id,
         status: 'Scheduled'
       }
     });
@@ -347,27 +343,7 @@ async function main() {
     EXECUTE FUNCTION protect_demo_guests();
   `);
 
-  await prisma.$executeRawUnsafe(`
-    CREATE OR REPLACE FUNCTION protect_demo_drivers()
-    RETURNS TRIGGER AS $$
-    BEGIN
-        IF current_setting('app.bypass_demo_protection', true) = 'true' THEN
-            RETURN OLD;
-        END IF;
-        IF OLD."fullName" LIKE '%[Demo]%' THEN
-            RETURN NULL;
-        END IF;
-        RETURN OLD;
-    END;
-    $$ LANGUAGE plpgsql;
-  `);
 
-  await prisma.$executeRawUnsafe(`
-    CREATE OR REPLACE TRIGGER trigger_protect_demo_drivers
-    BEFORE DELETE ON "Driver"
-    FOR EACH ROW
-    EXECUTE FUNCTION protect_demo_drivers();
-  `);
 
   await prisma.$executeRawUnsafe(`
     CREATE OR REPLACE FUNCTION protect_demo_vehicles()
@@ -526,11 +502,14 @@ async function main() {
   console.log('--- Demo Seeding Completed Successfully ---');
 }
 
-main()
-  .catch((e) => {
-    console.error(e);
-    process.exit(1);
-  })
-  .finally(async () => {
-    await prisma.$disconnect();
-  });
+if (require.main === module) {
+  runDemoSeed()
+    .catch((e) => {
+      console.error(e);
+      process.exit(1);
+    })
+    .finally(async () => {
+      await prisma.$disconnect();
+    });
+}
+
