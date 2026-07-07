@@ -33,7 +33,7 @@ export default function RSVPAnalytics({ onViewAllGuests }) {
       })
       .catch(err => console.error('Error fetching RSVP stats:', err));
 
-    fetch('/api/guests?limit=1000')
+    fetch(`/api/guests?limit=1000&ts=${Date.now()}`, { cache: 'reload' })
       .then(r => r.json())
       .then(res => {
         if (res.success && res.data) {
@@ -135,6 +135,16 @@ export default function RSVPAnalytics({ onViewAllGuests }) {
       });
   }, [guests]);
 
+  // Filter responses based on search query
+  const filteredResponses = useMemo(() => {
+    if (!searchQuery) return allResponses;
+    const lower = searchQuery.toLowerCase();
+    return allResponses.filter(r =>
+      (r.name && r.name.toLowerCase().includes(lower)) ||
+      (r.email && r.email.toLowerCase().includes(lower))
+    );
+  }, [allResponses, searchQuery]);
+
   // Compute Timeline dynamically
   const timelineEvents = useMemo(() => {
     return [...guests]
@@ -221,7 +231,7 @@ export default function RSVPAnalytics({ onViewAllGuests }) {
 
       {/* Bottom recent responses */}
       <RecentResponses
-        responses={allResponses}
+        responses={filteredResponses}
         searchQuery={searchQuery}
         setSearchQuery={setSearchQuery}
         onViewAllGuests={onViewAllGuests}
