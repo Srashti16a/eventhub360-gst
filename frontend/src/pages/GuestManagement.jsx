@@ -5,6 +5,7 @@ import GuestFilters from '../components/GuestManagement/GuestFilters';
 import GuestTable from '../components/GuestManagement/GuestTable';
 import GuestModal from '../components/GuestManagement/GuestModal';
 import { BulkImportModal, QRCodeModal } from '../components/GuestManagement/ImportExportModals';
+import GuestDetailModal from '../components/GuestManagement/GuestDetailModal';
 
 // Data mapping helper
 const mapBackendGuestToFrontend = (bg, checkedInIds) => {
@@ -37,7 +38,7 @@ const mapBackendGuestToFrontend = (bg, checkedInIds) => {
   };
 };
 
-export default function GuestManagement() {
+export default function GuestManagement({ onViewGuestProfile }) {
   const [guests, setGuests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -73,6 +74,10 @@ export default function GuestManagement() {
   
   const [isQRCodeOpen, setIsQRCodeOpen] = useState(false);
   const [viewingQRCodeGuest, setViewingQRCodeGuest] = useState(null);
+
+  // Guest Detail Modal
+  const [isDetailOpen, setIsDetailOpen] = useState(false);
+  const [viewingDetailGuest, setViewingDetailGuest] = useState(null);
 
   const [isSeatingOpen, setIsSeatingOpen] = useState(false);
   const [isCampaignOpen, setIsCampaignOpen] = useState(false);
@@ -517,6 +522,15 @@ export default function GuestManagement() {
     setIsQRCodeOpen(true);
   };
 
+  const handleViewDetailsClick = (guest) => {
+    if (onViewGuestProfile) {
+      onViewGuestProfile(guest);
+    } else {
+      setViewingDetailGuest(guest);
+      setIsDetailOpen(true);
+    }
+  };
+
   // Bulk Import
   const handleImportSuccess = (importedGuests) => {
     fetchGuests();
@@ -538,6 +552,35 @@ export default function GuestManagement() {
   // Backend paginates for us, so paginatedGuests is just guests
   const paginatedGuests = guests;
   const totalPages = meta.totalPages || 1;
+
+
+  const getVisiblePages = () => {
+    const pages = [];
+    const maxVisible = 5;
+    
+    if (totalPages <= maxVisible) {
+      for (let i = 1; i <= totalPages; i++) {
+        pages.push(i);
+      }
+    } else {
+      let start = currentPage - 2;
+      let end = currentPage + 2;
+      
+      if (start < 1) {
+        start = 1;
+        end = maxVisible;
+      } else if (end > totalPages) {
+        end = totalPages;
+        start = totalPages - maxVisible + 1;
+      }
+      
+      for (let i = start; i <= end; i++) {
+        pages.push(i);
+      }
+    }
+    
+    return pages;
+  };
 
   return (
     <div className="guest-mgmt-container">
@@ -703,6 +746,7 @@ export default function GuestManagement() {
               onDeleteGuest={handleDeleteClick}
               onCheckinGuest={handleCheckinGuest}
               onViewQRCode={handleViewQRCodeClick}
+              onViewDetails={handleViewDetailsClick}
               layout={layout}
             />
           </>
@@ -727,14 +771,14 @@ export default function GuestManagement() {
               &lt;
             </button>
             
-            {Array.from({ length: totalPages }, (_, i) => (
+            {getVisiblePages().map((page) => (
               <button
-                key={i + 1}
+                key={page}
                 type="button"
-                className={`pagination-btn ${currentPage === i + 1 ? 'active' : ''}`}
-                onClick={() => setCurrentPage(i + 1)}
+                className={`pagination-btn ${currentPage === page ? 'active' : ''}`}
+                onClick={() => setCurrentPage(page)}
               >
-                {i + 1}
+                {page}
               </button>
             ))}
 
@@ -1060,6 +1104,15 @@ export default function GuestManagement() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Guest Detail Modal */}
+      {isDetailOpen && viewingDetailGuest && (
+        <GuestDetailModal
+          guest={viewingDetailGuest}
+          onClose={() => { setIsDetailOpen(false); setViewingDetailGuest(null); }}
+          onEditGuest={(g) => { handleEditClick(g); }}
+        />
       )}
     </div>
   );

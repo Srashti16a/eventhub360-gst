@@ -1,4 +1,12 @@
-import { PrismaClient } from '@prisma/client';
+import {
+  PrismaClient,
+  VipTier,
+  CheckInStatus,
+  CommunicationChannel,
+  DeliveryStatus,
+} from '@prisma/client';
+
+import { runDemoSeed } from './demoSeed';
 
 const prisma = new PrismaClient();
 
@@ -31,19 +39,24 @@ const avatars = [
 
 async function main() {
   console.log('Clearing database...');
+  await prisma.checkIn.deleteMany();
+  await prisma.communicationLog.deleteMany();
+  await prisma.guestGroup.deleteMany();
   await prisma.fleetAssignment.deleteMany();
   await prisma.transferSchedule.deleteMany();
   await prisma.fleetActivityLog.deleteMany();
   await prisma.vehicleMaintenance.deleteMany();
   await prisma.routeOptimizationLog.deleteMany();
   await prisma.vehicle.deleteMany();
-  await prisma.driver.deleteMany();
   await prisma.transportRoute.deleteMany();
   await prisma.fleetAnalytics.deleteMany();
   await prisma.guest.deleteMany();
   await prisma.table.deleteMany();
   await prisma.hotel.deleteMany();
+  await prisma.entrance.deleteMany();
   await prisma.event.deleteMany();
+  await prisma.staff.deleteMany();
+  await prisma.routeConfiguration.deleteMany();
 
   console.log('Creating events...');
   const eventGala = await prisma.event.create({
@@ -80,6 +93,16 @@ async function main() {
 
   const events = [eventGala, eventWedding, eventCharity, eventProduct];
 
+  console.log('Creating entrances...');
+  const entranceNorth = await prisma.entrance.create({ data: { name: 'North Gate', eventId: eventProduct.id } });
+  const entranceBallroom = await prisma.entrance.create({ data: { name: 'Main Ballroom', eventId: eventProduct.id } });
+  const entranceLounge = await prisma.entrance.create({ data: { name: 'VIP Lounge', eventId: eventProduct.id } });
+
+  console.log('Creating staff operators...');
+  const staffJulian = await prisma.staff.create({ data: { name: 'Julian Rossi', role: 'Event Manager', status: 'Active' } });
+  const staffSarah = await prisma.staff.create({ data: { name: 'Sarah Jenkins', role: 'Gate Operator', assignedEntrance: 'North Gate', status: 'Active' } });
+  const staffMichael = await prisma.staff.create({ data: { name: 'Michael O\'Brien', role: 'Gate Operator', assignedEntrance: 'Main Ballroom', status: 'Active' } });
+
   console.log('Creating hotels...');
   const ritz = await prisma.hotel.create({ data: { name: 'The Ritz-Carlton' } });
   const manor = await prisma.hotel.create({ data: { name: 'Boutique Manor' } });
@@ -100,7 +123,7 @@ async function main() {
   }
 
   console.log('Creating specific mockup guests...');
-  
+
   // 1. Jameson Vanderbilt
   const guestJameson = await prisma.guest.create({
     data: {
@@ -117,6 +140,9 @@ async function main() {
       assignedHotelId: ritz.id,
       tableId: tables[0].id,
       seatNumber: 1,
+      mealPreference: 'Non-Veg',
+      allergies: 'None',
+      vipTier: VipTier.KEYNOTE,
     },
   });
 
@@ -136,6 +162,9 @@ async function main() {
       assignedHotelId: manor.id,
       tableId: tables[1].id,
       seatNumber: 2,
+      mealPreference: 'Vegetarian',
+      allergies: 'None',
+      vipTier: VipTier.ATTENDEE,
     },
   });
 
@@ -153,6 +182,9 @@ async function main() {
       isPrimaryGuest: true,
       eventId: eventCharity.id,
       assignedHotelId: null,
+      mealPreference: 'Vegan',
+      allergies: 'None',
+      vipTier: VipTier.PLATINUM,
     },
   });
 
@@ -172,24 +204,155 @@ async function main() {
       assignedHotelId: hyatt.id,
       tableId: tables[2].id,
       seatNumber: 4,
+      mealPreference: 'Non-Veg',
+      allergies: 'None',
+      vipTier: VipTier.GOLD,
+    },
+  });
+
+  // 5. Julianne Smith
+  const guestJulianne = await prisma.guest.create({
+    data: {
+      name: 'Julianne Smith',
+      avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=200',
+      email: 'j.smith@techcorp.com',
+      phone: '+1 (555) 321-7654',
+      status: 'CONFIRMED',
+      isVip: false,
+      isSpeaker: true,
+      isBridalParty: false,
+      isPrimaryGuest: false,
+      eventId: eventProduct.id,
+      assignedHotelId: hyatt.id,
+      tableId: tables[2].id,
+      seatNumber: 5,
+      mealPreference: 'Vegan',
+      allergies: 'Nuts (Severe)',
+      vipTier: VipTier.KEYNOTE,
+    },
+  });
+
+  // 6. Marcus Wright
+  const guestMarcus = await prisma.guest.create({
+    data: {
+      name: 'Marcus Wright',
+      avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=200',
+      email: 'marcus.w@global.io',
+      phone: '+1 (555) 765-4321',
+      status: 'CONFIRMED',
+      isVip: true,
+      isSpeaker: false,
+      isBridalParty: false,
+      isPrimaryGuest: false,
+      eventId: eventGala.id,
+      assignedHotelId: ritz.id,
+      tableId: tables[0].id,
+      seatNumber: 2,
+      mealPreference: 'Non-Veg',
+      allergies: 'None',
+      vipTier: VipTier.PLATINUM,
+    },
+  });
+
+  // 7. Sarah Chen
+  const guestSarah = await prisma.guest.create({
+    data: {
+      name: 'Sarah Chen',
+      avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&q=80&w=200',
+      email: 's.chen@innovate.net',
+      phone: '+1 (555) 456-7890',
+      status: 'CONFIRMED',
+      isVip: false,
+      isSpeaker: false,
+      isBridalParty: false,
+      isPrimaryGuest: false,
+      eventId: eventCharity.id,
+      assignedHotelId: null,
+      mealPreference: 'Gluten-Free',
+      allergies: 'Shellfish',
+      vipTier: VipTier.ATTENDEE,
+    },
+  });
+
+  // 8. David Miller
+  const guestDavid = await prisma.guest.create({
+    data: {
+      name: 'David Miller',
+      avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&q=80&w=200',
+      email: 'd.miller@exective.com',
+      phone: '+1 (555) 890-1234',
+      status: 'CONFIRMED',
+      isVip: true,
+      isSpeaker: false,
+      isBridalParty: false,
+      isPrimaryGuest: false,
+      eventId: eventProduct.id,
+      assignedHotelId: hyatt.id,
+      tableId: tables[2].id,
+      seatNumber: 6,
+      mealPreference: 'Keto',
+      allergies: 'None',
+      vipTier: VipTier.GOLD,
     },
   });
 
   console.log('Generating remaining guests to match mockup stats...');
-  // Total to generate: 1248. Currently created: 4.
+  // Total to generate: 1248. Currently created: 8.
   // We need exactly:
-  // - Confirmed: 892 total. (Currently: Jameson, Samantha = 2). Need 890.
+  // - Confirmed: 892 total. (Currently: Jameson, Samantha, Julianne, Marcus, Sarah, David = 6). Need 886.
   // - Pending: 315 total. (Currently: Eleanor = 1). Need 314.
   // - Declined: 41 total. (Currently: Julian = 1). Need 40.
-  // - VIP: 42 total. (Currently: Jameson, Samantha = 2). Need 40.
-  
-  const targetConfirmedCount = 890;
+  // - VIP: 42 total. (Currently: Samantha, Marcus, David = 3). Need 39.
+
+  const targetConfirmedCount = 886;
   const targetPendingCount = 314;
   const targetDeclinedCount = 40;
-  const targetVipsNeeded = 40;
+  const targetVipsNeeded = 39;
 
   let vipsCreated = 0;
-  
+
+  // Track remaining counts for deterministic distribution matching mockup stats
+  let remainingVegan = 223; // Target: 225 total. (Created: Julianne, Dr. Julian Thorne = 2)
+  let remainingVeg = 390;   // Target Vegetarian + Gluten-Free = 402 total. (Created: Eleanor = 1, Sarah = 1)
+  let remainingGlutenFree = 10;
+  let remainingNonVeg = 600; // Target Non-Veg + Keto = 621 total. (Created: Jameson, Samantha, Marcus, David = 4)
+  let remainingKeto = 17;
+
+  let remainingAllergies = 40; // Target: 42 total. (Created: Julianne, Sarah = 2)
+
+  const getMealPreference = () => {
+    if (remainingVegan > 0) {
+      remainingVegan--;
+      return 'Vegan';
+    }
+    if (remainingVeg > 0) {
+      remainingVeg--;
+      return 'Vegetarian';
+    }
+    if (remainingGlutenFree > 0) {
+      remainingGlutenFree--;
+      return 'Gluten-Free';
+    }
+    if (remainingKeto > 0) {
+      remainingKeto--;
+      return 'Keto';
+    }
+    if (remainingNonVeg > 0) {
+      remainingNonVeg--;
+      return 'Non-Veg';
+    }
+    return 'Non-Veg';
+  };
+
+  const getAllergy = () => {
+    if (remainingAllergies > 0) {
+      remainingAllergies--;
+      const list = ['Nuts (Severe)', 'Shellfish', 'Dairy', 'Gluten'];
+      return list[Math.floor(Math.random() * list.length)];
+    }
+    return 'None';
+  };
+
   // Helper to generate a random phone number
   const generatePhone = () => {
     const area = Math.floor(100 + Math.random() * 900);
@@ -212,6 +375,14 @@ async function main() {
     }
   };
 
+  const getVipTier = (isVip: boolean, isSpeaker: boolean, index: number) => {
+    if (isSpeaker) return VipTier.KEYNOTE;
+    if (isVip) {
+      return index % 2 === 0 ? VipTier.PLATINUM : VipTier.GOLD;
+    }
+    return VipTier.ATTENDEE;
+  };
+
   interface GuestInput {
     name: string;
     avatar: string;
@@ -224,6 +395,9 @@ async function main() {
     isPrimaryGuest: boolean;
     eventId: string;
     assignedHotelId: string | null;
+    mealPreference: string;
+    allergies: string;
+    vipTier: VipTier;
   }
 
   const guestsData: GuestInput[] = [];
@@ -265,7 +439,10 @@ async function main() {
       isBridalParty,
       isPrimaryGuest,
       eventId: event.id,
-      assignedHotelId: hotel.id
+      assignedHotelId: hotel.id,
+      mealPreference: getMealPreference(),
+      allergies: getAllergy(),
+      vipTier: getVipTier(isVip, isSpeaker, i)
     });
   }
 
@@ -305,7 +482,10 @@ async function main() {
       isBridalParty,
       isPrimaryGuest,
       eventId: event.id,
-      assignedHotelId: hotel ? hotel.id : null
+      assignedHotelId: hotel ? hotel.id : null,
+      mealPreference: getMealPreference(),
+      allergies: getAllergy(),
+      vipTier: getVipTier(isVip, isSpeaker, i)
     });
   }
 
@@ -344,7 +524,10 @@ async function main() {
       isBridalParty,
       isPrimaryGuest,
       eventId: event.id,
-      assignedHotelId: null
+      assignedHotelId: null,
+      mealPreference: getMealPreference(),
+      allergies: getAllergy(),
+      vipTier: getVipTier(isVip, isSpeaker, i)
     });
   }
 
@@ -375,27 +558,73 @@ async function main() {
   console.log(`Declined:         ${finalDeclined} (Target: 41)`);
   console.log(`VIP Status:       ${finalVips} (Target: 42)`);
 
+  console.log('Creating check-in logs for Annual Tech Summit...');
+  const confirmedGuests = await prisma.guest.findMany({
+    where: {
+      eventId: eventProduct.id,
+      status: 'CONFIRMED'
+    }
+  });
+
+  const checkInTargetCount = Math.round(confirmedGuests.length * 0.68);
+  const entrancesList = [entranceNorth, entranceBallroom, entranceLounge];
+  const staffList = [staffSarah, staffMichael, staffJulian];
+
+  const now = new Date();
+  for (let i = 0; i < checkInTargetCount; i++) {
+    const guest = confirmedGuests[i];
+
+    // Distribute entrances: 50% Main Ballroom, 30% North Gate, 20% VIP Lounge
+    let entrance = entranceBallroom;
+    let staff = staffMichael;
+    const rand = Math.random();
+    if (rand < 0.3) {
+      entrance = entranceNorth;
+      staff = staffSarah;
+    } else if (rand < 0.5) {
+      entrance = entranceLounge;
+      staff = staffJulian;
+    }
+
+    // Status: FLAGGED if severe allergy, else mostly SUCCESS
+    let status: CheckInStatus = CheckInStatus.SUCCESS;
+    if (guest.allergies && guest.allergies.includes('Severe')) {
+      status = CheckInStatus.FLAGGED;
+    } else if (Math.random() < 0.02) {
+      status = CheckInStatus.FLAGGED;
+    }
+
+    const checkedInAt = new Date(now.getTime() - Math.floor(Math.random() * 12 * 60 * 60 * 1000));
+
+    await prisma.checkIn.create({
+      data: {
+        guestId: guest.id,
+        eventId: eventProduct.id,
+        entranceId: entrance.id,
+        staffId: staff.id,
+        status,
+        checkedInAt
+      }
+    });
+  }
+  console.log(`Successfully seeded ${checkInTargetCount} check-in entries.`);
+
   console.log('Creating transportation seed data...');
-  // 1. Create Drivers
-  const driver1 = await prisma.driver.create({ data: { fullName: 'James Whitaker', phoneNumber: '+1 (555) 019-2831', status: 'Active' } });
-  const driver2 = await prisma.driver.create({ data: { fullName: 'Sarah Jenkins', phoneNumber: '+1 (555) 021-9872', status: 'Resting' } });
-  const driver3 = await prisma.driver.create({ data: { fullName: "Michael O'Brien", phoneNumber: '+1 (555) 034-7711', status: 'On Break' } });
-  const driver4 = await prisma.driver.create({ data: { fullName: 'David Chen', phoneNumber: '+1 (555) 012-4433', status: 'Active' } });
 
-  // 2. Create Vehicles linked to Drivers
-  const vehicle1 = await prisma.vehicle.create({ data: { name: 'Mercedes V-Class (2024)', type: 'Van', licenseNumber: 'EH-092', capacity: 7, status: 'On Route', driverId: driver1.id } });
-  const vehicle2 = await prisma.vehicle.create({ data: { name: 'Tesla Model X (White)', type: 'SUV', licenseNumber: 'EH-104', capacity: 5, status: 'Available', driverId: driver2.id } });
-  const vehicle3 = await prisma.vehicle.create({ data: { name: 'Sprinter Exec-Bus B12', type: 'Minibus', licenseNumber: 'EH-058', capacity: 15, status: 'Available', driverId: driver3.id } });
-  const vehicle4 = await prisma.vehicle.create({ data: { name: 'Executive Sedan S1', type: 'Sedan', licenseNumber: 'EH-112', capacity: 4, status: 'On Route', driverId: driver4.id } });
+  // 1. Create Vehicles
+  const vehicle1 = await prisma.vehicle.create({ data: { name: 'Mercedes V-Class (2024)', type: 'Van', licenseNumber: 'EH-092', capacity: 7, status: 'On Route' } });
+  const vehicle2 = await prisma.vehicle.create({ data: { name: 'Tesla Model X (White)', type: 'SUV', licenseNumber: 'EH-104', capacity: 5, status: 'Available' } });
+  const vehicle3 = await prisma.vehicle.create({ data: { name: 'Sprinter Exec-Bus B12', type: 'Minibus', licenseNumber: 'EH-058', capacity: 15, status: 'Available' } });
+  const vehicle4 = await prisma.vehicle.create({ data: { name: 'Executive Sedan S1', type: 'Sedan', licenseNumber: 'EH-112', capacity: 4, status: 'On Route' } });
 
-  // 3. Create Transport Routes
+  // 2. Create Transport Routes
   const route1 = await prisma.transportRoute.create({ data: { routeName: 'Airport ➔ Grand Hall', startLocation: 'Airport', endLocation: 'Grand Hall', distanceKm: 25.5, durationMins: 35, status: 'Active' } });
   const route2 = await prisma.transportRoute.create({ data: { routeName: 'Terminal 1 ➔ Main Gate', startLocation: 'Terminal 1', endLocation: 'Main Gate', distanceKm: 8.2, durationMins: 15, status: 'Active' } });
   const route3 = await prisma.transportRoute.create({ data: { routeName: 'Shuttle Loop C', startLocation: 'Hotel Area', endLocation: 'Convention Center', distanceKm: 3.5, durationMins: 10, status: 'Active' } });
 
-  // 4. Create Fleet Assignments
-  await prisma.fleetAssignment.create({ data: { vehicleId: vehicle1.id, driverId: driver1.id, eventId: eventGala.id, status: 'Active' } });
-  await prisma.fleetAssignment.create({ data: { vehicleId: vehicle4.id, driverId: driver4.id, eventId: eventGala.id, status: 'Active' } });
+  // 3. Create Fleet Assignments
+  await prisma.fleetAssignment.create({ data: { vehicleId: vehicle1.id, eventId: eventGala.id, status: 'Active' } });
+  await prisma.fleetAssignment.create({ data: { vehicleId: vehicle4.id, eventId: eventGala.id, status: 'Active' } });
 
   // 5. Create Transfer Schedules for Vips/Guests
   const allVips = await prisma.guest.findMany({ where: { isVip: true }, take: 20 });
@@ -407,13 +636,13 @@ async function main() {
   for (let i = 0; i < 7; i++) {
     const scheduledDate = new Date();
     scheduledDate.setDate(scheduledDate.getDate() - i);
-    
+
     // Create 3 transfers on each day to populate the chart
     for (let j = 0; j < 3; j++) {
       const vipIndex = (i * 3 + j) % allVips.length;
       const vehicle = vehiclesList[j % vehiclesList.length];
       const route = routesList[j % routesList.length];
-      
+
       await prisma.transferSchedule.create({
         data: {
           guestId: allVips[vipIndex].id,
@@ -424,19 +653,237 @@ async function main() {
           scheduledTime: scheduledDate,
           routeId: route.id,
           vehicleId: vehicle.id,
-          driverId: vehicle.driverId || driver1.id,
           status: i === 0 ? (j === 0 ? 'In Transit' : 'Scheduled') : 'Completed'
         }
       });
     }
   }
 
-  // 6. Create Fleet Activity Logs
-  await prisma.fleetActivityLog.create({ data: { activityType: 'Route Completed', severity: 'Info', message: 'Fleet 12 arrived at Venue A', vehicleId: vehicle1.id, driverId: driver1.id } });
-  await prisma.fleetActivityLog.create({ data: { activityType: 'Dispatch Alert', severity: 'Warning', message: 'New arrival scheduled for 15:30', vehicleId: vehicle2.id, driverId: driver2.id } });
-  await prisma.fleetActivityLog.create({ data: { activityType: 'Maintenance Alert', severity: 'Critical', message: 'Vehicle #240 fuel warning', vehicleId: vehicle3.id, driverId: driver3.id } });
+  // 5. Create Fleet Activity Logs
+  await prisma.fleetActivityLog.create({ data: { activityType: 'Route Completed', severity: 'Info', message: 'Fleet 12 arrived at Venue A', vehicleId: vehicle1.id } });
+  await prisma.fleetActivityLog.create({ data: { activityType: 'Dispatch Alert', severity: 'Warning', message: 'New arrival scheduled for 15:30', vehicleId: vehicle2.id } });
+  await prisma.fleetActivityLog.create({ data: { activityType: 'Maintenance Alert', severity: 'Critical', message: 'Vehicle #240 fuel warning', vehicleId: vehicle3.id } });
+
+  console.log('Creating default route configurations...');
+  await prisma.routeConfiguration.createMany({
+    data: [
+      { channel: CommunicationChannel.SMS, activeProvider: 'PRIMARY', isRerouted: false },
+      { channel: CommunicationChannel.WHATSAPP, activeProvider: 'PRIMARY', isRerouted: false }
+    ]
+  });
+
+  console.log('Creating communication logs...');
+  const commNow = new Date();
+
+  // 1. Julian Thorne
+  const guestJulianObj = allVips.find(g => g.name.includes('Julian'));
+  await prisma.communicationLog.create({
+    data: {
+      recipientId: guestJulianObj?.id || null,
+      recipientName: 'Julian Thorne',
+      recipientContact: 'julian@company.com',
+      channel: CommunicationChannel.EMAIL,
+      status: DeliveryStatus.DELIVERED,
+      deliveryResult: 'Accepted by SMTP, bounce check passed.',
+      latencyMs: 1100,
+      headerInfo: {
+        subject: 'Eventhub360 Concierge Registration Confirmation',
+        ip: '192.168.1.100',
+        smtp_server: 'smtp.gmail.com'
+      },
+      payloadData: {
+        body: 'Dear Dr. Julian Thorne, your registration for the upcoming Children\'s Hospital Gala is confirmed.'
+      },
+      retryHistory: []
+    }
+  });
+
+  // 2. Sarah Montgomery
+  const guestSarahObj = allVips.find(g => g.name.includes('Sarah'));
+  await prisma.communicationLog.create({
+    data: {
+      recipientId: guestSarahObj?.id || null,
+      recipientName: 'Sarah Montgomery',
+      recipientContact: '+1 (555) 098-1234',
+      channel: CommunicationChannel.WHATSAPP,
+      status: DeliveryStatus.SENT,
+      deliveryResult: 'Handed off to WhatsApp gateway.',
+      latencyMs: 800,
+      headerInfo: {
+        gateway: 'Meta WhatsApp Business API',
+        message_id: 'wa_msg_98239084'
+      },
+      payloadData: {
+        body: 'Hello Sarah, check out your EventHub360 digital guest pass!'
+      },
+      retryHistory: []
+    }
+  });
+
+  // 3. David Kincaid
+  const guestDavidObj = allVips.find(g => g.name.includes('David'));
+  await prisma.communicationLog.create({
+    data: {
+      recipientId: guestDavidObj?.id || null,
+      recipientName: 'David Kincaid',
+      recipientContact: '+44 7700 900123',
+      channel: CommunicationChannel.SMS,
+      status: DeliveryStatus.FAILED,
+      deliveryResult: 'Invalid Number: Carrier reported 404.',
+      latencyMs: 0,
+      headerInfo: {
+        gateway: 'Twilio SMS Gateway',
+        error_code: '21211'
+      },
+      payloadData: {
+        body: 'Hi David, your seating is assigned at Table 4. View details: link'
+      },
+      retryHistory: [
+        { timestamp: new Date(commNow.getTime() - 2000).toISOString(), error: 'Network timeout: Retrying...' },
+        { timestamp: new Date(commNow.getTime() - 1000).toISOString(), error: 'Invalid Number: Carrier reported 404.' }
+      ]
+    }
+  });
+
+  // 4. Emily Zhang
+  await prisma.communicationLog.create({
+    data: {
+      recipientId: null,
+      recipientName: 'Emily Zhang',
+      recipientContact: 'ezhang@techflow.io',
+      channel: CommunicationChannel.EMAIL,
+      status: DeliveryStatus.PENDING,
+      deliveryResult: 'Carrier Delay: Retrying in 5 minutes.',
+      latencyMs: 2300,
+      headerInfo: {
+        subject: 'Important: Event Agenda Update',
+        mx_record: 'mail.techflow.io'
+      },
+      payloadData: {
+        body: 'Hi Emily, please note the schedule change for the keynote panel starting at 9:00 AM.'
+      },
+      retryHistory: []
+    }
+  });
+
+  // 5. Robert De Luca
+  await prisma.communicationLog.create({
+    data: {
+      recipientId: null,
+      recipientName: 'Robert De Luca',
+      recipientContact: '+39 312 456 7890',
+      channel: CommunicationChannel.WHATSAPP,
+      status: DeliveryStatus.READ,
+      deliveryResult: 'Read by Recipient (Double Blue Tick).',
+      latencyMs: 1500,
+      headerInfo: {
+        gateway: 'Meta WhatsApp Business API',
+        message_id: 'wa_msg_77615289'
+      },
+      payloadData: {
+        body: 'Buongiorno Robert, verify your hotel reservations: link'
+      },
+      retryHistory: []
+    }
+  });
+
+  const sampleNames = [
+    'James Whitaker', 'Sarah Montgomery', 'Julian Thorne', 'David Kincaid',
+    'Emily Zhang', 'Robert De Luca', 'Elena Vance', 'Julian Rossi',
+    'Marcus Wright', 'Samantha Reed', 'Eleanor Fitzwilliam', 'Alex Sterling'
+  ];
+
+  const emailResults = [
+    'Accepted by SMTP, bounce check passed.',
+    'Delivered to inbox.',
+    'Spam score verified, accepted by receiver MX.'
+  ];
+  const waResults = [
+    'Read by Recipient (Double Blue Tick).',
+    'Handed off to WhatsApp gateway.',
+    'Delivered to phone (Double Grey Tick).'
+  ];
+  const smsResults = [
+    'Sent successfully, SMSC Ack received.',
+    'Carrier delay: retrying...',
+    'Failed: Network unreachable.'
+  ];
+
+  for (let i = 0; i < 155; i++) {
+    const channelRand = Math.random();
+    let channel: CommunicationChannel = CommunicationChannel.EMAIL;
+    if (channelRand < 0.4) {
+      channel = CommunicationChannel.EMAIL;
+    } else if (channelRand < 0.75) {
+      channel = CommunicationChannel.WHATSAPP;
+    } else {
+      channel = CommunicationChannel.SMS;
+    }
+
+    const statusRand = Math.random();
+    let status: DeliveryStatus = DeliveryStatus.DELIVERED;
+    if (statusRand < 0.6) {
+      status = channel === CommunicationChannel.WHATSAPP ? DeliveryStatus.READ : DeliveryStatus.DELIVERED;
+    } else if (statusRand < 0.8) {
+      status = DeliveryStatus.SENT;
+    } else if (statusRand < 0.9) {
+      status = DeliveryStatus.PENDING;
+    } else {
+      status = DeliveryStatus.FAILED;
+    }
+
+    let deliveryResult = 'Dispatched.';
+    if (status === DeliveryStatus.FAILED) {
+      deliveryResult = channel === CommunicationChannel.EMAIL
+        ? 'Bounce: User box is full.'
+        : channel === CommunicationChannel.WHATSAPP
+          ? 'Failed: Recipient account inactive.'
+          : 'Invalid Number: Carrier reported 404.';
+    } else {
+      deliveryResult = channel === CommunicationChannel.EMAIL
+        ? emailResults[Math.floor(Math.random() * emailResults.length)]
+        : channel === CommunicationChannel.WHATSAPP
+          ? waResults[Math.floor(Math.random() * waResults.length)]
+          : smsResults[Math.floor(Math.random() * smsResults.length)];
+    }
+
+    const latencyMs = status === DeliveryStatus.FAILED ? 0 : Math.floor(200 + Math.random() * 2500);
+    const name = sampleNames[i % sampleNames.length];
+    const contact = channel === CommunicationChannel.EMAIL
+      ? `${name.toLowerCase().replace(' ', '.')}@example.com`
+      : `+1 (555) ${Math.floor(100 + Math.random() * 900)}-${Math.floor(1000 + Math.random() * 9000)}`;
+
+    const guestIndex = i % allVips.length;
+    const guest = allVips[guestIndex];
+    const logDate = new Date(commNow.getTime() - Math.floor(Math.random() * 7 * 24 * 60 * 60 * 1000));
+
+    await prisma.communicationLog.create({
+      data: {
+        recipientId: guest.id,
+        recipientName: name,
+        recipientContact: contact,
+        channel,
+        status,
+        deliveryResult,
+        latencyMs,
+        headerInfo: {
+          subject: channel === CommunicationChannel.EMAIL ? 'Updates on EventHub360' : undefined,
+          gateway: channel === CommunicationChannel.SMS ? 'SMS-Gateway-v2' : 'WA-Business-v1'
+        },
+        payloadData: {
+          body: `Hello ${name}, welcome to EventHub360. We hope you enjoy the experience.`
+        },
+        retryHistory: [],
+        createdAt: logDate
+      }
+    });
+  }
+  console.log('Successfully seeded route configs and 160 communication log entries.');
 
   console.log('Seeding completed successfully!');
+
+  console.log('Running Demo Dataset Seeding...');
+  await runDemoSeed();
 }
 
 main()

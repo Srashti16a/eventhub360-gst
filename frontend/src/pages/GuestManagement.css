@@ -234,15 +234,21 @@
   display: flex;
   flex-wrap: wrap;
   gap: 1.5rem;
-  align-items: center;
+  align-items: flex-end;
   justify-content: space-between;
 }
 
 .filters-left {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
+  display: grid;
+  grid-template-columns: 240px 200px auto auto;
   gap: 1.25rem;
+  align-items: flex-end;
+}
+
+@media (max-width: 1100px) and (min-width: 769px) {
+  .filters-left {
+    grid-template-columns: 1fr 1fr;
+  }
 }
 
 .filter-group {
@@ -263,8 +269,7 @@
 /* Search Input */
 .search-wrapper {
   position: relative;
-  min-width: 280px;
-  flex: 1;
+  width: 100%;
   max-width: 100%;
 }
 
@@ -280,6 +285,7 @@
 }
 
 .search-input {
+  box-sizing: border-box;
   width: 100%;
   padding: 0.625rem 0.875rem 0.625rem 2.5rem;
   border-radius: var(--radius-md);
@@ -297,9 +303,11 @@
 
 /* Dropdowns & Selects */
 .dropdown-styled {
+  box-sizing: border-box;
   font-family: var(--font-body);
   font-size: 0.875rem;
   padding: 0.625rem 2.25rem 0.625rem 1rem;
+  width: 100%;
   min-width: 180px;
   max-width: 100%;
   border-radius: var(--radius-md);
@@ -360,6 +368,7 @@
   gap: 0.5rem;
   cursor: pointer;
   user-select: none;
+  height: 38px;
 }
 
 .toggle-switch {
@@ -1244,6 +1253,7 @@
     gap: 1rem;
   }
   .filters-left {
+    display: flex;
     flex-direction: column;
     align-items: stretch;
   }
@@ -1364,4 +1374,16 @@
 
 .btn-bulk-text:hover {
   color: var(--text-muted);
+}
+
+/* ── View Guest Details — first dropdown item highlight ── */
+.dropdown-menu-custom .dropdown-item-custom:first-child {
+  color: var(--active-red);
+  font-weight: 700;
+  border-bottom: 1px solid #f1f5f9;
+  margin-bottom: 2px;
+}
+.dropdown-menu-custom .dropdown-item-custom:first-child:hover {
+  background: #fff7f7;
+  color: #c0392b;
 }

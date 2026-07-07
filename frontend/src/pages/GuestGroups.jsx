@@ -10,16 +10,17 @@ import api from '../services/api';
 export default function GuestGroups() {
   const [groups, setGroups] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
+  const [groupFilterTab, setGroupFilterTab] = useState('All'); // 'All' | 'VIP' | 'Standard'
   const [selectedGroupId, setSelectedGroupId] = useState(null);
   
   const [isAddEditOpen, setIsAddEditOpen] = useState(false);
   const [editingGroup, setEditingGroup] = useState(null);
   const [editingMember, setEditingMember] = useState(null);
   const [savingMember, setSavingMember] = useState(false);
-
+ 
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 4;
-
+ 
   const fetchGroups = () => {
     api.get('/groups')
       .then((res) => {
@@ -54,7 +55,7 @@ export default function GuestGroups() {
   const stats = useMemo(() => {
     const totalCount = groups.length;
     const activeCount = groups.filter((g) => g.status === 'Active').length;
-    const vipCount = groups.filter((g) => g.category === 'Family').length;
+    const vipCount = groups.filter((g) => g.isVipGroup).length;
     
     // Average group size
     const totalMembers = groups.reduce((acc, g) => acc + g.membersCount, 0);
@@ -71,6 +72,12 @@ export default function GuestGroups() {
   const filteredGroups = useMemo(() => {
     let result = [...groups];
 
+    if (groupFilterTab === 'VIP') {
+      result = result.filter(g => g.isVipGroup);
+    } else if (groupFilterTab === 'Standard') {
+      result = result.filter(g => !g.isVipGroup);
+    }
+
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       result = result.filter(
@@ -81,14 +88,42 @@ export default function GuestGroups() {
     }
 
     return result;
-  }, [groups, searchQuery]);
+  }, [groups, searchQuery, groupFilterTab]);
 
   const paginatedGroups = useMemo(() => {
     const start = (currentPage - 1) * itemsPerPage;
     return filteredGroups.slice(start, start + itemsPerPage);
   }, [filteredGroups, currentPage]);
 
-  const totalPages = Math.ceil(filteredGroups.length / itemsPerPage);
+  const totalPages = Math.ceil(filteredGroups.length / itemsPerPage) || 1;
+
+  const getVisiblePages = () => {
+    const pages = [];
+    const maxVisible = 5;
+    
+    if (totalPages <= maxVisible) {
+      for (let i = 1; i <= totalPages; i++) {
+        pages.push(i);
+      }
+    } else {
+      let start = currentPage - 2;
+      let end = currentPage + 2;
+      
+      if (start < 1) {
+        start = 1;
+        end = maxVisible;
+      } else if (end > totalPages) {
+        end = totalPages;
+        start = totalPages - maxVisible + 1;
+      }
+      
+      for (let i = start; i <= end; i++) {
+        pages.push(i);
+      }
+    }
+    
+    return pages;
+  };
 
   const selectedGroup = useMemo(() => {
     return groups.find((g) => g.group_id === selectedGroupId) || null;
@@ -110,6 +145,7 @@ export default function GuestGroups() {
       name: formData.name.trim(),
       category: formData.category,
       status: formData.status,
+      isVipGroup: !!formData.isVipGroup,
       location: formData.location || '',
       transportation: formData.transportation || '',
       specialRequirement: formData.specialRequirement || '',
@@ -190,6 +226,8 @@ export default function GuestGroups() {
         alert('Error: ' + (err.message || 'Failed to remove member'));
       });
   };
+
+
 
   const handleEditMemberClick = (member) => {
     setEditingMember(member);
@@ -322,6 +360,31 @@ export default function GuestGroups() {
             {/* Action/Filter header inside card */}
             <div className="groups-card-header-bar">
               <h2>Active Management</h2>
+
+              {/* VIP filter tabs */}
+              <div style={{ display: 'flex', gap: '2px', background: 'var(--bg-card, #f1f5f9)', borderRadius: '8px', padding: '3px' }}>
+                {['All', 'VIP', 'Standard'].map(tab => (
+                  <button
+                    key={tab}
+                    type="button"
+                    onClick={() => { setGroupFilterTab(tab); setCurrentPage(1); }}
+                    style={{
+                      padding: '4px 14px',
+                      fontSize: '0.78rem',
+                      fontWeight: groupFilterTab === tab ? '700' : '500',
+                      border: 'none',
+                      borderRadius: '6px',
+                      cursor: 'pointer',
+                      background: groupFilterTab === tab ? '#fff' : 'transparent',
+                      color: groupFilterTab === tab ? (tab === 'VIP' ? '#b45309' : 'var(--text-main)') : 'var(--text-muted, #64748b)',
+                      boxShadow: groupFilterTab === tab ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+                      transition: 'all 0.15s ease'
+                    }}
+                  >
+                    {tab === 'VIP' ? `⭐ VIP (${stats.vip})` : tab === 'Standard' ? `Standard (${stats.total - stats.vip})` : `All (${stats.total})`}
+                  </button>
+                ))}
+              </div>
               
               <div className="groups-card-header-actions">
                 {/* Global Filter Search */}
@@ -370,38 +433,36 @@ export default function GuestGroups() {
             {/* Pagination Controls */}
             <div className="pagination-row">
               <div className="pagination-info">
-                <span>Showing 1-{filteredGroups.length} of {stats.total} groups</span>
+                <span>Showing {Math.min(filteredGroups.length, (currentPage - 1) * itemsPerPage + 1)} to {Math.min(filteredGroups.length, currentPage * itemsPerPage)} of {filteredGroups.length} groups</span>
               </div>
               <div className="pagination-controls">
                 <button
                   type="button"
                   className="pagination-btn"
-                  style={{ width: 'auto', padding: '0 0.75rem' }}
                   disabled={currentPage === 1}
-                  onClick={() => setCurrentPage(1)}
+                  onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
                 >
-                  Previous
+                  &lt;
                 </button>
                 
-                {Array.from({ length: Math.max(1, totalPages) }, (_, i) => (
+                {getVisiblePages().map((page) => (
                   <button
-                    key={i + 1}
+                    key={page}
                     type="button"
-                    className={`pagination-btn ${currentPage === i + 1 ? 'active' : ''}`}
-                    onClick={() => setCurrentPage(i + 1)}
+                    className={`pagination-btn ${currentPage === page ? 'active' : ''}`}
+                    onClick={() => setCurrentPage(page)}
                   >
-                    {i + 1}
+                    {page}
                   </button>
                 ))}
 
                 <button
                   type="button"
                   className="pagination-btn"
-                  style={{ width: 'auto', padding: '0 0.75rem' }}
                   disabled={currentPage === totalPages}
-                  onClick={() => setCurrentPage(totalPages)}
+                  onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
                 >
-                  Next
+                  &gt;
                 </button>
               </div>
             </div>

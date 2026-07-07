@@ -15,6 +15,8 @@ export const createGuestSchema = z.object({
     eventId: z.string().uuid().optional(),
     tableId: z.string().uuid().nullable().optional(),
     seatNumber: z.number().int().positive().nullable().optional(),
+    mealPreference: z.string().nullable().optional().default('Non-Veg'),
+    allergies: z.string().nullable().optional().default('None'),
   }),
 });
 
@@ -36,6 +38,8 @@ export const updateGuestSchema = z.object({
     eventId: z.string().uuid().optional(),
     tableId: z.string().uuid().nullable().optional(),
     seatNumber: z.number().int().positive().nullable().optional(),
+    mealPreference: z.string().nullable().optional(),
+    allergies: z.string().nullable().optional(),
   }),
 });
 
