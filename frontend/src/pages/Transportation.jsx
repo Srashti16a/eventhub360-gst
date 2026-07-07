@@ -44,13 +44,13 @@ const INITIAL_DRIVERS = [
 ];
 
 const INITIAL_ARRIVALS = [
-  { id: 'a1', title: 'VIP Guest - Room 402', time: '14:20', detail: 'Mercedes V-Class • James W.', eta: '2 mins away', status: 'Near' },
-  { id: 'a2', title: 'Speaker - Dr. Elena R.', time: '14:45', detail: 'Tesla Model X • Sarah K.', eta: 'In Transit', status: 'In-Transit' }
+  { id: 'a1', title: 'VIP Guest - Room 402', time: '14:20', detail: 'Mercedes V-Class • James W.', eta: '2 mins away', statusClass: 'green', dbStatus: 'In Transit' },
+  { id: 'a2', title: 'Speaker - Dr. Elena R.', time: '14:45', detail: 'Tesla Model X • Sarah K.', eta: 'In Transit', statusClass: 'orange', dbStatus: 'In Transit' }
 ];
 
 const INITIAL_DEPARTURES = [
-  { id: 'dp1', title: 'Main Gate Shuttle', time: '14:15', detail: 'Bus B12 • Michael O.', capacity: '14/15', eta: 'Departed', status: 'Departed' },
-  { id: 'dp2', title: 'Airport Express', time: '15:00', detail: 'Executive Sedan • Lucas P.', capacity: 'Boarding', eta: 'Boarding', status: 'Boarding' }
+  { id: 'dp1', title: 'Main Gate Shuttle', time: '14:15', detail: 'Bus B12 • Michael O.', capacity: '14/15', eta: 'Departed', statusClass: 'grey', status: 'Completed' },
+  { id: 'dp2', title: 'Airport Express', time: '15:00', detail: 'Executive Sedan • Lucas P.', capacity: 'Boarding', eta: 'Boarding', statusClass: 'gold', status: 'Boarding' }
 ];
 
 const INITIAL_LOGS = [
@@ -211,27 +211,67 @@ export default function Transportation({ activeTab: propActiveTab }) {
         if (transfersRes.success && transfersRes.data) {
           const arrs = transfersRes.data
             .filter(t => t.transferType.toLowerCase().includes('pickup') || t.transferType.toLowerCase().includes('transport') || t.transferType.toLowerCase().includes('vip'))
-            .map(t => ({
-              id: t.id,
-              title: `${t.transferType} - ${t.guest ? t.guest.name : 'VIP Guest'}`,
-              time: new Date(t.scheduledTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-              detail: t.vehicle ? `${t.vehicle.name} • ${t.driver ? t.driver.fullName : 'TBD'}` : 'Unassigned',
-              eta: t.status === 'In Transit' ? '2 mins away' : 'In Transit',
-              status: t.status === 'In Transit' ? 'Near' : 'In-Transit'
-            }));
+            .map(t => {
+              let eta = 'Scheduled';
+              let statusClass = 'grey';
+              
+              if (t.status === 'In Transit') {
+                eta = '2 mins away';
+                statusClass = 'green';
+              } else if (t.status === 'Scheduled') {
+                eta = t.vehicleId ? 'Assigned' : 'Pending';
+                statusClass = t.vehicleId ? 'orange' : 'grey';
+              } else if (t.status === 'Completed') {
+                eta = 'Arrived';
+                statusClass = 'green';
+              } else if (t.status === 'Cancelled') {
+                eta = 'Cancelled';
+                statusClass = 'grey';
+              }
+              
+              return {
+                id: t.id,
+                title: `${t.transferType} - ${t.guest ? t.guest.name : 'VIP Guest'}`,
+                time: new Date(t.scheduledTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                detail: t.vehicle ? `${t.vehicle.name} • ${t.driver ? t.driver.fullName : 'TBD'}` : 'Unassigned',
+                eta,
+                statusClass,
+                dbStatus: t.status
+              };
+            });
           setArrivals(arrs);
 
           const deps = transfersRes.data
             .filter(t => t.transferType.toLowerCase().includes('dropoff') || t.transferType.toLowerCase().includes('shuttle'))
-            .map(t => ({
-              id: t.id,
-              title: `${t.transferType}`,
-              time: new Date(t.scheduledTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-              detail: t.vehicle ? `${t.vehicle.name} • ${t.driver ? t.driver.fullName : 'TBD'}` : 'Unassigned',
-              capacity: 'Boarding',
-              eta: t.status,
-              status: t.status
-            }));
+            .map(t => {
+              let eta = t.status;
+              let statusClass = 'grey';
+              
+              if (t.status === 'In Transit') {
+                eta = 'In Transit';
+                statusClass = 'orange';
+              } else if (t.status === 'Scheduled') {
+                eta = t.vehicleId ? 'Boarding' : 'Preparing';
+                statusClass = t.vehicleId ? 'gold' : 'grey';
+              } else if (t.status === 'Completed') {
+                eta = 'Departed';
+                statusClass = 'grey';
+              } else if (t.status === 'Cancelled') {
+                eta = 'Cancelled';
+                statusClass = 'grey';
+              }
+              
+              return {
+                id: t.id,
+                title: `${t.transferType}`,
+                time: new Date(t.scheduledTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                detail: t.vehicle ? `${t.vehicle.name} • ${t.driver ? t.driver.fullName : 'TBD'}` : 'Unassigned',
+                capacity: 'Boarding',
+                eta,
+                status: t.status,
+                statusClass
+              };
+            });
           setDepartures(deps);
         }
 
@@ -371,6 +411,16 @@ export default function Transportation({ activeTab: propActiveTab }) {
       chatEndRef.current.scrollIntoView({ behavior: 'smooth' });
     }
   }, [selectedDriverForChat, chatMessages]);
+
+  const pendingArrivalsCount = useMemo(() => 
+    arrivals.filter(a => a.dbStatus === 'Scheduled' || a.dbStatus === 'In Transit').length, 
+    [arrivals]
+  );
+
+  const preparingDeparturesCount = useMemo(() => 
+    departures.filter(d => d.status === 'Scheduled' || d.status === 'In Transit').length, 
+    [departures]
+  );
 
   // Search and dropdown filter for Drivers table
   const computedDrivers = useMemo(() => {
@@ -1035,7 +1085,7 @@ export default function Transportation({ activeTab: propActiveTab }) {
                 </svg>
                 Live Arrivals
               </span>
-              <span className="panel-badge arrivals">8 Pending</span>
+              <span className="panel-badge arrivals">{pendingArrivalsCount} Active</span>
             </div>
 
             <div className="trips-list">
@@ -1048,7 +1098,7 @@ export default function Transportation({ activeTab: propActiveTab }) {
                       <span className="trip-time">{item.time}</span>
                     </div>
                     <span className="trip-desc">{item.detail}</span>
-                    <span className={`trip-status-dot ${item.status === 'Near' ? 'green' : 'orange'}`}>{item.eta}</span>
+                    <span className={`trip-status-dot ${item.statusClass}`}>{item.eta}</span>
                   </div>
                 </div>
               ))}
@@ -1065,12 +1115,12 @@ export default function Transportation({ activeTab: propActiveTab }) {
                 </svg>
                 Live Departures
               </span>
-              <span className="panel-badge departures">4 Preparing</span>
+              <span className="panel-badge departures">{preparingDeparturesCount} Preparing</span>
             </div>
 
             <div className="trips-list">
               {departures.map(item => (
-                <div key={item.id} className={`trip-card-item ${item.status === 'Boarding' ? 'departure-boarding' : ''}`}>
+                <div key={item.id} className={`trip-card-item ${item.eta === 'Boarding' ? 'departure-boarding' : ''}`}>
                   <div className="trip-icon-box">✈️</div>
                   <div className="trip-details">
                     <div className="trip-meta-line">
@@ -1078,8 +1128,8 @@ export default function Transportation({ activeTab: propActiveTab }) {
                       <span className="trip-time">{item.time}</span>
                     </div>
                     <span className="trip-desc">{item.detail}</span>
-                    <span className={`trip-status-dot ${item.status === 'Boarding' ? 'gold' : 'grey'}`}>
-                      {item.status === 'Boarding' ? 'Boarding' : 'Departed'}
+                    <span className={`trip-status-dot ${item.statusClass}`}>
+                      {item.eta}
                     </span>
                   </div>
                 </div>

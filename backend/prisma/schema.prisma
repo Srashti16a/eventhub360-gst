@@ -64,6 +64,11 @@ model Guest {
   
   transfers       TransferSchedule[]
   
+  checkedIn       Boolean            @default(false)
+  checkinTime     DateTime?
+  checkinEntrance String?
+  checkinStatus   String             @default("SUCCESS") // "SUCCESS", "FLAGGED"
+  
   createdAt       DateTime           @default(now())
   updatedAt       DateTime           @updatedAt
 }

@@ -8,6 +8,9 @@ import Hotels from './pages/Hotels';
 import RoomAllocation, { INITIAL_ROOMS, INITIAL_UNASSIGNED } from './pages/RoomAllocation';
 import Transportation from './pages/Transportation';
 import Templates from './pages/Templates';
+import MealPreferences from './pages/MealPreferences';
+import QRPassCenter from './pages/QRPassCenter';
+import CheckinDashboard from './pages/CheckinDashboard';
 
 
 // Sidebar Icons - SVG components matching premium design
@@ -236,7 +239,8 @@ export default function App() {
       view: 'hotels', // Clicking parent directly opens Hotels dashboard
       isDropdown: true,
       subItems: [
-        { name: 'Room Allocation', view: 'room_allocation' }
+        { name: 'Room Allocation', view: 'room_allocation' },
+        { name: 'Meal Preferences', view: 'meal_preferences' }
       ]
     },
     { name: 'CRM', icon: <CRMIcon />, view: 'crm' },
@@ -257,10 +261,12 @@ export default function App() {
       view: 'guests_parent',
       isDropdown: true,
       subItems: [
+        { name: 'QR Pass Center', view: 'qr_pass_center' },
         { name: 'Registry', view: 'guests' },
         { name: 'Groups', view: 'groups' },
         { name: 'Directory', view: 'categories' },
-        { name: 'Magic Links', view: 'magic_links' }
+        { name: 'Magic Links', view: 'magic_links' },
+        { name: 'Check-in Dashboard', view: 'checkin_dashboard' }
       ]
     },
     { name: 'Events', icon: <EventsIcon />, view: 'events' },
@@ -658,7 +664,9 @@ export default function App() {
 
         {/* Dynamic Screen Area */}
         <main style={{ flex: 1, overflowY: 'auto', backgroundColor: '#f8fafc' }}>
-          {activeView === 'guests' ? (
+          {activeView === 'qr_pass_center' ? (
+            <QRPassCenter />
+          ) : activeView === 'guests' ? (
             <GuestManagement />
           ) : activeView === 'groups' ? (
             <GuestGroups />
@@ -666,6 +674,8 @@ export default function App() {
             <GuestCategories />
           ) : activeView === 'magic_links' ? (
             <MagicLinks />
+          ) : activeView === 'checkin_dashboard' ? (
+            <CheckinDashboard />
           ) : activeView === 'room_allocation' ? (
             <RoomAllocation 
               rooms={rooms}
@@ -673,6 +683,8 @@ export default function App() {
               unassignedGuests={unassignedGuests}
               setUnassignedGuests={setUnassignedGuests}
             />
+          ) : activeView === 'meal_preferences' ? (
+            <MealPreferences />
           ) : activeView === 'hotels' ? (
             <Hotels isBookRoomOpen={isBookRoomOpen} setIsBookRoomOpen={setIsBookRoomOpen} rooms={rooms} />
           ) : activeView === 'transportation' ? (
