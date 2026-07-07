@@ -109,6 +109,8 @@ export const createGuest = async (req: Request, res: Response, next: NextFunctio
       eventId,
       tableId,
       seatNumber,
+      mealPreference,
+      allergies,
     } = req.body;
 
     // Verify Event exists or fallback to first available event
@@ -166,6 +168,8 @@ export const createGuest = async (req: Request, res: Response, next: NextFunctio
         eventId: targetEventId,
         tableId: tableId || null,
         seatNumber: seatNumber || null,
+        mealPreference: mealPreference || 'Non-Veg',
+        allergies: allergies || 'None',
       },
       include: {
         assignedHotel: true,

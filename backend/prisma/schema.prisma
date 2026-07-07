@@ -16,6 +16,8 @@ model Event {
   fleetAssignments FleetAssignment[]
   transfers        TransferSchedule[]
   fleetAnalytics   FleetAnalytics[]
+  entrances        Entrance[]
+  checkIns         CheckIn[]
   createdAt        DateTime          @default(now())
   updatedAt        DateTime          @updatedAt
 }
@@ -63,6 +65,13 @@ model Guest {
   group           GuestGroup?        @relation(fields: [groupId], references: [id], onDelete: SetNull)
   
   transfers       TransferSchedule[]
+  
+  mealPreference  String?
+  allergies       String?
+  
+  vipTier         VipTier            @default(ATTENDEE)
+  checkIns        CheckIn[]
+  communicationLogs CommunicationLog[]
   
   createdAt       DateTime           @default(now())
   updatedAt       DateTime           @updatedAt
@@ -212,5 +221,103 @@ model GuestGroup {
   
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
+}
+
+enum CheckInStatus {
+  SUCCESS
+  FLAGGED
+}
+
+enum VipTier {
+  PLATINUM
+  KEYNOTE
+  GOLD
+  ATTENDEE
+}
+
+model Entrance {
+  id          String    @id @default(uuid())
+  name        String    // e.g. "North Gate", "VIP Gate"
+  eventId     String
+  event       Event     @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  checkIns    CheckIn[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@unique([eventId, name])
+}
+
+model CheckIn {
+  id          String        @id @default(uuid())
+  guestId     String
+  guest       Guest         @relation(fields: [guestId], references: [id], onDelete: Cascade)
+  eventId     String
+  event       Event         @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  entranceId  String
+  entrance    Entrance      @relation(fields: [entranceId], references: [id], onDelete: Cascade)
+  status      CheckInStatus
+  checkedInAt DateTime      @default(now())
+  staffId     String?
+  staff       Staff?        @relation(fields: [staffId], references: [id], onDelete: SetNull)
+
+  @@index([guestId])
+  @@index([eventId])
+  @@index([entranceId])
+  @@index([staffId])
+}
+
+model Staff {
+  id               String    @id @default(uuid())
+  name             String    // e.g. "Julian Rossi", "Sarah Jenkins"
+  role             String    // e.g. "Event Manager", "Gate Operator"
+  assignedEntrance String?   // e.g. "North Gate"
+  status           String    @default("Active") // "Active", "Inactive"
+  checkIns         CheckIn[]
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+}
+
+enum CommunicationChannel {
+  EMAIL
+  WHATSAPP
+  SMS
+}
+
+enum DeliveryStatus {
+  DELIVERED
+  SENT
+  FAILED
+  PENDING
+  READ
+}
+
+model CommunicationLog {
+  id               String               @id @default(uuid())
+  recipientId      String?
+  guest            Guest?               @relation(fields: [recipientId], references: [id], onDelete: SetNull)
+  recipientName    String
+  recipientContact String
+  channel          CommunicationChannel
+  status           DeliveryStatus
+  deliveryResult   String
+  latencyMs        Int                  @default(0)
+  headerInfo       Json?
+  payloadData      Json?
+  retryHistory     Json?
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
+
+  @@index([recipientId])
+  @@index([channel])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model RouteConfiguration {
+  id               String               @id @default(uuid())
+  channel          CommunicationChannel @unique
+  activeProvider   String
+  isRerouted       Boolean              @default(false)
+  updatedAt        DateTime             @updatedAt
 }
 

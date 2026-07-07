@@ -256,4 +256,299 @@ describe('EventHub360 API Integration Tests', () => {
       });
     });
   });
+
+  describe('Catering and Dietary Management APIs', () => {
+    it('should retrieve catering summary stats with exact seeded values', async () => {
+      const res = await request(app).get('/api/catering/summary');
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(res.body.data.totalGuests.value).toBe(1248);
+      expect(res.body.data.totalGuests.allergyAlerts).toBe(42);
+      expect(res.body.data.vegan.value).toBe(225);
+      expect(res.body.data.vegan.percentage).toBe(18);
+      expect(res.body.data.vegetarian.value).toBe(402);
+      expect(res.body.data.vegetarian.percentage).toBe(32);
+      expect(res.body.data.nonVeg.value).toBe(621);
+      expect(res.body.data.nonVeg.percentage).toBe(50);
+    });
+
+    it('should list catering preferences with search and filters', async () => {
+      // Search for Julianne
+      const resSearch = await request(app).get('/api/catering/preferences?search=Julianne');
+      expect(resSearch.status).toBe(200);
+      expect(resSearch.body.success).toBe(true);
+      expect(resSearch.body.data.length).toBeGreaterThan(0);
+      expect(resSearch.body.data[0].name).toBe('Julianne Smith');
+      expect(resSearch.body.data[0].mealPreference).toBe('Vegan');
+      expect(resSearch.body.data[0].allergies).toBe('Nuts (Severe)');
+      expect(resSearch.body.data[0].guestCategory).toBe('Speaker');
+
+      // Filter by mealCategory=Vegetarian
+      const resFilter = await request(app).get('/api/catering/preferences?mealCategory=Vegetarian&limit=1000');
+      expect(resFilter.status).toBe(200);
+      expect(resFilter.body.success).toBe(true);
+      expect(resFilter.body.data.length).toBe(402);
+    });
+
+    it('should retrieve procurement analytics matching seeded values', async () => {
+      const res = await request(app).get('/api/catering/procurement');
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(res.body.data.totalUnits).toBe(1248);
+      
+      const categories = res.body.data.categories;
+      const nonVegCat = categories.find((c: any) => c.name === 'Poultry / Red Meat');
+      const vegCat = categories.find((c: any) => c.name === 'Lacto-Ovo Vegetarian');
+      const veganCat = categories.find((c: any) => c.name === 'Plant-Based / Vegan');
+
+      expect(nonVegCat.units).toBe(621);
+      expect(nonVegCat.percentage).toBe(50);
+      expect(vegCat.units).toBe(402);
+      expect(vegCat.percentage).toBe(32);
+      expect(veganCat.units).toBe(225);
+      expect(veganCat.percentage).toBe(18);
+    });
+
+    it('should retrieve chef summary with valid requests count', async () => {
+      const res = await request(app).get('/api/catering/chef-summary');
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(res.body.data.preparationStartTime).toBe('06:00 AM');
+      expect(res.body.data.specialRequestCount).toBeGreaterThan(0);
+      expect(res.body.data.inventoryAlerts.length).toBeGreaterThan(0);
+    });
+
+    it('should generate smart suggestions based on statistics', async () => {
+      const res = await request(app).get('/api/catering/suggestions');
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(res.body.data.length).toBeGreaterThan(0);
+      
+      const nutAllergySuggestion = res.body.data.find((s: any) => s.title === 'High Nut Allergy Overlap');
+      expect(nutAllergySuggestion).toBeDefined();
+      expect(nutAllergySuggestion.priority).toBe('HIGH');
+    });
+
+    it('should export all catering preferences for PDF report', async () => {
+      const res = await request(app).get('/api/catering/export');
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(res.body.data.length).toBe(1248);
+      expect(res.body.data[0]).toHaveProperty('name');
+      expect(res.body.data[0]).toHaveProperty('mealPreference');
+      expect(res.body.data[0]).toHaveProperty('allergies');
+    });
+  });
+
+  describe('Check-in & Live Dashboard APIs', () => {
+    let testGuestId: string;
+    let testEntranceId: string;
+    let testStaffId: string;
+    let testEventId: string;
+
+    beforeAll(async () => {
+      // Find a confirmed guest who is registered for eventProduct
+      const event = await prisma.event.findFirst({
+        where: { category: 'Product Launch' }
+      });
+      testEventId = event!.id;
+      const guest = await prisma.guest.findFirst({
+        where: { eventId: testEventId, status: 'CONFIRMED' }
+      });
+      testGuestId = guest!.id;
+
+      const entrance = await prisma.entrance.findFirst({
+        where: { eventId: testEventId }
+      });
+      testEntranceId = entrance!.id;
+
+      const staff = await prisma.staff.findFirst();
+      testStaffId = staff!.id;
+
+      // Clean up any existing check-in for this test guest so scanQR test is clean
+      await prisma.checkIn.deleteMany({
+        where: { guestId: testGuestId }
+      });
+    });
+
+    it('should successfully check in a guest via scanQR and record check-in', async () => {
+      const res = await request(app)
+        .post('/api/checkin/scan')
+        .send({
+          qrData: testGuestId,
+          entranceId: testEntranceId,
+          staffId: testStaffId
+        });
+
+      expect(res.status).toBe(201);
+      expect(res.body.success).toBe(true);
+      expect(res.body.data.guestId).toBe(testGuestId);
+      expect(res.body.data.entrance).toBeDefined();
+    });
+
+    it('should prevent duplicate check-in scans and return 400', async () => {
+      const res = await request(app)
+        .post('/api/checkin/scan')
+        .send({
+          qrData: testGuestId,
+          entranceId: testEntranceId,
+          staffId: testStaffId
+        });
+
+      expect(res.status).toBe(400);
+      expect(res.body.success).toBe(false);
+      expect(res.body.error.message).toContain('already checked in');
+    });
+
+    it('should handle manual check-in override successfully', async () => {
+      // Find another guest who is not checked in
+      const event = await prisma.event.findFirst({
+        where: { category: 'Product Launch' }
+      });
+      const guest = await prisma.guest.findFirst({
+        where: {
+          eventId: event!.id,
+          status: 'CONFIRMED',
+          checkIns: { none: {} }
+        }
+      });
+      const otherGuestId = guest!.id;
+
+      const res = await request(app)
+        .post('/api/checkin/manual')
+        .send({
+          guestId: otherGuestId,
+          entranceId: testEntranceId,
+          staffId: testStaffId
+        });
+
+      expect(res.status).toBe(201);
+      expect(res.body.success).toBe(true);
+      expect(res.body.data.status).toBe('SUCCESS');
+    });
+
+    it('should retrieve check-in summary metrics', async () => {
+      const checkInRes = await request(app).get(`/api/checkin/summary?eventId=${testEventId}`);
+      expect(checkInRes.status).toBe(200);
+      expect(checkInRes.body.success).toBe(true);
+      expect(checkInRes.body.data.totalExpected.value).toBeGreaterThan(0);
+      expect(checkInRes.body.data.currentAttendance.value).toBeGreaterThan(0);
+      expect(checkInRes.body.data.vipsOnSite.checkedIn).toBeDefined();
+      expect(checkInRes.body.data.peakFlowRate.value).toBeDefined();
+    });
+
+    it('should retrieve hourly check-in trend and load capacity', async () => {
+      const res = await request(app).get(`/api/checkin/trend?eventId=${testEventId}`);
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(res.body.data.trend.length).toBeGreaterThan(0);
+      expect(res.body.data.capacityPercentage).toBeGreaterThan(0);
+    });
+
+    it('should retrieve statistics for all event entrances', async () => {
+      const res = await request(app).get(`/api/checkin/gates?eventId=${testEventId}`);
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(res.body.data.length).toBeGreaterThan(0);
+      expect(res.body.data[0]).toHaveProperty('count');
+      expect(res.body.data[0]).toHaveProperty('status');
+    });
+
+    it('should retrieve live VIP arrival alert feed', async () => {
+      const res = await request(app).get(`/api/checkin/vip-alerts?eventId=${testEventId}&limit=3`);
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(res.body.data.length).toBeGreaterThanOrEqual(0);
+    });
+
+    it('should query paged history logs with search and entrance filters', async () => {
+      const res = await request(app).get(`/api/checkin/logs?eventId=${testEventId}&entranceId=${testEntranceId}&page=1&limit=5`);
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(res.body.meta.page).toBe(1);
+      expect(res.body.meta.limit).toBe(5);
+    });
+
+    it('should list all active staff members and processed scans count', async () => {
+      const res = await request(app).get('/api/checkin/staff');
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(res.body.data.length).toBeGreaterThan(0);
+      expect(res.body.data[0]).toHaveProperty('scansCount');
+    });
+  });
+
+  describe('Communications & Comm Center APIs', () => {
+    let testLogId: string;
+
+    beforeAll(async () => {
+      // Find a seeded communication log
+      const log = await prisma.communicationLog.findFirst({
+        where: { recipientName: 'Julian Thorne' }
+      });
+      testLogId = log!.id;
+    });
+
+    it('should retrieve communications summary statistics', async () => {
+      const res = await request(app).get('/api/communications/summary');
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(res.body.data.totalLogs.value).toBeGreaterThan(0);
+      expect(res.body.data.successfulDeliveries.value).toBeDefined();
+      expect(res.body.data.activeFailures.value).toBeDefined();
+      expect(res.body.data.averageLatency.value).toBeDefined();
+    });
+
+    it('should retrieve paged and filtered communication logs', async () => {
+      const res = await request(app).get('/api/communications/logs?channel=EMAIL&page=1&limit=5');
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(res.body.meta.page).toBe(1);
+      expect(res.body.meta.limit).toBe(5);
+      expect(res.body.data.length).toBeGreaterThan(0);
+      expect(res.body.data[0].channel).toBe('EMAIL');
+    });
+
+    it('should query details for a specific communication log by ID', async () => {
+      const res = await request(app).get(`/api/communications/${testLogId}`);
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(res.body.data.recipientName).toBe('Julian Thorne');
+      expect(res.body.data.headerInfo).toHaveProperty('subject');
+    });
+
+    it('should return 404 for non-existent communication log ID', async () => {
+      const res = await request(app).get('/api/communications/00000000-0000-0000-0000-000000000000');
+      expect(res.status).toBe(404);
+      expect(res.body.success).toBe(false);
+      expect(res.body.error.message).toContain('not found');
+    });
+
+    it('should retrieve failures alerts status', async () => {
+      const res = await request(app).get('/api/communications/alerts');
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(res.body.data).toHaveProperty('triggered');
+      expect(res.body.data).toHaveProperty('count');
+    });
+
+    it('should toggle channel active provider on reroute request', async () => {
+      const res = await request(app)
+        .post('/api/communications/reroute')
+        .send({ channel: 'SMS' });
+
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(res.body.data.isRerouted).toBe(true);
+      expect(res.body.data.activeProvider).toBe('SECONDARY');
+    });
+
+    it('should export filtered communications logs matching query', async () => {
+      const res = await request(app).get('/api/communications/export?channel=WHATSAPP');
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(res.body.data.length).toBeGreaterThan(0);
+      expect(res.body.data[0].channel).toBe('WHATSAPP');
+    });
+  });
 });
