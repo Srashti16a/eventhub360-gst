@@ -171,7 +171,7 @@ export default function Transportation({ activeTab: propActiveTab }) {
     if (!activeEvent) return;
 
     Promise.all([
-      getDrivers(),
+      getDrivers().catch(() => ({ success: true, data: [] })),
       getTransfers(activeEvent.id),
       getActivityLogs(),
       getDashboardOverview(activeEvent.id),
