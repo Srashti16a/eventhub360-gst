@@ -194,7 +194,12 @@ const ViewPlaceholder = ({ name, description, icon }) => (
 );
 
 export default function App() {
-  const [activeView, setActiveView] = useState('transportation'); // default to transportation view
+  const [activeView, setActiveView] = useState(() => {
+    if (window.location.pathname.includes('/guests/directory')) {
+      return 'categories';
+    }
+    return 'transportation';
+  });
   const [isGuestsDropdownOpen, setIsGuestsDropdownOpen] = useState(true);
   const [isAccommodationDropdownOpen, setIsAccommodationDropdownOpen] = useState(true);
   const [isTransportationDropdownOpen, setIsTransportationDropdownOpen] = useState(true);

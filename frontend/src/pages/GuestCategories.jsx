@@ -5,6 +5,7 @@ import CategoryCard from '../components/GuestCategories/CategoryCard';
 import CategoryModal from '../components/GuestCategories/CategoryModal';
 import CategoryDetailModal from '../components/GuestCategories/CategoryDetailModal';
 import GuestModal from '../components/GuestManagement/GuestModal';
+import Guest360Details from '../components/GuestManagement/Guest360Details';
 
 import api from '../services/api';
 
@@ -73,6 +74,61 @@ export default function GuestCategories() {
   const [deleteCategoryConfirmOpen, setDeleteCategoryConfirmOpen] = useState(false);
   const [pendingDeleteCategoryId, setPendingDeleteCategoryId] = useState(null);
   
+  // Guest 360 Detail view state
+  const [selectedGuest360, setSelectedGuest360] = useState(null);
+  const scrollPosRef = React.useRef(0);
+  const lastCategoryModalRef = React.useRef(null);
+
+  React.useEffect(() => {
+    const handleUrlOrPopState = () => {
+      const match = window.location.pathname.match(/\/guests\/directory\/([^\/]+)/);
+      if (match && match[1]) {
+        setSelectedGuest360({ guestId: match[1], guestObj: null, categoryObj: null });
+      } else {
+        setSelectedGuest360(null);
+      }
+    };
+    handleUrlOrPopState();
+    window.addEventListener('popstate', handleUrlOrPopState);
+    return () => window.removeEventListener('popstate', handleUrlOrPopState);
+  }, []);
+
+  const handleOpenGuest360 = (guest, category) => {
+    scrollPosRef.current = window.scrollY;
+    if (category) {
+      lastCategoryModalRef.current = category;
+    }
+    setIsDetailModalOpen(false);
+    const id = guest?.guest_id || guest?.id || guest;
+    window.history.pushState({ guestId: id }, '', `/guests/directory/${id}`);
+    setSelectedGuest360({ guestId: id, guestObj: typeof guest === 'object' ? guest : null, categoryObj: category });
+    window.scrollTo(0, 0);
+  };
+
+  const handleBackFrom360 = () => {
+    window.history.pushState(null, '', '/guests/directory');
+    setSelectedGuest360(null);
+    setTimeout(() => {
+      window.scrollTo(0, scrollPosRef.current || 0);
+      if (lastCategoryModalRef.current) {
+        setSelectedCategory(lastCategoryModalRef.current);
+        setIsDetailModalOpen(true);
+      }
+    }, 10);
+  };
+
+  const handleViewGuestsFromCard = (cat) => {
+    const catGuests = guests.filter(
+      (g) => g.category?.toLowerCase() === cat.name.toLowerCase()
+    );
+    if (catGuests.length === 1) {
+      handleOpenGuest360(catGuests[0], cat);
+    } else {
+      setSelectedCategory(cat);
+      setIsDetailModalOpen(true);
+    }
+  };
+
   const showToast = (message, type = 'success') => {
     setToast({ message, type });
     setTimeout(() => setToast(null), 3500);
@@ -306,6 +362,39 @@ export default function GuestCategories() {
     fetchGuests(); // refresh guests to show them as uncategorized
   };
 
+  if (selectedGuest360) {
+    return (
+      <div className="categories-container" style={{ padding: 0 }}>
+        {toast && (
+          <div className={`toast-notification toast-${toast.type || 'success'}`} style={{ position: 'fixed', bottom: '20px', right: '20px', padding: '1rem 2rem', background: toast.type === 'error' ? '#ef4444' : '#10b981', color: 'white', borderRadius: '8px', zIndex: 9999, boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}>
+            {toast.message}
+          </div>
+        )}
+        <Guest360Details
+          guestId={selectedGuest360.guestId}
+          guestObj={selectedGuest360.guestObj}
+          categoryName={selectedGuest360.categoryObj?.name || selectedGuest360.guestObj?.category}
+          onBack={handleBackFrom360}
+          onEditGuest={(guestToEdit) => {
+            setEditingGuest(guestToEdit || selectedGuest360.guestObj);
+            setIsEditModalOpen(true);
+          }}
+          onUpdateGuest={fetchGuests}
+        />
+        <GuestModal
+          isOpen={isEditModalOpen}
+          onClose={() => { setIsEditModalOpen(false); setEditingGuest(null); }}
+          onSubmit={async (formData) => {
+            await handleSaveEdit(formData);
+            fetchGuests();
+          }}
+          initialData={editingGuest}
+          saving={false}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="categories-container">
       {toast && (
@@ -358,6 +447,7 @@ export default function GuestCategories() {
             onAddGuest={() => handleAddGuestToCategory(cat)}
             onEditCategory={() => handleEditCategory(cat)}
             onDeleteCategory={() => handleDeleteCategory(cat)}
+            onViewGuests={() => handleViewGuestsFromCard(cat)}
           />
         ))}
       </div>
@@ -379,6 +469,7 @@ export default function GuestCategories() {
         guests={filteredCategoryGuests}
         onEdit={handleEditGuest}
         onDelete={handleDeleteGuest}
+        onViewGuest360={(guest, cat) => handleOpenGuest360(guest, cat || selectedCategory)}
       />
 
       {/* Edit Guest Modal */}

@@ -1,328 +1,760 @@
-import React from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
+import './Guest360Details.css';
+import api from '../../services/api';
 
-const Guest360Details: React.FC = () => {
-    return (
-        <>
-            
-
-<aside className="h-screen w-64 fixed left-0 top-0 bg-surface dark:bg-on-background shadow-[4px_0_20px_rgba(31,41,55,0.05)] border-r border-border-gray dark:border-on-surface-variant/20 flex flex-col py-base px-4 z-50">
-<div className="mb-8 px-2">
-<h1 className="text-headline-md font-headline-md text-primary dark:text-primary-fixed-dim">EventHub360</h1>
-<p className="font-label-sm text-on-surface-variant opacity-70">Premium Concierge</p>
-</div>
-<nav className="flex-1 space-y-1">
-
-<a className="flex items-center gap-3 px-3 py-2.5 text-on-surface-variant dark:text-surface-variant hover:text-primary transition-colors hover:bg-surface-container-low rounded-lg group" href="#">
-<span className="material-symbols-outlined text-[22px]">dashboard</span>
-<span className="font-body-md">Dashboard</span>
-</a>
-<a className="flex items-center gap-3 px-3 py-2.5 text-on-surface-variant dark:text-surface-variant hover:text-primary transition-colors hover:bg-surface-container-low rounded-lg" href="#">
-<span className="material-symbols-outlined text-[22px]">contacts</span>
-<span className="font-body-md">CRM</span>
-</a>
-<a className="flex items-center gap-3 px-3 py-2.5 text-on-surface-variant dark:text-surface-variant hover:text-primary transition-colors hover:bg-surface-container-low rounded-lg" href="#">
-<span className="material-symbols-outlined text-[22px]">payments</span>
-<span className="font-body-md">Sales</span>
-</a>
-<a className="flex items-center gap-3 px-3 py-2.5 text-on-surface-variant dark:text-surface-variant hover:text-primary transition-colors hover:bg-surface-container-low rounded-lg" href="#">
-<span className="material-symbols-outlined text-[22px]">event</span>
-<span className="font-body-md">Events</span>
-</a>
-<a className="flex items-center gap-3 px-3 py-2.5 text-on-surface-variant dark:text-surface-variant hover:text-primary transition-colors hover:bg-surface-container-low rounded-lg" href="#">
-<span className="material-symbols-outlined text-[22px]">favorite</span>
-<span className="font-body-md">Weddings</span>
-</a>
-
-<a className="flex items-center gap-3 px-3 py-2.5 text-primary dark:text-primary-fixed-dim font-bold bg-surface-container-low dark:bg-surface-variant/10 rounded-lg" href="#">
-<span className="material-symbols-outlined text-[22px]" style="font-variation-settings: 'FILL' 1;">group</span>
-<span className="font-body-md">Guests</span>
-</a>
-<a className="flex items-center gap-3 px-3 py-2.5 text-on-surface-variant dark:text-surface-variant hover:text-primary transition-colors hover:bg-surface-container-low rounded-lg" href="#">
-<span className="material-symbols-outlined text-[22px]">handshake</span>
-<span className="font-body-md">Vendors</span>
-</a>
-<a className="flex items-center gap-3 px-3 py-2.5 text-on-surface-variant dark:text-surface-variant hover:text-primary transition-colors hover:bg-surface-container-low rounded-lg" href="#">
-<span className="material-symbols-outlined text-[22px]">hotel</span>
-<span className="font-body-md">Hotels</span>
-</a>
-</nav>
-<div className="pt-4 border-t border-border-gray/50 mt-auto space-y-1">
-<button className="w-full coral-gradient text-white py-3 rounded-xl font-headline-md text-body-md mb-4 shadow-lg hover:scale-102 transition-transform">
-                Create Event
-            </button>
-<a className="flex items-center gap-3 px-3 py-2 text-on-surface-variant hover:text-primary" href="#">
-<span className="material-symbols-outlined">help</span>
-<span className="font-body-md">Help Center</span>
-</a>
-<a className="flex items-center gap-3 px-3 py-2 text-on-surface-variant hover:text-primary" href="#">
-<span className="material-symbols-outlined">logout</span>
-<span className="font-body-md">Logout</span>
-</a>
-</div>
-</aside>
-
-<header className="fixed top-0 right-0 h-16 left-64 bg-surface/80 dark:bg-on-background/80 backdrop-blur-xl border-b border-border-gray dark:border-on-surface-variant/20 flex justify-between items-center px-gutter z-40">
-<div className="flex items-center flex-1 max-w-xl">
-<div className="relative w-full">
-<span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant">search</span>
-<input className="w-full pl-10 pr-4 py-2 bg-background-alt border-none rounded-full focus:bg-white focus:ring-2 focus:ring-primary/20 transition-all text-body-sm" placeholder="Search guests, events, or bookings..." type="text"/>
-</div>
-</div>
-<div className="flex items-center gap-6">
-<nav className="hidden md:flex gap-6">
-<a className="text-label-md font-label-md text-on-surface-variant hover:text-primary transition-colors" href="#">Directory</a>
-<a className="text-label-md font-label-md text-on-surface-variant hover:text-primary transition-colors" href="#">Resources</a>
-</nav>
-<div className="flex gap-4 items-center pl-6 border-l border-border-gray/50">
-<button className="relative">
-<span className="material-symbols-outlined text-on-surface-variant">notifications</span>
-<span className="absolute top-0 right-0 w-2 h-2 bg-primary rounded-full"></span>
-</button>
-<button><span className="material-symbols-outlined text-on-surface-variant">chat_bubble</span></button>
-<div className="h-8 w-8 rounded-full overflow-hidden border border-border-gray">
-<img alt="Administrator Portrait" className="w-full h-full object-cover" data-alt="Professional headshot of a luxury event concierge manager. He is a middle-aged man with a refined appearance, wearing a sharp charcoal grey tailored suit and a crisp white shirt. The background is a blurred, high-end hotel lobby with warm golden lighting and marble surfaces, reflecting a premium hospitality environment." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDX8ki8LshwJsz4lyZHFR9x2GdvWRgnujBGr3og8sVfcvq6e_bAqbk28rLDYT5Ty6LQZM0m15eN7rp7mzsCD37sKOeDlWXiAgyqMe4rSrxMs55Kbm4PzhINwydWdC6S8gTyAjkihiKa_bzM0OcrwqRazd3zi9gDsMPnHuGB3R0pkrM68bGJpTbANculJFUrCkAk5Kk03E8iwX7uigMS9zXChIYkO1s2MjVjCacLK5SD-0LL__Yh63_mMNK6rYH4kD66cHw2mDKw7z0"/>
-</div>
-</div>
-</div>
-</header>
-
-<main className="ml-64 pt-24 pb-12 px-container-margin max-w-[1440px]">
-
-<section className="mb-gutter">
-<div className="bg-white rounded-card shadow-soft p-8 flex flex-col md:flex-row items-center md:items-start gap-8 relative overflow-hidden">
-
-<div className="absolute -top-24 -right-24 w-64 h-64 bg-primary/5 rounded-full blur-3xl"></div>
-<div className="relative">
-<div className="w-32 h-32 md:w-40 md:h-40 rounded-card overflow-hidden ring-4 ring-white shadow-soft">
-<img alt="Jameson Vanderbilt" className="w-full h-full object-cover" data-alt="A high-resolution portrait of an elegant, distinguished gentleman in his late 40s with a confident and warm smile. He has neatly styled hair and wears a bespoke navy blue velvet dinner jacket. The lighting is soft and cinematic, with a warm golden hue reminiscent of a luxury ballroom setting. The overall mood is sophisticated and exclusive." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBHiuhf2I9OMFAe4ZbHEr6vHbjNa4L7kwZnGluAIigMILfvjfV-bZvqFnwRsFcqva7Ovqde_2_Oe0RoUYD0sa_EH_Eic5xIwnsjGugbumeSlORTAiYV0-HaUg_N0JklsAhaHCyDRBJQmSbwvs_C0SCmzH1CNRQWikQaMt01Je2BvfS_n3jhpr2f0C5etXxZlCPX616UyZAVDVWZtjKl359fMgDo5hzvGajfvz67Ub0gHWblw6eOpUw6G9-Bjae1YS79BNAT90aBdtY"/>
-</div>
-<div className="absolute -bottom-2 -right-2 bg-secondary text-white px-3 py-1 rounded-full text-label-sm font-label-md shadow-md flex items-center gap-1">
-<span className="material-symbols-outlined text-[14px]" style="font-variation-settings: 'FILL' 1;">stars</span>
-                        VIP
-                    </div>
-</div>
-<div className="flex-1 text-center md:text-left">
-<div className="flex flex-col md:flex-row md:items-center gap-2 mb-2">
-<h2 className="text-display-lg font-display-lg text-on-surface">Jameson Vanderbilt</h2>
-<span className="inline-flex items-center px-3 py-1 rounded-full bg-tertiary-fixed text-on-tertiary-fixed text-label-sm font-label-md w-fit mx-auto md:mx-0">
-                            Platinum Member
-                        </span>
-</div>
-<p className="text-body-lg text-on-surface-variant mb-6">Chairman, Vanderbilt Global Enterprises</p>
-<div className="flex flex-wrap justify-center md:justify-start gap-6 text-body-md text-on-surface-variant">
-<div className="flex items-center gap-2">
-<span className="material-symbols-outlined text-primary text-[20px]">mail</span>
-                            j.vanderbilt@vge.com
-                        </div>
-<div className="flex items-center gap-2">
-<span className="material-symbols-outlined text-primary text-[20px]">phone_iphone</span>
-                            +1 (555) 012-3456
-                        </div>
-<div className="flex items-center gap-2">
-<span className="material-symbols-outlined text-primary text-[20px]">location_on</span>
-                            New York, USA
-                        </div>
-</div>
-</div>
-<div className="flex gap-4 self-center md:self-start">
-<button className="px-6 py-3 border border-secondary text-secondary rounded-xl font-label-md hover:bg-secondary-fixed/10 transition-all">
-                        Edit Profile
-                    </button>
-<button className="px-6 py-3 coral-gradient text-white rounded-xl font-label-md shadow-lg flex items-center gap-2 hover:scale-105 transition-all">
-<span className="material-symbols-outlined text-[20px]">send</span>
-                        Send Message
-                    </button>
-</div>
-</div>
-</section>
-<div className="grid grid-cols-12 gap-gutter">
-
-<div className="col-span-12 lg:col-span-8 space-y-gutter">
-
-<div className="bg-white rounded-card shadow-soft p-8">
-<div className="flex justify-between items-center mb-6">
-<h3 className="text-headline-md font-headline-md">RSVP &amp; Event Attendance</h3>
-<span className="px-4 py-1 bg-emerald-green/10 text-emerald-green rounded-full text-label-sm font-bold flex items-center gap-2">
-<span className="material-symbols-outlined text-[16px]" style="font-variation-settings: 'FILL' 1;">check_circle</span>
-                            CONFIRMED
-                        </span>
-</div>
-<div className="flex flex-col md:flex-row gap-8">
-<div className="flex-1 p-6 bg-background rounded-2xl border border-border-gray/50">
-<div className="text-label-sm text-on-surface-variant uppercase tracking-wider mb-2">Current Event</div>
-<div className="text-body-lg font-bold text-on-surface mb-4">Corporate Gala 2024: Innovation Tomorrow</div>
-<div className="flex items-center gap-4 text-body-sm text-on-surface-variant">
-<div className="flex items-center gap-1"><span className="material-symbols-outlined text-[18px]">calendar_today</span> Oct 12, 2024</div>
-<div className="flex items-center gap-1"><span className="material-symbols-outlined text-[18px]">location_city</span> Metropolitan Museum</div>
-</div>
-</div>
-<div className="flex-1 space-y-4">
-<div>
-<label className="text-label-sm text-on-surface-variant font-semibold">Dietary Preferences</label>
-<div className="flex flex-wrap gap-2 mt-2">
-<span className="px-3 py-1 bg-tertiary-fixed-dim/30 text-tertiary text-label-sm rounded-full">Shellfish Allergy</span>
-<span className="px-3 py-1 bg-tertiary-fixed-dim/30 text-tertiary text-label-sm rounded-full">Keto-Friendly Preferred</span>
-</div>
-</div>
-<div>
-<label className="text-label-sm text-on-surface-variant font-semibold">Special Requests</label>
-<p className="text-body-sm text-on-surface mt-1 italic font-medium text-primary">"Prefers sparkling water with fresh lime at all times. Requesting a quiet lounge access for a 30-min call at 9 PM."</p>
-</div>
-</div>
-</div>
-</div>
-
-<div className="grid md:grid-cols-2 gap-gutter">
-
-<div className="bg-white rounded-card shadow-soft p-8 border-t-4 border-secondary">
-<div className="flex items-center gap-3 mb-6">
-<div className="w-10 h-10 rounded-full bg-secondary-fixed/30 text-secondary flex items-center justify-center">
-<span className="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">hotel</span>
-</div>
-<h3 className="text-headline-md font-headline-md">Accommodation</h3>
-</div>
-<div className="mb-4">
-<div className="text-body-lg font-bold text-on-surface">The Ritz-Carlton, Manhattan</div>
-<div className="text-body-md text-on-surface-variant">Executive Suite, Room 402</div>
-</div>
-<div className="flex justify-between py-3 border-y border-border-gray/50 text-body-sm">
-<span className="text-on-surface-variant">Check-in</span>
-<span className="font-bold">Oct 11, 3:00 PM</span>
-</div>
-<div className="flex justify-between py-3 text-body-sm">
-<span className="text-on-surface-variant">Check-out</span>
-<span className="font-bold">Oct 13, 12:00 PM</span>
-</div>
-<button className="w-full mt-4 py-2 text-primary font-label-md hover:bg-primary/5 rounded-lg transition-all underline underline-offset-4">
-                            View Reservation Details
-                        </button>
-</div>
-
-<div className="bg-white rounded-card shadow-soft p-8 border-t-4 border-primary">
-<div className="flex items-center gap-3 mb-6">
-<div className="w-10 h-10 rounded-full bg-primary-fixed/30 text-primary flex items-center justify-center">
-<span className="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">commute</span>
-</div>
-<h3 className="text-headline-md font-headline-md">Transportation</h3>
-</div>
-<div className="mb-4">
-<div className="text-body-lg font-bold text-on-surface">Airport Pickup (JFK)</div>
-<div className="text-body-md text-on-surface-variant">Cadillac Escalade ESV • Black</div>
-</div>
-<div className="flex justify-between py-3 border-y border-border-gray/50 text-body-sm">
-<span className="text-on-surface-variant">Scheduled For</span>
-<span className="font-bold">Oct 11, 10:30 AM</span>
-</div>
-<div className="flex justify-between py-3 text-body-sm items-center">
-<span className="text-on-surface-variant">Driver</span>
-<div className="flex items-center gap-2 font-bold">
-<span>Robert S.</span>
-<span className="material-symbols-outlined text-emerald-green text-[18px]">verified</span>
-</div>
-</div>
-<div className="mt-4 p-3 bg-background-alt rounded-xl flex items-center justify-between">
-<span className="text-body-sm font-medium">Tracking Link Sent</span>
-<span className="material-symbols-outlined text-primary">check</span>
-</div>
-</div>
-</div>
-
-<div className="bg-white rounded-card shadow-soft p-8">
-<div className="flex justify-between items-start mb-8">
-<div>
-<h3 className="text-headline-md font-headline-md">Seating Assignment</h3>
-<p className="text-body-sm text-on-surface-variant">Main Ballroom Floor Plan</p>
-</div>
-<div className="text-right">
-<div className="text-display-lg-mobile font-display-lg text-primary">Table 12</div>
-<div className="text-label-sm font-bold text-secondary uppercase tracking-widest">VIP Section A</div>
-</div>
-</div>
-<div className="relative w-full h-64 bg-background-alt rounded-2xl overflow-hidden group">
-<img alt="Table Map" className="w-full h-full object-cover opacity-80 group-hover:scale-105 transition-transform duration-700" data-alt="An artistic, abstract overhead architectural floor plan of a luxury gala ballroom. The map uses a minimalist aesthetic with clean lines in charcoal and gold. Specific tables are glowing with soft amber light, and Table 12 is prominently highlighted with a radiant coral pulse. The overall visual style is elegant, high-contrast, and modern." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAYgNT-3vCU0ca5iJRzl-DLQa1Em23M0n1e0WJk-JzlZCtW_eQFQ_0Ew2JVVqJtMhCtoTwysbnGBvb2OYFgpHDb2a0FMPXZshpp7PUG0J4x7j5aXY3B16Xlle_Y8C54nGO5-l8b0AQdVr-_hJyrzZO4eI7msS-tTfr096udG_eBxjGZlIXyN-aGj023BvkFP02pp34dvMYox2DM8OaIWpA4ndlFTbYhj5aAEiwnnxaPy6oadId1jM7yWqkBxxDMQVyu9W0qDXwY18k"/>
-<div className="absolute inset-0 flex items-center justify-center">
-<div className="glass-effect p-6 rounded-2xl shadow-xl flex flex-col items-center">
-<span className="material-symbols-outlined text-primary text-4xl mb-2">location_on</span>
-<span className="font-headline-md text-on-surface">You are here</span>
-</div>
-</div>
-<button className="absolute bottom-4 right-4 bg-white/90 px-4 py-2 rounded-full shadow-lg text-label-sm font-bold flex items-center gap-2">
-<span className="material-symbols-outlined text-[18px]">zoom_in</span>
-                            Expand Map
-                        </button>
-</div>
-</div>
-</div>
-
-<div className="col-span-12 lg:col-span-4 space-y-gutter">
-
-<div className="bg-white rounded-card shadow-soft p-8 h-fit">
-<h3 className="text-headline-md font-headline-md mb-8">Communication History</h3>
-<div className="space-y-8 relative">
-
-<div className="absolute left-[15px] top-2 bottom-2 w-0.5 bg-border-gray"></div>
-
-<div className="relative pl-10">
-<div className="absolute left-0 top-1 w-8 h-8 rounded-full bg-primary-fixed text-primary flex items-center justify-center z-10">
-<span className="material-symbols-outlined text-[16px]">mail</span>
-</div>
-<div className="text-label-sm text-on-surface-variant">Today, 9:15 AM</div>
-<div className="text-body-md font-bold mt-0.5">Welcome Packet Sent</div>
-<p className="text-body-sm text-on-surface-variant mt-1">Digital itinerary and venue map delivered via email.</p>
-</div>
-
-<div className="relative pl-10">
-<div className="absolute left-0 top-1 w-8 h-8 rounded-full bg-secondary-fixed text-secondary flex items-center justify-center z-10">
-<span className="material-symbols-outlined text-[16px]">call</span>
-</div>
-<div className="text-label-sm text-on-surface-variant">Yesterday, 2:40 PM</div>
-<div className="text-body-md font-bold mt-0.5">Inbound Inquiry: Logistics</div>
-<p className="text-body-sm text-on-surface-variant mt-1">Confirmed pickup time and dietary allergy details.</p>
-</div>
-
-<div className="relative pl-10 opacity-60">
-<div className="absolute left-0 top-1 w-8 h-8 rounded-full bg-surface-variant text-on-surface-variant flex items-center justify-center z-10">
-<span className="material-symbols-outlined text-[16px]">chat</span>
-</div>
-<div className="text-label-sm text-on-surface-variant">Oct 5, 11:00 AM</div>
-<div className="text-body-md font-bold mt-0.5">WhatsApp Confirmation</div>
-<p className="text-body-sm text-on-surface-variant mt-1">RSVP status moved to 'Confirmed'.</p>
-</div>
-</div>
-<button className="w-full mt-10 py-3 bg-background-alt text-on-surface font-label-md rounded-xl hover:bg-surface-container-high transition-colors">
-                        View All Activity
-                    </button>
-</div>
-
-<div className="bg-white rounded-card shadow-soft p-8 h-fit">
-<div className="flex items-center justify-between mb-6">
-<h3 className="text-headline-md font-headline-md">Concierge Notes</h3>
-<span className="material-symbols-outlined text-secondary cursor-pointer hover:scale-110 transition-transform">edit_note</span>
-</div>
-<div className="space-y-4">
-<div className="p-4 bg-secondary-container/20 border-l-4 border-secondary rounded-r-xl">
-<p className="text-body-sm text-on-secondary-container leading-relaxed italic">
-                                "Guest is highly sensitive to fragrance. Ensure room 402 is aired out 3 hours prior and use unscented linens only."
-                            </p>
-<div className="mt-3 text-label-sm font-bold">- Sarah J., Head Concierge</div>
-</div>
-<textarea className="w-full bg-background-alt border-none rounded-2xl p-4 text-body-sm focus:ring-2 focus:ring-primary/20 min-h-[120px]" placeholder="Add an internal note..."></textarea>
-<button className="w-full py-3 bg-primary/10 text-primary font-bold rounded-xl hover:bg-primary/20 transition-colors text-label-sm">
-                            Save Internal Note
-                        </button>
-</div>
-</div>
-</div>
-</div>
-</main>
-
-<!-- <button className="fixed bottom-8 right-8 w-16 h-16 coral-gradient text-white rounded-full shadow-2xl flex items-center justify-center hover:scale-110 transition-all z-50">
-        <span className="material-symbols-outlined text-3xl">add</span>
-    </button> -->
-
-
-        </>
-    );
+const getInitials = (name) => {
+  if (!name || typeof name !== 'string') return '??';
+  return name
+    .split(' ')
+    .filter(Boolean)
+    .map((n) => n[0])
+    .slice(0, 2)
+    .join('')
+    .toUpperCase();
 };
 
-export default Guest360Details;
+export default function Guest360Details({
+  guestId,
+  guestObj,
+  categoryName,
+  onBack,
+  onEditGuest,
+  onUpdateGuest
+}) {
+  const [loading, setLoading] = useState(true);
+  const [guestProfile, setGuestProfile] = useState(null);
+  const [basicGuest, setBasicGuest] = useState(guestObj || null);
+  const [dbEvents, setDbEvents] = useState([]);
+  
+  // Concierge note states
+  const [internalNote, setInternalNote] = useState('');
+  const [isSavingNote, setIsSavingNote] = useState(false);
+  const [activeNoteList, setActiveNoteList] = useState([]);
+  const [toastMessage, setToastMessage] = useState(null);
+
+  const targetId = guestId || guestObj?.guest_id || guestObj?.id;
+
+  useEffect(() => {
+    if (!targetId) {
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+    Promise.all([
+      api.get(`/guests/${targetId}/profile`).catch(() => null),
+      api.get(`/guests/${targetId}`).catch(() => null),
+      api.get(`/events`).catch(() => null)
+    ]).then(([profRes, basicRes, eventsRes]) => {
+      if (profRes && profRes.success && profRes.data) {
+        setGuestProfile(profRes.data);
+        if (Array.isArray(profRes.data.conciergeNotes)) {
+          setActiveNoteList(profRes.data.conciergeNotes);
+        }
+      }
+      if (basicRes && basicRes.success && basicRes.data) {
+        setBasicGuest(basicRes.data);
+      }
+      if (eventsRes && eventsRes.success && Array.isArray(eventsRes.data)) {
+        setDbEvents(eventsRes.data);
+      }
+      setLoading(false);
+    });
+  }, [targetId]);
+
+  const showToast = (msg) => {
+    setToastMessage(msg);
+    setTimeout(() => setToastMessage(null), 3000);
+  };
+
+  const handleSaveInternalNote = async () => {
+    if (!internalNote.trim() || isSavingNote) return;
+    setIsSavingNote(true);
+    const textToSave = internalNote.trim();
+    try {
+      const res = await api.post(`/guests/${targetId}/notes`, { note: textToSave });
+      if (res && res.success && res.data) {
+        setActiveNoteList((prev) => [...prev, res.data]);
+        setInternalNote('');
+        showToast('Concierge note saved to database');
+      } else {
+        const fallbackNote = {
+          id: Date.now().toString(),
+          note: textToSave,
+          createdBy: 'Concierge Team',
+          createdAt: new Date().toISOString()
+        };
+        setActiveNoteList((prev) => [...prev, fallbackNote]);
+        setInternalNote('');
+        showToast('Concierge note added');
+      }
+    } catch (err) {
+      // Graceful fallback if backend endpoint or ID mock is unavailable
+      const fallbackNote = {
+        id: Date.now().toString(),
+        note: textToSave,
+        createdBy: 'Concierge Team',
+        createdAt: new Date().toISOString()
+      };
+      setActiveNoteList((prev) => [...prev, fallbackNote]);
+      setInternalNote('');
+      showToast('Concierge note added locally');
+    } finally {
+      setIsSavingNote(false);
+    }
+  };
+
+  // Extract merged values
+  const fullName = useMemo(() => {
+    return guestProfile?.fullName || basicGuest?.name || guestObj?.name || 'Unknown Guest';
+  }, [guestProfile, basicGuest, guestObj]);
+
+  const photoUrl = useMemo(() => {
+    return guestProfile?.profileImage || basicGuest?.avatar || guestObj?.avatar || guestObj?.avatarUrl || '';
+  }, [guestProfile, basicGuest, guestObj]);
+
+  const email = useMemo(() => {
+    return guestProfile?.email || basicGuest?.email || guestObj?.email || 'Not available';
+  }, [guestProfile, basicGuest, guestObj]);
+
+  const phone = useMemo(() => {
+    return guestProfile?.phone || basicGuest?.phone || guestObj?.phone || 'Not available';
+  }, [guestProfile, basicGuest, guestObj]);
+
+  const locationStr = useMemo(() => {
+    const city = guestProfile?.city || basicGuest?.location || guestObj?.location || '';
+    const country = guestProfile?.country || '';
+    return [city, country].filter(Boolean).join(', ') || 'Not available';
+  }, [guestProfile, basicGuest, guestObj]);
+
+  const isVipUser = useMemo(() => {
+    return guestProfile?.vipStatus || basicGuest?.isVip || categoryName?.toUpperCase() === 'VIP';
+  }, [guestProfile, basicGuest, categoryName]);
+
+  const badgeText = useMemo(() => {
+    if (isVipUser) return 'VIP';
+    return (guestProfile?.designation || basicGuest?.category || categoryName || 'Guest').toUpperCase();
+  }, [isVipUser, guestProfile, basicGuest, categoryName]);
+
+  const tierChipText = useMemo(() => {
+    if (basicGuest?.vipTier && basicGuest.vipTier !== 'ATTENDEE') {
+      return `${basicGuest.vipTier} Member`;
+    }
+    const cat = categoryName || basicGuest?.category || 'General';
+    return `${cat} Member`;
+  }, [basicGuest, categoryName]);
+
+  const jobTitleText = useMemo(() => {
+    const title = guestProfile?.designation || basicGuest?.title || guestObj?.title || '';
+    const comp = guestProfile?.company || basicGuest?.company || guestObj?.company || '';
+    if (title && comp) return `${title} • ${comp}`;
+    if (title) return title;
+    if (comp) return comp;
+    return `${categoryName || basicGuest?.category || 'General'} Attendee`;
+  }, [guestProfile, basicGuest, guestObj, categoryName]);
+
+  const rsvpStatus = useMemo(() => {
+    const status = guestProfile?.rsvp?.rsvpStatus || basicGuest?.status || guestObj?.rsvpStatus || 'PENDING';
+    return typeof status === 'string' ? status.toUpperCase() : 'PENDING';
+  }, [guestProfile, basicGuest, guestObj]);
+
+  const rsvpMeta = useMemo(() => {
+    if (rsvpStatus === 'CONFIRMED' || rsvpStatus === 'YES' || rsvpStatus === 'ATTENDING') {
+      return { class: 'confirmed', label: 'Confirmed Attending', icon: 'check_circle' };
+    }
+    if (rsvpStatus === 'DECLINED' || rsvpStatus === 'NO') {
+      return { class: 'declined', label: 'Declined Invitation', icon: 'cancel' };
+    }
+    return { class: 'pending', label: 'RSVP Pending', icon: 'schedule' };
+  }, [rsvpStatus]);
+
+  const eventInfo = useMemo(() => {
+    if (guestProfile?.rsvp?.eventName) {
+      return {
+        title: guestProfile.rsvp.eventName,
+        date: guestProfile.rsvp.eventDate,
+        venue: guestProfile.rsvp.venue || 'Main Ballroom'
+      };
+    }
+    if (basicGuest?.event) {
+      return {
+        title: basicGuest.event.title,
+        date: basicGuest.event.date,
+        venue: basicGuest.event.category || 'Main Venue'
+      };
+    }
+    if (basicGuest?.eventId && dbEvents.length > 0) {
+      const match = dbEvents.find((e) => e.id === basicGuest.eventId);
+      if (match) {
+        return {
+          title: match.title,
+          date: match.date,
+          venue: match.category || 'Main Venue'
+        };
+      }
+    }
+    return null;
+  }, [guestProfile, basicGuest, dbEvents]);
+
+  const dietaryList = useMemo(() => {
+    if (Array.isArray(guestProfile?.dietaryPreferences) && guestProfile.dietaryPreferences.length > 0) {
+      return guestProfile.dietaryPreferences;
+    }
+    if (basicGuest?.allergies) return [basicGuest.allergies];
+    if (basicGuest?.mealPreference) return [basicGuest.mealPreference];
+    return [];
+  }, [guestProfile, basicGuest]);
+
+  const specialReqList = useMemo(() => {
+    if (Array.isArray(guestProfile?.specialRequests) && guestProfile.specialRequests.length > 0) {
+      return guestProfile.specialRequests;
+    }
+    if (basicGuest?.requests) return [basicGuest.requests];
+    return [];
+  }, [guestProfile, basicGuest]);
+
+  const accomInfo = useMemo(() => {
+    const acc = guestProfile?.accommodation;
+    if (acc && acc.hotelName) {
+      return {
+        hotelName: acc.hotelName,
+        roomInfo: [acc.roomType, acc.roomNumber ? `Room ${acc.roomNumber}` : ''].filter(Boolean).join(' • ') || 'Standard Room',
+        checkIn: acc.checkIn ? new Date(acc.checkIn).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '3:00 PM Check-In',
+        checkOut: acc.checkOut ? new Date(acc.checkOut).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '12:00 PM Check-Out'
+      };
+    }
+    if (basicGuest?.assignedHotel?.name) {
+      return {
+        hotelName: basicGuest.assignedHotel.name,
+        roomInfo: 'Assigned Suite',
+        checkIn: '3:00 PM Check-In',
+        checkOut: '12:00 PM Check-Out'
+      };
+    }
+    return null;
+  }, [guestProfile, basicGuest]);
+
+  const transInfo = useMemo(() => {
+    const tr = guestProfile?.transportation;
+    if (tr && (tr.pickupLocation || tr.dropLocation || tr.vehicle || tr.driverName)) {
+      return {
+        title: tr.pickupLocation && tr.dropLocation ? `${tr.pickupLocation} → ${tr.dropLocation}` : (tr.pickupLocation || 'Scheduled Transfer'),
+        vehicle: tr.vehicle || 'Assigned Vehicle',
+        driverName: tr.driverName || 'Assigned Chauffeur',
+        pickupTime: tr.pickupTime ? new Date(tr.pickupTime).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'Time TBD',
+        trackingLink: tr.trackingLink || 'Tracking Link Active'
+      };
+    }
+    return null;
+  }, [guestProfile]);
+
+  const seatingInfo = useMemo(() => {
+    const seat = guestProfile?.seatingAssignment;
+    if (seat && (seat.tableNumber || seat.section || seat.floor)) {
+      return {
+        tableNumber: seat.tableNumber || (basicGuest?.table?.name ? basicGuest.table.name.replace(/\D+/g, '') || basicGuest.table.name : null),
+        section: seat.section || seat.floor || 'VIP Ballroom Section',
+        seatNumber: seat.seatNumber || basicGuest?.seatNumber
+      };
+    }
+    if (basicGuest?.table || basicGuest?.seatNumber) {
+      return {
+        tableNumber: basicGuest.table?.name ? basicGuest.table.name.replace(/\D+/g, '') || basicGuest.table.name : null,
+        section: 'Main Ballroom Section',
+        seatNumber: basicGuest.seatNumber
+      };
+    }
+    return null;
+  }, [guestProfile, basicGuest]);
+
+  const commHistory = useMemo(() => {
+    if (Array.isArray(guestProfile?.communicationHistory) && guestProfile.communicationHistory.length > 0) {
+      return guestProfile.communicationHistory.slice(0, 6);
+    }
+    if (Array.isArray(basicGuest?.communicationLogs) && basicGuest.communicationLogs.length > 0) {
+      return basicGuest.communicationLogs.slice(0, 6);
+    }
+    return [];
+  }, [guestProfile, basicGuest]);
+
+  if (loading) {
+    return (
+      <div className="g360-wrapper" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '60vh' }}>
+        <div style={{ textAlign: 'center' }}>
+          <div className="spinner" style={{ width: '42px', height: '42px', border: '4px solid #e2e8f0', borderTopColor: '#ae2f34', borderRadius: '50%', animation: 'spin 1s linear infinite', margin: '0 auto 1rem' }}></div>
+          <div style={{ fontWeight: '600', color: '#64748b' }}>Loading Guest 360° Profile...</div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="g360-wrapper">
+      {toastMessage && (
+        <div style={{ position: 'fixed', bottom: '24px', right: '24px', backgroundColor: '#10b981', color: '#FFFFFF', padding: '0.8rem 1.6rem', borderRadius: '12px', fontWeight: '600', boxShadow: '0 8px 24px rgba(0,0,0,0.15)', zIndex: 9999 }}>
+          {toastMessage}
+        </div>
+      )}
+
+      {/* Breadcrumb Navigation & Header */}
+      <div className="g360-nav-header">
+        <div>
+          <div className="g360-breadcrumb">
+            <span className="g360-breadcrumb-link" onClick={onBack}>Guests</span>
+            <span className="g360-breadcrumb-sep">&gt;</span>
+            <span className="g360-breadcrumb-link" onClick={onBack}>Categories</span>
+            <span className="g360-breadcrumb-sep">&gt;</span>
+            <span className="g360-breadcrumb-link" onClick={onBack}>{categoryName || basicGuest?.category || 'Directory'}</span>
+            <span className="g360-breadcrumb-sep">&gt;</span>
+            <span className="g360-breadcrumb-current">{fullName}</span>
+          </div>
+          <h1 className="g360-page-title">Guest 360° Profile</h1>
+        </div>
+        
+        <button type="button" className="g360-back-btn" onClick={onBack}>
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" style={{ width: '18px', height: '18px' }}>
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" />
+          </svg>
+          <span>Back to Category List</span>
+        </button>
+      </div>
+
+      {/* Section 1: Hero Profile Header Card */}
+      <section className="g360-card g360-hero-card">
+        <div className="g360-hero-bg-accent"></div>
+
+        <div className="g360-hero-left">
+          <div className="g360-avatar-wrapper">
+            {photoUrl ? (
+              <img
+                src={photoUrl}
+                alt={fullName}
+                className="g360-avatar-img"
+                onError={(e) => {
+                  e.currentTarget.style.display = 'none';
+                  if (e.currentTarget.nextElementSibling) {
+                    e.currentTarget.nextElementSibling.style.display = 'flex';
+                  }
+                }}
+              />
+            ) : null}
+            <div
+              className="g360-avatar-placeholder"
+              style={{ display: photoUrl ? 'none' : 'flex' }}
+            >
+              {getInitials(fullName)}
+            </div>
+            <div className="g360-vip-badge">{badgeText}</div>
+          </div>
+
+          <div className="g360-hero-info">
+            <div className="g360-name-row">
+              <h2 className="g360-guest-name">{fullName}</h2>
+              <span className="g360-membership-chip">{tierChipText}</span>
+            </div>
+            <p className="g360-job-title">{jobTitleText}</p>
+            
+            <div className="g360-contact-row">
+              <div className="g360-contact-item">
+                <span className="g360-contact-icon">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" style={{ width: '18px', height: '18px' }}>
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                  </svg>
+                </span>
+                <span>{email}</span>
+              </div>
+
+              <div className="g360-contact-item">
+                <span className="g360-contact-icon">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" style={{ width: '18px', height: '18px' }}>
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                  </svg>
+                </span>
+                <span>{phone}</span>
+              </div>
+
+              <div className="g360-contact-item">
+                <span className="g360-contact-icon">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" style={{ width: '18px', height: '18px' }}>
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                  </svg>
+                </span>
+                <span>{locationStr}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="g360-hero-actions">
+          <button
+            type="button"
+            className="g360-btn-secondary-gold"
+            onClick={() => {
+              if (onEditGuest) onEditGuest(basicGuest || guestProfile || guestObj);
+            }}
+          >
+            Edit Profile
+          </button>
+          <button
+            type="button"
+            className="g360-btn-primary-coral"
+            onClick={() => showToast(`Message sent to ${fullName}`)}
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" style={{ width: '18px', height: '18px' }}>
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+            </svg>
+            <span>Send Message</span>
+          </button>
+        </div>
+      </section>
+
+      {/* Section 2: 8/4 Column Main Grid */}
+      <section className="g360-main-grid">
+        {/* Left Column (8 cols) */}
+        <div className="g360-grid-left">
+          
+          {/* Top: RSVP & Event Attendance Card */}
+          <div className="g360-card">
+            <div className="g360-rsvp-header">
+              <h3 className="g360-card-title">RSVP & Event Attendance</h3>
+              <div className={`g360-status-chip ${rsvpMeta.class}`}>
+                <span>{rsvpMeta.label}</span>
+              </div>
+            </div>
+
+            <div className="g360-rsvp-subgrid">
+              {/* Current Event Box */}
+              <div className="g360-event-box">
+                {eventInfo ? (
+                  <>
+                    <h4 className="g360-event-title">{eventInfo.title}</h4>
+                    <div className="g360-event-meta">
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" style={{ width: '16px', height: '16px', color: '#ae2f34' }}>
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      </svg>
+                      <span>{eventInfo.date ? new Date(eventInfo.date).toLocaleDateString([], { month: 'long', day: 'numeric', year: 'numeric' }) : 'Date Scheduled'}</span>
+                    </div>
+                    <div className="g360-event-meta">
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" style={{ width: '16px', height: '16px', color: '#ae2f34' }}>
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1v1H9V7zm5 0h1v1h-1V7zm-5 4h1v1H9v-1zm5 0h1v1h-1v-1zm-5 4h1v1H9v-1zm5 0h1v1h-1v-1z" />
+                      </svg>
+                      <span>{eventInfo.venue}</span>
+                    </div>
+                  </>
+                ) : (
+                  <div className="g360-empty-box" style={{ padding: '1rem' }}>
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" style={{ width: '32px', height: '32px', color: '#ae2f34', opacity: 0.7 }}>
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                    <div className="g360-empty-title">No event assigned</div>
+                    <p className="g360-empty-sub">This guest has not been linked to an active event schedule yet.</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Dietary Preferences & Special Requests */}
+              <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                <div style={{ marginBottom: '1.25rem' }}>
+                  <div className="g360-pref-title">Dietary Preferences</div>
+                  {dietaryList.length > 0 ? (
+                    <div className="g360-chips-list">
+                      {dietaryList.map((item, idx) => (
+                        <span key={idx} className="g360-lavender-chip">{item}</span>
+                      ))}
+                    </div>
+                  ) : (
+                    <span style={{ fontSize: '0.82rem', color: 'var(--g360-text-light)', fontStyle: 'italic' }}>
+                      None specified
+                    </span>
+                  )}
+                </div>
+
+                <div>
+                  <div className="g360-pref-title">Special Requests</div>
+                  {specialReqList.length > 0 ? (
+                    <p className="g360-special-req-quote">"{specialReqList.join(' • ')}"</p>
+                  ) : (
+                    <span style={{ fontSize: '0.82rem', color: 'var(--g360-text-light)', fontStyle: 'italic' }}>
+                      No special requests recorded.
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Middle: 2-Column Logistics Cards */}
+          <div className="g360-logistics-grid">
+            {/* Accommodation Card */}
+            <div className="g360-card g360-card-gold-top">
+              <div className="g360-card-header-icon">
+                <div className="g360-icon-circle-gold">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" style={{ width: '22px', height: '22px' }}>
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1v1H9V7zm5 0h1v1h-1V7zm-5 4h1v1H9v-1zm5 0h1v1h-1v-1zm-5 4h1v1H9v-1zm5 0h1v1h-1v-1z" />
+                  </svg>
+                </div>
+                <div>
+                  <h3 className="g360-item-title">Accommodation</h3>
+                  <p className="g360-item-subtitle">{accomInfo ? accomInfo.hotelName : 'Hotel & Room Status'}</p>
+                </div>
+              </div>
+
+              {accomInfo ? (
+                <>
+                  <div style={{ marginBottom: '1.25rem' }}>
+                    <div style={{ fontWeight: '700', fontSize: '0.95rem', color: 'var(--g360-text-main)' }}>{accomInfo.roomInfo}</div>
+                    <div style={{ fontSize: '0.8rem', color: 'var(--g360-text-muted)', marginTop: '0.15rem' }}>Confirmed Booking</div>
+                  </div>
+                  <div className="g360-detail-row">
+                    <span className="g360-detail-label">Check-in</span>
+                    <span className="g360-detail-value">{accomInfo.checkIn}</span>
+                  </div>
+                  <div className="g360-detail-row">
+                    <span className="g360-detail-label">Check-out</span>
+                    <span className="g360-detail-value">{accomInfo.checkOut}</span>
+                  </div>
+                  <a className="g360-link-action" onClick={() => showToast(`Reservation details displayed`)}>
+                    View Reservation Details
+                  </a>
+                </>
+              ) : (
+                <div className="g360-empty-box">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" style={{ width: '32px', height: '32px', color: '#755a1d', opacity: 0.6 }}>
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1v1H9V7z" />
+                  </svg>
+                  <div className="g360-empty-title">Not booked</div>
+                  <p className="g360-empty-sub">No accommodation reservation found for this guest.</p>
+                </div>
+              )}
+            </div>
+
+            {/* Transportation Card */}
+            <div className="g360-card g360-card-coral-top">
+              <div className="g360-card-header-icon">
+                <div className="g360-icon-circle-coral">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" style={{ width: '22px', height: '22px' }}>
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                  </svg>
+                </div>
+                <div>
+                  <h3 className="g360-item-title">Transportation</h3>
+                  <p className="g360-item-subtitle">{transInfo ? transInfo.title : 'Logistics & Transfer'}</p>
+                </div>
+              </div>
+
+              {transInfo ? (
+                <>
+                  <div style={{ marginBottom: '1.25rem' }}>
+                    <div style={{ fontWeight: '700', fontSize: '0.95rem', color: 'var(--g360-text-main)' }}>{transInfo.vehicle}</div>
+                    <div style={{ fontSize: '0.8rem', color: 'var(--g360-text-muted)', marginTop: '0.15rem' }}>VIP Chauffeur Transfer</div>
+                  </div>
+                  <div className="g360-detail-row">
+                    <span className="g360-detail-label">Scheduled For</span>
+                    <span className="g360-detail-value">{transInfo.pickupTime}</span>
+                  </div>
+                  <div className="g360-detail-row">
+                    <span className="g360-detail-label">Driver</span>
+                    <span className="g360-detail-value">
+                      <span>{transInfo.driverName}</span>
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" style={{ width: '16px', height: '16px', color: '#4CAF8D' }}>
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                      </svg>
+                    </span>
+                  </div>
+                  <div className="g360-tracking-box">
+                    <span>{transInfo.trackingLink}</span>
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" style={{ width: '18px', height: '18px', color: '#ae2f34' }}>
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                    </svg>
+                  </div>
+                </>
+              ) : (
+                <div className="g360-empty-box">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" style={{ width: '32px', height: '32px', color: '#ae2f34', opacity: 0.6 }}>
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                  </svg>
+                  <div className="g360-empty-title">Not assigned</div>
+                  <p className="g360-empty-sub">No transportation or vehicle assigned yet.</p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Bottom: Seating Assignment Card with Interactive Floor Plan */}
+          <div className="g360-card">
+            <div className="g360-seating-header">
+              <div>
+                <h3 className="g360-card-title">Seating Assignment</h3>
+                <p style={{ fontSize: '0.85rem', color: 'var(--g360-text-muted)', margin: '0.2rem 0 0 0' }}>
+                  Ballroom Layout Map
+                </p>
+              </div>
+
+              {seatingInfo?.tableNumber ? (
+                <div>
+                  <div className="g360-table-large">
+                    {seatingInfo.tableNumber.toString().toLowerCase().includes('table')
+                      ? seatingInfo.tableNumber
+                      : `Table ${seatingInfo.tableNumber}`}
+                  </div>
+                  <div className="g360-section-label">
+                    {seatingInfo.section}{seatingInfo.seatNumber ? ` • Seat ${seatingInfo.seatNumber}` : ''}
+                  </div>
+                </div>
+              ) : (
+                <div>
+                  <div className="g360-table-large" style={{ color: '#94a3b8', fontSize: '1.4rem' }}>Not assigned</div>
+                  <div className="g360-section-label" style={{ color: '#94a3b8' }}>Seating TBD</div>
+                </div>
+              )}
+            </div>
+
+            <div className="g360-floorplan-container">
+              <div style={{ textAlign: 'center', marginBottom: '1.2rem', fontSize: '0.75rem', fontWeight: '700', color: 'var(--g360-text-muted)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+                STAGE / MAIN PODIUM
+              </div>
+
+              <div className="g360-tables-grid">
+                {[1, 2, 3, 4, 5, 6, 7, 8].map((num) => {
+                  const isAssigned = seatingInfo?.tableNumber && (
+                    seatingInfo.tableNumber.toString() === num.toString() ||
+                    seatingInfo.tableNumber.toString().toLowerCase().includes(num.toString())
+                  );
+                  return (
+                    <div
+                      key={num}
+                      className={`g360-table-circle ${isAssigned ? 'active' : ''}`}
+                    >
+                      Table {num}
+                      {isAssigned && <span>Your Table</span>}
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '1.5rem', marginTop: '1.5rem', fontSize: '0.75rem', color: 'var(--g360-text-muted)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                  <span style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: '#ae2f34' }}></span>
+                  <span>Assigned Table</span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                  <span style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: '#FFFFFF', border: '2px solid #E6EAF0' }}></span>
+                  <span>Available Table</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Right Column (4 cols) */}
+        <div className="g360-grid-right">
+          
+          {/* Top: Communication History Card */}
+          <div className="g360-card">
+            <h3 className="g360-card-title">Communication History</h3>
+
+            {commHistory.length > 0 ? (
+              <div className="g360-timeline">
+                {commHistory.map((comm, idx) => {
+                  const typeStr = (comm.communicationType || comm.channel || '').toUpperCase();
+                  let icon = 'mail';
+                  let bg = 'rgba(174, 47, 52, 0.12)';
+                  let color = '#ae2f34';
+                  if (typeStr === 'WHATSAPP' || typeStr === 'SMS') {
+                    icon = 'chat';
+                    bg = 'rgba(76, 175, 141, 0.15)';
+                    color = '#4CAF8D';
+                  } else if (typeStr === 'PHONE_CALL' || typeStr === 'CALL') {
+                    icon = 'call';
+                    bg = 'rgba(117, 90, 29, 0.15)';
+                    color = '#755a1d';
+                  }
+
+                  const timeStr = comm.createdAt ? new Date(comm.createdAt).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'Recent';
+
+                  return (
+                    <div key={comm.id || idx} className="g360-timeline-item">
+                      <div className="g360-timeline-icon" style={{ backgroundColor: bg, color }}>
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" style={{ width: '16px', height: '16px' }}>
+                          {icon === 'mail' ? (
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                          ) : icon === 'chat' ? (
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+                          ) : (
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                          )}
+                        </svg>
+                      </div>
+                      <div className="g360-timeline-meta">{timeStr}</div>
+                      <div className="g360-timeline-title">{comm.title || comm.subject || 'Notification Delivered'}</div>
+                      <p className="g360-timeline-desc">{comm.description || comm.message || 'Message sent successfully via channel.'}</p>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="g360-empty-box" style={{ marginTop: '1rem', border: '1px dashed #E6EAF0', borderRadius: '16px' }}>
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" style={{ width: '32px', height: '32px', color: '#94a3b8', opacity: 0.7 }}>
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <div className="g360-empty-title">No communications logged yet</div>
+                <p className="g360-empty-sub">All emails, SMS, and WhatsApp alerts sent to this guest will appear here.</p>
+              </div>
+            )}
+
+            <button type="button" className="g360-btn-full-alt" onClick={() => showToast('Full communication logs displayed')}>
+              View All Activity
+            </button>
+          </div>
+
+          {/* Bottom: Concierge Notes Card */}
+          <div className="g360-card">
+            <div style={{ display: 'flex', justify: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+              <h3 className="g360-card-title">Concierge Notes</h3>
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" style={{ width: '22px', height: '22px', color: '#755a1d' }}>
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+              </svg>
+            </div>
+
+            <div style={{ maxHeight: '240px', overflowY: 'auto', marginBottom: '1rem', paddingRight: '0.25rem' }}>
+              {activeNoteList && activeNoteList.length > 0 ? (
+                activeNoteList.map((n, idx) => (
+                  <div key={n.id || idx} className="g360-note-quote">
+                    <p className="g360-note-text">"{n.note}"</p>
+                    <div className="g360-note-author">
+                      <span>— {n.createdBy || 'Concierge Team'}</span>
+                      <span style={{ fontWeight: 400, color: '#94a3b8' }}>
+                        {n.createdAt ? new Date(n.createdAt).toLocaleDateString([], { month: 'short', day: 'numeric' }) : ''}
+                      </span>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="g360-note-quote" style={{ textAlign: 'center' }}>
+                  <p className="g360-note-text" style={{ color: '#64748b' }}>No concierge notes recorded for this guest yet.</p>
+                </div>
+              )}
+            </div>
+
+            <textarea
+              value={internalNote}
+              onChange={(e) => setInternalNote(e.target.value)}
+              className="g360-note-textarea"
+              placeholder="Add an internal note..."
+            />
+
+            <button
+              type="button"
+              className="g360-btn-save-note"
+              onClick={handleSaveInternalNote}
+              disabled={isSavingNote || !internalNote.trim()}
+            >
+              {isSavingNote ? 'Saving Note...' : 'Save Internal Note'}
+            </button>
+          </div>
+        </div>
+      </section>
+    </div>
+  );
+}

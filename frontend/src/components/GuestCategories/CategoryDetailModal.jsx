@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 
-export default function CategoryDetailModal({ isOpen, onClose, category, guests, onEdit, onDelete }) {
+export default function CategoryDetailModal({ isOpen, onClose, category, guests, onEdit, onDelete, onViewGuest360 }) {
   const [currentPage, setCurrentPage] = useState(1);
   const [openMenuId, setOpenMenuId] = useState(null);
   const menuRef = useRef(null);
@@ -53,7 +53,14 @@ export default function CategoryDetailModal({ isOpen, onClose, category, guests,
               </span>
             ) : (
               paginatedGuests.map((g) => (
-                <div key={g.guest_id} className="category-member-item" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem', borderBottom: '1px solid #f3f4f6' }}>
+                <div
+                  key={g.guest_id}
+                  className="category-member-item"
+                  style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem', borderBottom: '1px solid #f3f4f6', cursor: 'pointer', transition: 'background-color 0.15s' }}
+                  onClick={() => { if (onViewGuest360) onViewGuest360(g, category); }}
+                  onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#f9fafb'}
+                  onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                >
                   <div style={{ flex: '2', display: 'flex', flexDirection: 'column' }}>
                     <strong style={{ fontSize: '0.9rem', color: 'var(--text-main)' }}>{g.name}</strong>
                     <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{g.email || 'No email'}</span>
@@ -87,8 +94,16 @@ export default function CategoryDetailModal({ isOpen, onClose, category, guests,
                     </button>
                     {openMenuId === g.guest_id && (
                       <div style={{
-                        position: 'absolute', top: '100%', right: '0', backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: '6px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)', zIndex: 20, minWidth: '120px', padding: '0.25rem 0'
+                        position: 'absolute', top: '100%', right: '0', backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: '6px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)', zIndex: 20, minWidth: '135px', padding: '0.25rem 0'
                       }}>
+                        <button 
+                          onClick={(e) => { e.stopPropagation(); setOpenMenuId(null); if (onViewGuest360) onViewGuest360(g, category); }}
+                          style={{ display: 'block', width: '100%', textAlign: 'left', padding: '0.5rem 1rem', fontSize: '0.85rem', color: '#1e293b', fontWeight: '600', background: 'transparent', border: 'none', cursor: 'pointer' }}
+                          onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#f3f4f6'}
+                          onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                        >
+                          View 360 Profile
+                        </button>
                         <button 
                           onClick={(e) => { e.stopPropagation(); setOpenMenuId(null); onEdit(g); }}
                           style={{ display: 'block', width: '100%', textAlign: 'left', padding: '0.5rem 1rem', fontSize: '0.85rem', color: '#374151', background: 'transparent', border: 'none', cursor: 'pointer' }}

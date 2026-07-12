@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 
-export default function CategoryCard({ category, onClick, onAddGuest, onEditCategory, onDeleteCategory }) {
+export default function CategoryCard({ category, onClick, onAddGuest, onEditCategory, onDeleteCategory, onViewGuests }) {
   const { name, count, priority, iconType } = category;
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef(null);
@@ -102,6 +102,14 @@ export default function CategoryCard({ category, onClick, onAddGuest, onEditCate
             <div className="category-card-dropdown" style={{
               position: 'absolute', top: '100%', right: '0', backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: '6px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)', zIndex: 20, minWidth: '150px', padding: '0.25rem 0'
             }}>
+              <button 
+                onClick={(e) => { e.stopPropagation(); setMenuOpen(false); if (onViewGuests) onViewGuests(category); else if (onClick) onClick(); }}
+                style={{ display: 'block', width: '100%', textAlign: 'left', padding: '0.5rem 1rem', fontSize: '0.85rem', color: '#1e293b', fontWeight: '600', background: 'transparent', border: 'none', cursor: 'pointer' }}
+                onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#f3f4f6'}
+                onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+              >
+                View Guests
+              </button>
               <button 
                 onClick={(e) => { e.stopPropagation(); setMenuOpen(false); onAddGuest(category); }}
                 style={{ display: 'block', width: '100%', textAlign: 'left', padding: '0.5rem 1rem', fontSize: '0.85rem', color: '#374151', background: 'transparent', border: 'none', cursor: 'pointer' }}
