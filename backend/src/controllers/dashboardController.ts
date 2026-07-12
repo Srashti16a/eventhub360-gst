@@ -68,16 +68,25 @@ export const getCheckinStats = async (req: Request, res: Response, next: NextFun
 export const getRecentCheckins = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const search = req.query.search as string;
-    const whereClause: any = { checkedIn: true };
+    const checkedInParam = req.query.checkedIn;
+    const checkedIn = checkedInParam === undefined ? true : checkedInParam === 'true';
+
+    const whereClause: any = { checkedIn };
 
     if (search && search.trim()) {
-      whereClause.name = { contains: search, mode: 'insensitive' };
+      const searchClause = { contains: search, mode: 'insensitive' as const };
+      whereClause.OR = [
+        { name: searchClause },
+        { email: searchClause },
+        { phone: searchClause },
+        { checkinEntrance: searchClause }
+      ];
     }
 
     const checkins = await prisma.guest.findMany({
       where: whereClause,
-      orderBy: { checkinTime: 'desc' },
-      take: 20
+      orderBy: checkedIn ? { checkinTime: 'desc' } : { name: 'asc' },
+      take: 50
     });
 
     res.json({
@@ -144,6 +153,30 @@ export const scanCheckin = async (req: Request, res: Response, next: NextFunctio
       }
     });
 
+    // Find or create Entrance record
+    let entranceRecord = await prisma.entrance.findFirst({
+      where: { name: finalEntrance, eventId: guest.eventId }
+    });
+    if (!entranceRecord) {
+      entranceRecord = await prisma.entrance.create({
+        data: {
+          name: finalEntrance,
+          eventId: guest.eventId
+        }
+      });
+    }
+
+    // Create CheckIn record
+    await prisma.checkIn.create({
+      data: {
+        guestId: guest.id,
+        eventId: guest.eventId,
+        entranceId: entranceRecord.id,
+        status: finalStatus === 'FLAGGED' ? 'FLAGGED' : 'SUCCESS',
+        checkedInAt: updatedGuest.checkinTime!
+      }
+    });
+
     res.json({
       success: true,
       data: updatedGuest
@@ -155,15 +188,25 @@ export const scanCheckin = async (req: Request, res: Response, next: NextFunctio
 
 export const manualCheckin = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { name, entrance } = req.body;
+    const { name, phone, email, guestId, numberOfGuests, checkinTime, notes, entrance } = req.body;
     if (!name || !name.trim()) {
       res.status(400).json({ success: false, error: { message: 'Name is required' } });
       return;
     }
 
-    let guest = await prisma.guest.findFirst({
-      where: { name: { equals: name.trim(), mode: 'insensitive' } }
-    });
+    let guest;
+    if (guestId && guestId.trim()) {
+      guest = await prisma.guest.findUnique({ where: { id: guestId } });
+      if (!guest) {
+        res.status(404).json({ success: false, error: { message: `Guest not found with ID: ${guestId}` } });
+        return;
+      }
+    } else {
+      // Look up existing guest by name
+      guest = await prisma.guest.findFirst({
+        where: { name: { equals: name.trim(), mode: 'insensitive' } }
+      });
+    }
 
     if (!guest) {
       // Create guest
@@ -182,8 +225,8 @@ export const manualCheckin = async (req: Request, res: Response, next: NextFunct
         data: {
           name: name.trim(),
           avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=200',
-          email: `${name.trim().toLowerCase().replace(/\s+/g, '.')}@example.com`,
-          phone: '+1 (555) 000-0000',
+          email: email ? email.trim() : `${name.trim().toLowerCase().replace(/\s+/g, '.')}@example.com`,
+          phone: phone ? phone.trim() : '+1 (555) 000-0000',
           status: 'CONFIRMED',
           isVip: Math.random() > 0.8, // 20% chance of VIP
           eventId: event.id
@@ -191,13 +234,45 @@ export const manualCheckin = async (req: Request, res: Response, next: NextFunct
       });
     }
 
+    const parsedTime = checkinTime ? new Date(checkinTime) : new Date();
+    const finalEntrance = entrance || 'Main Ballroom';
+    const parsedNumGuests = numberOfGuests ? parseInt(String(numberOfGuests), 10) : 1;
+
     const updatedGuest = await prisma.guest.update({
       where: { id: guest.id },
       data: {
         checkedIn: true,
-        checkinTime: new Date(),
-        checkinEntrance: entrance || 'Main Ballroom',
-        checkinStatus: 'SUCCESS'
+        checkinTime: parsedTime,
+        checkinEntrance: finalEntrance,
+        checkinStatus: 'SUCCESS',
+        phone: phone ? phone.trim() : guest.phone,
+        email: email ? email.trim() : guest.email,
+        numberOfGuests: isNaN(parsedNumGuests) ? 1 : parsedNumGuests,
+        notes: notes ? notes.trim() : guest.notes
+      }
+    });
+
+    // Find or create Entrance
+    let entranceRecord = await prisma.entrance.findFirst({
+      where: { name: finalEntrance, eventId: guest.eventId }
+    });
+    if (!entranceRecord) {
+      entranceRecord = await prisma.entrance.create({
+        data: {
+          name: finalEntrance,
+          eventId: guest.eventId
+        }
+      });
+    }
+
+    // Create corresponding CheckIn record
+    await prisma.checkIn.create({
+      data: {
+        guestId: guest.id,
+        eventId: guest.eventId,
+        entranceId: entranceRecord.id,
+        status: 'SUCCESS',
+        checkedInAt: parsedTime
       }
     });
 
@@ -222,8 +297,14 @@ export const approveCheckin = async (req: Request, res: Response, next: NextFunc
     const updatedGuest = await prisma.guest.update({
       where: { id },
       data: {
-        checkinStatus: 'SUCCESS'
+        checkinStatus: 'APPROVED'
       }
+    });
+
+    // Also update corresponding flagged CheckIn records
+    await prisma.checkIn.updateMany({
+      where: { guestId: id, status: 'FLAGGED' },
+      data: { status: 'SUCCESS' }
     });
 
     res.json({

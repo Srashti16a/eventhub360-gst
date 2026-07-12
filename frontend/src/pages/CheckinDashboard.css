@@ -32,7 +32,7 @@
   box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
   z-index: 9999;
   font-weight: 600;
-  fontSize: 0.875rem;
+  font-size: 0.875rem;
   display: flex;
   align-items: center;
   gap: 0.5rem;
@@ -1015,6 +1015,18 @@
   background-color: #8f171b;
 }
 
+.btn-review-flagged.approved {
+  background-color: #f1f5f9;
+  color: #94a3b8;
+  cursor: not-allowed;
+  border: 1px solid #e2e8f0;
+}
+
+.checkin-status-badge.approved {
+  background-color: rgba(59, 130, 246, 0.08);
+  color: #3b82f6;
+}
+
 /* Placeholders */
 .tab-placeholder-card {
   background-color: #ffffff;
@@ -1101,4 +1113,187 @@
   .entrance-summary-row {
     grid-template-columns: 1fr;
   }
+}
+
+/* Manual Check-in Modal Styles */
+.manual-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.4);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  z-index: 1200;
+  animation: gdFadeIn 0.25s ease;
+}
+
+.manual-modal-panel {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 520px;
+  max-width: 95vw;
+  background: #ffffff;
+  border-radius: 16px;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  z-index: 1210;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: modalZoomIn 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  padding: 2rem;
+  border: 1px solid #f1f5f9;
+}
+
+@keyframes modalZoomIn {
+  from { transform: translate(-50%, -45%) scale(0.95); opacity: 0; }
+  to   { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+}
+
+.manual-modal-close-btn {
+  position: absolute;
+  top: 1.25rem;
+  right: 1.25rem;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.manual-modal-close-btn:hover {
+  background: #fff;
+  border-color: #ff4d4f;
+  transform: scale(1.05);
+}
+
+.manual-modal-close-btn svg {
+  width: 16px;
+  height: 16px;
+  color: #64748b;
+  stroke: #64748b;
+}
+
+.manual-modal-close-btn:hover svg {
+  stroke: #ff4d4f;
+  color: #ff4d4f;
+}
+
+.manual-modal-header {
+  margin-bottom: 1.5rem;
+}
+
+.manual-modal-title {
+  font-family: 'Outfit', sans-serif;
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: #1e293b;
+  margin: 0 0 0.25rem 0;
+}
+
+.manual-modal-subtitle {
+  font-size: 0.8rem;
+  color: #64748b;
+  margin: 0;
+}
+
+.manual-modal-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.15rem;
+}
+
+.manual-form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.manual-form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+.manual-form-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #475569;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.manual-form-input,
+.manual-form-select,
+.manual-form-textarea {
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  padding: 0.6rem 0.85rem;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 0.85rem;
+  outline: none;
+  background-color: #f8fafc;
+  transition: all 0.2s ease;
+  color: #1e293b;
+}
+
+.manual-form-input:focus,
+.manual-form-select:focus,
+.manual-form-textarea:focus {
+  border-color: #ff4d4f;
+  background-color: #ffffff;
+  box-shadow: 0 0 0 3px rgba(255, 77, 79, 0.1);
+}
+
+.manual-form-textarea {
+  resize: vertical;
+  min-height: 70px;
+}
+
+.manual-form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+}
+
+.manual-btn-cancel {
+  background-color: #f1f5f9;
+  border: 1px solid #cbd5e1;
+  color: #475569;
+  padding: 0.65rem 1.25rem;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-weight: 600;
+  font-size: 0.85rem;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.manual-btn-cancel:hover {
+  background-color: #e2e8f0;
+}
+
+.manual-btn-submit {
+  background-color: #a61e22;
+  border: none;
+  color: #ffffff;
+  padding: 0.65rem 1.5rem;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-weight: 600;
+  font-size: 0.85rem;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.manual-btn-submit:hover {
+  background-color: #8f171b;
+  transform: translateY(-1px);
 }

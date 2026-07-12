@@ -76,6 +76,8 @@ model Guest {
   
   mealPreference  String?
   allergies       String?
+  numberOfGuests  Int                @default(1)
+  notes           String?
   
   vipTier         VipTier            @default(ATTENDEE)
   checkIns        CheckIn[]

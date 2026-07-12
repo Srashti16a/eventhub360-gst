@@ -606,6 +606,16 @@ async function main() {
         checkedInAt
       }
     });
+
+    await prisma.guest.update({
+      where: { id: guest.id },
+      data: {
+        checkedIn: true,
+        checkinTime: checkedInAt,
+        checkinEntrance: entrance.name,
+        checkinStatus: status
+      }
+    });
   }
   console.log(`Successfully seeded ${checkInTargetCount} check-in entries.`);
 

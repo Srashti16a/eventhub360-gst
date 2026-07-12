@@ -10,6 +10,19 @@ export default function CheckinDashboard() {
   const [scannerActive, setScannerActive] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
   
+  // Modal State for Manual Check-in
+  const [showManualModal, setShowManualModal] = useState(false);
+  const [manualForm, setManualForm] = useState({
+    name: '',
+    phone: '',
+    email: '',
+    guestId: '',
+    numberOfGuests: 1,
+    checkinTime: new Date().toISOString().slice(0, 16),
+    notes: '',
+    entrance: 'Main Ballroom'
+  });
+
   // Real Database Synchronized States
   const [stats, setStats] = useState({
     totalExpected: 2450,
@@ -25,6 +38,7 @@ export default function CheckinDashboard() {
   
   const [dashboardAlerts, setDashboardAlerts] = useState([]);
   const [recentCheckins, setRecentCheckins] = useState([]);
+  const [trendData, setTrendData] = useState([]);
 
   // Fetch all dashboard data from backend PostgreSQL APIs
   const fetchDashboardData = async () => {
@@ -36,8 +50,9 @@ export default function CheckinDashboard() {
         setStats(statsData.data);
       }
 
-      // 2. Fetch recent check-ins (filtered by text search)
-      const recentRes = await fetch(`/api/dashboard/checkin/recent?search=${encodeURIComponent(dashboardSearch)}`);
+      // 2. Fetch recent check-ins (filtered by text search and checked-in toggle)
+      const isHistory = dashboardTab === 'history';
+      const recentRes = await fetch(`/api/dashboard/checkin/recent?search=${encodeURIComponent(dashboardSearch)}&checkedIn=${isHistory ? 'true' : attendanceActive}`);
       const recentData = await recentRes.json();
       if (recentData.success) {
         setRecentCheckins(recentData.data);
@@ -48,6 +63,13 @@ export default function CheckinDashboard() {
       const alertsData = await alertsRes.json();
       if (alertsData.success) {
         setDashboardAlerts(alertsData.data);
+      }
+
+      // 4. Fetch Check-in hourly trends
+      const trendRes = await fetch('/api/dashboard/checkin/trend');
+      const trendJson = await trendRes.json();
+      if (trendJson.success) {
+        setTrendData(trendJson.data.trend || []);
       }
     } catch (err) {
       console.error('Error loading check-in dashboard data from PostgreSQL:', err);
@@ -65,7 +87,7 @@ export default function CheckinDashboard() {
     return () => {
       if (interval) clearInterval(interval);
     };
-  }, [dashboardSearch, attendanceActive]);
+  }, [dashboardSearch, attendanceActive, dashboardTab]);
 
   const triggerToast = (message) => {
     setToastMessage(message);
@@ -102,27 +124,64 @@ export default function CheckinDashboard() {
     }, 1500);
   };
 
-  // MANUAL Check-in: creates or updates a guest status in database
-  const handleManualCheckin = async () => {
-    const name = prompt("Enter guest name for manual check-in:");
-    if (!name || !name.trim()) return;
-    
+  // QUICK Check-in: check in guest from the list
+  const handleQuickCheckin = async (guestId, name) => {
     try {
       const res = await fetch('/api/dashboard/checkin/manual', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: name.trim(), entrance: 'Main Ballroom' })
+        body: JSON.stringify({ guestId, name, entrance: 'Main Ballroom' })
       });
       const data = await res.json();
-      
       if (data.success) {
-        triggerToast(`Checked in ${data.data.name} directly to database!`);
+        triggerToast(`Quick checked-in ${name} successfully!`);
         fetchDashboardData();
       } else {
         triggerToast(`Check-in failed: ${data.error?.message}`);
       }
     } catch (err) {
-      triggerToast('Database manual registration failed.');
+      triggerToast('Quick check-in failed.');
+    }
+  };
+
+  // MANUAL Check-in Form submit handler
+  const handleManualCheckinSubmit = async (e) => {
+    e.preventDefault();
+    if (!manualForm.name.trim()) {
+      triggerToast('Error: Guest Name is required');
+      return;
+    }
+    if (!manualForm.phone.trim()) {
+      triggerToast('Error: Contact Number is required');
+      return;
+    }
+
+    try {
+      const res = await fetch('/api/dashboard/checkin/manual', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(manualForm)
+      });
+      const data = await res.json();
+      if (data.success) {
+        triggerToast(`Checked in ${data.data.name} successfully!`);
+        setShowManualModal(false);
+        setManualForm({
+          name: '',
+          phone: '',
+          email: '',
+          guestId: '',
+          numberOfGuests: 1,
+          checkinTime: new Date().toISOString().slice(0, 16),
+          notes: '',
+          entrance: 'Main Ballroom'
+        });
+        fetchDashboardData();
+      } else {
+        triggerToast(`Check-in failed: ${data.error?.message || 'Server error'}`);
+      }
+    } catch (err) {
+      triggerToast('Check-in failed due to server connection error.');
     }
   };
 
@@ -223,10 +282,6 @@ export default function CheckinDashboard() {
             />
           </div>
           
-          <button type="button" className="icon-btn-dash" title="Refresh" onClick={() => { fetchDashboardData(); triggerToast('Synced with database.'); }}>
-            🔄
-          </button>
-          
           <button type="button" className="icon-btn-dash" title="Alerts" onClick={() => triggerToast(`${dashboardAlerts.length} VIP alerts loaded.`)}>
             <span style={{ position: 'relative' }}>
               🔔
@@ -266,18 +321,6 @@ export default function CheckinDashboard() {
             <div className="dash-stat-card">
               <div className="dash-card-header">
                 <div className="dash-card-icon attendance">✓</div>
-                <label className="toggle-wrapper-dash">
-                  <input
-                    type="checkbox"
-                    checked={attendanceActive}
-                    onChange={(e) => {
-                      setAttendanceActive(e.target.checked);
-                      triggerToast(e.target.checked ? 'Database auto-sync activated (5s interval)' : 'Database auto-sync paused');
-                    }}
-                    className="toggle-input-dash"
-                  />
-                  <div className="toggle-switch-dash"></div>
-                </label>
               </div>
               <div className="dash-card-body">
                 <span className="dash-card-label">CURRENT ATTENDANCE</span>
@@ -345,7 +388,7 @@ export default function CheckinDashboard() {
                   <button
                     type="button"
                     className="btn-manual-checkin"
-                    onClick={handleManualCheckin}
+                    onClick={() => setShowManualModal(true)}
                   >
                     <span>⌨️</span> Manual Check-in
                   </button>
@@ -413,21 +456,37 @@ export default function CheckinDashboard() {
                 </div>
 
                 <div className="trend-chart-container">
-                  <div className="trend-bars-wrapper">
-                    {[30, 45, 60, 85, 100, 90, 55, 35].map((val, idx) => (
-                      <div key={idx} className="trend-bar-column">
-                        <div className="trend-bar-hover-val">{val}%</div>
-                        <div
-                          className="trend-bar"
-                          style={{
-                            height: `${val}%`,
-                            background: 'linear-gradient(to top, rgba(255, 122, 69, 0.4) 0%, rgba(255, 77, 79, 0.8) 100%)'
-                          }}
-                        ></div>
-                        <span className="trend-bar-label">{13 + idx}:00</span>
-                      </div>
-                    ))}
-                  </div>
+                  {trendData.length === 0 ? (
+                    <div className="no-data-msg" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '150px', color: '#94a3b8', fontSize: '0.9rem', fontWeight: '500' }}>
+                      No Data Available
+                    </div>
+                  ) : (
+                    <div className="trend-bars-wrapper">
+                      {(() => {
+                        const maxTrendVal = Math.max(...trendData.map(t => t.count), 1);
+                        return trendData.map((item, idx) => {
+                          const pct = Math.round((item.count / maxTrendVal) * 100);
+                          return (
+                            <div key={idx} className="trend-bar-column" style={{ width: `${100 / trendData.length}%` }}>
+                              <div className="trend-bar-hover-val">{item.count} check-ins</div>
+                              <div
+                                className="trend-bar"
+                                style={{
+                                  height: `${pct}%`,
+                                  background: 'linear-gradient(to top, rgba(255, 122, 69, 0.4) 0%, rgba(255, 77, 79, 0.8) 100%)',
+                                  width: '18px',
+                                  borderRadius: '4px 4px 0 0',
+                                  transition: 'height 0.6s cubic-bezier(0.4, 0, 0.2, 1)',
+                                  cursor: 'pointer'
+                                }}
+                              ></div>
+                              <span className="trend-bar-label" style={{ fontSize: '0.65rem', marginTop: '0.5rem', whiteSpace: 'nowrap' }}>{item.hour}</span>
+                            </div>
+                          );
+                        });
+                      })()}
+                    </div>
+                  )}
 
                   <div className="capacity-gauge-box">
                     <div className="gauge-circular-progress">
@@ -488,7 +547,7 @@ export default function CheckinDashboard() {
 
               <div className="dashboard-panel-card" style={{ marginTop: '1.5rem' }}>
                 <div className="panel-card-header">
-                  <h3 className="panel-title">Recent Check-ins</h3>
+                  <h3 className="panel-title">{attendanceActive ? 'Recent Check-ins' : 'Pending Guests'}</h3>
                   <span
                     className="view-logs-link"
                     onClick={() => {
@@ -515,7 +574,7 @@ export default function CheckinDashboard() {
                       {recentCheckins.length === 0 ? (
                         <tr>
                           <td colSpan="5" style={{ textAlign: 'center', color: '#64748b', padding: '1rem' }}>
-                            No matching check-ins in database.
+                            {attendanceActive ? 'No matching check-ins in database.' : 'No matching pending guests.'}
                           </td>
                         </tr>
                       ) : (
@@ -529,24 +588,62 @@ export default function CheckinDashboard() {
                                 <span className="checkin-guest-name">{checkin.name}</span>
                               </div>
                             </td>
-                            <td className="checkin-time-cell">{formatTime(checkin.checkinTime)}</td>
-                            <td className="checkin-entrance-cell">{checkin.checkinEntrance || 'Main Entrance'}</td>
+                            <td className="checkin-time-cell">
+                              {checkin.checkedIn ? formatTime(checkin.checkinTime) : '—'}
+                            </td>
+                            <td className="checkin-entrance-cell">
+                              {checkin.checkedIn ? (checkin.checkinEntrance || 'Main Entrance') : '—'}
+                            </td>
                             <td>
-                              <span className={`checkin-status-badge ${checkin.checkinStatus ? checkin.checkinStatus.toLowerCase() : 'success'}`}>
-                                {checkin.checkinStatus || 'SUCCESS'}
-                              </span>
+                              {checkin.checkedIn ? (
+                                <span className={`checkin-status-badge ${checkin.checkinStatus ? checkin.checkinStatus.toLowerCase() : 'success'}`}>
+                                  {checkin.checkinStatus || 'SUCCESS'}
+                                </span>
+                              ) : (
+                                <span className="checkin-status-badge pending">
+                                  {checkin.status || 'PENDING'}
+                                </span>
+                              )}
                             </td>
                             <td style={{ textAlign: 'center' }}>
-                              {checkin.checkinStatus === 'FLAGGED' ? (
+                              {checkin.checkedIn ? (
+                                checkin.checkinStatus === 'FLAGGED' ? (
+                                  <button
+                                    type="button"
+                                    className="btn-review-flagged"
+                                    onClick={() => handleReviewFlagged(checkin.id, checkin.name)}
+                                  >
+                                    Review
+                                  </button>
+                                ) : checkin.checkinStatus === 'APPROVED' ? (
+                                  <button
+                                    type="button"
+                                    className="btn-review-flagged approved"
+                                    disabled
+                                  >
+                                    Approved
+                                  </button>
+                                ) : (
+                                  <span style={{ color: '#94a3b8', fontSize: '0.85rem' }}>—</span>
+                                )
+                              ) : (
                                 <button
                                   type="button"
-                                  className="btn-review-flagged"
-                                  onClick={() => handleReviewFlagged(checkin.id, checkin.name)}
+                                  className="btn-quick-checkin"
+                                  style={{
+                                    backgroundColor: '#10b981',
+                                    border: 'none',
+                                    color: '#ffffff',
+                                    padding: '0.35rem 0.75rem',
+                                    borderRadius: '6px',
+                                    fontSize: '0.75rem',
+                                    fontWeight: '600',
+                                    cursor: 'pointer'
+                                  }}
+                                  onClick={() => handleQuickCheckin(checkin.id, checkin.name)}
                                 >
-                                  Review
+                                  Check In
                                 </button>
-                              ) : (
-                                <span style={{ color: '#94a3b8', fontSize: '0.85rem' }}>—</span>
                               )}
                             </td>
                           </tr>
@@ -581,7 +678,7 @@ export default function CheckinDashboard() {
       {dashboardTab === 'history' && (
         <div className="tab-placeholder-card">
           <h4>Full Check-in History Logs</h4>
-          <p>Displaying all past scans. Showing {stats.checkedInCount} items.</p>
+          <p>Displaying all past scans. Showing {recentCheckins.length} items.</p>
           <table className="recent-checkins-table" style={{ marginTop: '1rem' }}>
             <thead>
               <tr>
@@ -594,7 +691,14 @@ export default function CheckinDashboard() {
             <tbody>
               {recentCheckins.map(checkin => (
                 <tr key={checkin.id}>
-                  <td>{checkin.name}</td>
+                  <td>
+                    <div className="checkin-guest-cell">
+                      <div className="checkin-guest-avatar">
+                        {getInitials(checkin.name)}
+                      </div>
+                      <span className="checkin-guest-name">{checkin.name}</span>
+                    </div>
+                  </td>
                   <td>{formatTime(checkin.checkinTime)}</td>
                   <td>{checkin.checkinEntrance || 'Main Ballroom'}</td>
                   <td>
@@ -619,6 +723,128 @@ export default function CheckinDashboard() {
             <li><strong>Agent Henderson</strong> - VIP Lounge Concierge</li>
           </ul>
         </div>
+      )}
+
+      {/* Manual Check-in Modal */}
+      {showManualModal && (
+        <>
+          <div className="manual-modal-backdrop" onClick={() => setShowManualModal(false)} />
+          <div className="manual-modal-panel" role="dialog" aria-modal="true" aria-label="Manual Check-in">
+            <button type="button" className="manual-modal-close-btn" onClick={() => setShowManualModal(false)} aria-label="Close">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+            <div className="manual-modal-header">
+              <h2 className="manual-modal-title">Manual Guest Check-in</h2>
+              <p className="manual-modal-subtitle">Capture guest details and confirm arrival</p>
+            </div>
+            <form className="manual-modal-form" onSubmit={handleManualCheckinSubmit}>
+              <div className="manual-form-group">
+                <label className="manual-form-label">Guest Name *</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Sarah Connor"
+                  value={manualForm.name}
+                  onChange={(e) => setManualForm({ ...manualForm, name: e.target.value })}
+                  className="manual-form-input"
+                />
+              </div>
+
+              <div className="manual-form-group">
+                <label className="manual-form-label">Contact Number *</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. +1 (555) 019-2834"
+                  value={manualForm.phone}
+                  onChange={(e) => setManualForm({ ...manualForm, phone: e.target.value })}
+                  className="manual-form-input"
+                />
+              </div>
+
+              <div className="manual-form-row">
+                <div className="manual-form-group">
+                  <label className="manual-form-label">Email Address (Optional)</label>
+                  <input
+                    type="email"
+                    placeholder="e.g. sarah@example.com"
+                    value={manualForm.email}
+                    onChange={(e) => setManualForm({ ...manualForm, email: e.target.value })}
+                    className="manual-form-input"
+                  />
+                </div>
+                <div className="manual-form-group">
+                  <label className="manual-form-label">Guest ID / Booking ID (Optional)</label>
+                  <input
+                    type="text"
+                    placeholder="UUID or alphanumeric"
+                    value={manualForm.guestId}
+                    onChange={(e) => setManualForm({ ...manualForm, guestId: e.target.value })}
+                    className="manual-form-input"
+                  />
+                </div>
+              </div>
+
+              <div className="manual-form-row">
+                <div className="manual-form-group">
+                  <label className="manual-form-label">Number of Guests *</label>
+                  <input
+                    type="number"
+                    required
+                    min="1"
+                    value={manualForm.numberOfGuests}
+                    onChange={(e) => setManualForm({ ...manualForm, numberOfGuests: parseInt(e.target.value, 10) })}
+                    className="manual-form-input"
+                  />
+                </div>
+                <div className="manual-form-group">
+                  <label className="manual-form-label">Entrance *</label>
+                  <select
+                    value={manualForm.entrance}
+                    onChange={(e) => setManualForm({ ...manualForm, entrance: e.target.value })}
+                    className="manual-form-select"
+                  >
+                    <option value="Main Ballroom">Main Ballroom</option>
+                    <option value="North Gate">North Gate</option>
+                    <option value="VIP Lounge">VIP Lounge</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="manual-form-group">
+                <label className="manual-form-label">Check-in Date & Time *</label>
+                <input
+                  type="datetime-local"
+                  required
+                  value={manualForm.checkinTime}
+                  onChange={(e) => setManualForm({ ...manualForm, checkinTime: e.target.value })}
+                  className="manual-form-input"
+                />
+              </div>
+
+              <div className="manual-form-group">
+                <label className="manual-form-label">Notes (Optional)</label>
+                <textarea
+                  placeholder="e.g. Requires wheelchair access, vip lounge access request"
+                  value={manualForm.notes}
+                  onChange={(e) => setManualForm({ ...manualForm, notes: e.target.value })}
+                  className="manual-form-textarea"
+                />
+              </div>
+
+              <div className="manual-form-actions">
+                <button type="button" className="manual-btn-cancel" onClick={() => setShowManualModal(false)}>
+                  Cancel
+                </button>
+                <button type="submit" className="manual-btn-submit">
+                  Confirm Check-in
+                </button>
+              </div>
+            </form>
+          </div>
+        </>
       )}
     </div>
   );

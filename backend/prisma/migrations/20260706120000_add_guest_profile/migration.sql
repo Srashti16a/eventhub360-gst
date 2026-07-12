@@ -48,7 +48,6 @@ CREATE TABLE "GuestSeating" (
 
 -- GuestCommunication
 CREATE TYPE "CommunicationType" AS ENUM ('EMAIL','WHATSAPP','SMS','PHONE_CALL');
-CREATE TYPE "DeliveryStatus" AS ENUM ('SENT','FAILED','PENDING');
 CREATE TABLE "GuestCommunication" (
   "id" TEXT NOT NULL PRIMARY KEY,
   "guestId" TEXT NOT NULL,

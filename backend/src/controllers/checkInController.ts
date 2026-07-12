@@ -273,13 +273,10 @@ export const getCheckInTrend = async (req: Request, res: Response, next: NextFun
   try {
     const { eventId } = req.query;
 
-    let targetEventId = eventId as string;
-    if (!targetEventId) {
-      const firstEvent = await prisma.event.findFirst();
-      if (firstEvent) targetEventId = firstEvent.id;
+    const where: any = {};
+    if (eventId && typeof eventId === 'string') {
+      where.eventId = eventId;
     }
-
-    const where: any = targetEventId ? { eventId: targetEventId } : {};
 
     // Retrieve all check-ins for this event
     const checkIns = await prisma.checkIn.findMany({
