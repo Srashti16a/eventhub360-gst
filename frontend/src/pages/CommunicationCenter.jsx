@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import './CommunicationCenter.css';
+import GuestConversations from './GuestConversations';
 
 // ─── Shared mock data ─────────────────────────────────────────────────────────
 const ALL_LOGS = [
@@ -111,33 +112,96 @@ const BarChart = ({ bars, color }) => {
 };
 
 // ─── Calendar mini ────────────────────────────────────────────────────────────
-const MiniCalendar = () => {
-  const days = ['M','T','W','T','F','S','S'];
-  const weeks = [
-    [1,2,3,4,5,6,7],
-    [8,9,10,11,12,13,14],
-    [15,16,17,18,19,20,21],
-    [22,23,24,25,26,27,28],
-  ];
-  const highlighted = [24, 25];
+const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+
+const MiniCalendar = ({ campaigns = [] }) => {
+  const today = new Date();
+  const [viewDate, setViewDate] = useState(new Date(today.getFullYear(), today.getMonth(), 1));
+
+  const year  = viewDate.getFullYear();
+  const month = viewDate.getMonth();
+  const DAY_HEADS = ['M','T','W','T','F','S','S'];
+
+  // Collect scheduled campaign days for this month
+  const campaignDays = {};
+  campaigns.forEach(c => {
+    if (c.metrics && c.metrics.scheduled) {
+      const d = new Date(c.metrics.scheduled);
+      if (!isNaN(d) && d.getFullYear() === year && d.getMonth() === month) {
+        const day = d.getDate();
+        if (!campaignDays[day]) campaignDays[day] = [];
+        campaignDays[day].push(c.name);
+      }
+    }
+  });
+
+  // Build grid starting Monday
+  const firstDay = new Date(year, month, 1).getDay();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const startOffset = (firstDay + 6) % 7;
+
+  const cells = [];
+  for (let i = 0; i < startOffset; i++) cells.push(null);
+  for (let d = 1; d <= daysInMonth; d++) cells.push(d);
+  while (cells.length % 7 !== 0) cells.push(null);
+
+  const weeks = [];
+  for (let i = 0; i < cells.length; i += 7) weeks.push(cells.slice(i, i + 7));
+
+  const isToday = (d) => d && today.getFullYear() === year && today.getMonth() === month && today.getDate() === d;
+
   return (
     <div className="cc-calendar">
       <div className="cc-calendar-label">CAMPAIGN CALENDAR</div>
-      <div className="cc-cal-header">
-        {days.map((d,i) => <span key={i} className="cc-cal-day-head">{d}</span>)}
+
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+        <button
+          onClick={() => setViewDate(new Date(year, month - 1, 1))}
+          style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748b', fontSize: '1.1rem', padding: '2px 6px', borderRadius: '4px', lineHeight: 1 }}
+          title="Previous month"
+        >&#8249;</button>
+        <span style={{ fontSize: '0.78rem', fontWeight: 600, color: '#1e293b' }}>
+          {MONTH_NAMES[month]} {year}
+        </span>
+        <button
+          onClick={() => setViewDate(new Date(year, month + 1, 1))}
+          style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748b', fontSize: '1.1rem', padding: '2px 6px', borderRadius: '4px', lineHeight: 1 }}
+          title="Next month"
+        >&#8250;</button>
       </div>
+
+      <div className="cc-cal-header">
+        {DAY_HEADS.map((d, i) => <span key={i} className="cc-cal-day-head">{d}</span>)}
+      </div>
+
       {weeks.map((week, wi) => (
         <div key={wi} className="cc-cal-week">
-          {week.map(day => (
-            <span
-              key={day}
-              className={`cc-cal-day ${highlighted.includes(day) ? (day === 24 ? 'cc-cal-today' : 'cc-cal-event') : ''}`}
-            >
-              {day}
-            </span>
-          ))}
+          {week.map((day, di) => {
+            const hasCampaign = day && campaignDays[day];
+            const todayClass  = isToday(day) ? 'cc-cal-today' : '';
+            const campClass   = hasCampaign && !isToday(day) ? 'cc-cal-event' : '';
+            return (
+              <span
+                key={di}
+                className={`cc-cal-day ${todayClass} ${campClass}`}
+                title={hasCampaign ? campaignDays[day].join(', ') : ''}
+                style={{ visibility: day ? 'visible' : 'hidden' }}
+              >
+                {day || ''}
+              </span>
+            );
+          })}
         </div>
       ))}
+
+      <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.6rem', fontSize: '0.7rem', color: '#64748b' }}>
+        <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+          <span style={{ width: 10, height: 10, borderRadius: '50%', background: '#e53e3e', display: 'inline-block' }}/> Today
+        </span>
+        <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+          <span style={{ width: 10, height: 10, borderRadius: '50%', background: '#f6e05e', display: 'inline-block' }}/> Campaign
+        </span>
+      </div>
     </div>
   );
 };
@@ -332,7 +396,7 @@ function InboxView() {
                 </button>
               ))}
             </div>
-            <MiniCalendar />
+            <MiniCalendar campaigns={campaigns} />
           </div>
         </div>
       </div>
@@ -790,7 +854,7 @@ function TemplatesView() {
 // ═══════════════════════════════════════════════════════════════════════════════
 // ── Root: CommunicationCenter with tab nav ────────────────────────────────────
 // ═══════════════════════════════════════════════════════════════════════════════
-const TABS = ['Inbox', 'Broadcasts', 'Templates'];
+const TABS = ['Inbox', 'Broadcasts', 'Templates', 'Conversations'];
 
 export default function CommunicationCenter() {
   const [activeTab, setActiveTab] = useState('Inbox');
@@ -800,18 +864,6 @@ export default function CommunicationCenter() {
       {/* ── Global Tab Bar ── */}
       <div className="cc-tab-bar">
         <div className="cc-tab-bar-inner">
-          <div className="cc-tab-search-wrap">
-            <svg className="cc-search-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8">
-              <circle cx="9" cy="9" r="6"/><path d="M13.5 13.5l4 4" strokeLinecap="round"/>
-            </svg>
-            <input
-              id="cc-global-search"
-              type="text"
-              placeholder="Search campaigns..."
-              className="cc-search-input cc-tab-search"
-            />
-          </div>
-
           <nav className="cc-tabs">
             {TABS.map(tab => (
               <button
@@ -824,16 +876,6 @@ export default function CommunicationCenter() {
               </button>
             ))}
           </nav>
-
-          <div className="cc-tab-actions">
-            <button className="cc-tab-icon-btn" title="Notifications" onClick={() => alert('Notifications')}>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 01-3.46 0"/></svg>
-            </button>
-            <button className="cc-tab-icon-btn" title="History" onClick={() => alert('History')}>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14" strokeLinecap="round"/></svg>
-            </button>
-            <div className="cc-tab-avatar">EV</div>
-          </div>
         </div>
       </div>
 
@@ -842,6 +884,7 @@ export default function CommunicationCenter() {
         {activeTab === 'Inbox'      && <InboxView />}
         {activeTab === 'Broadcasts' && <BroadcastsView />}
         {activeTab === 'Templates'  && <TemplatesView />}
+        {activeTab === 'Conversations' && <GuestConversations />}
       </div>
     </div>
   );

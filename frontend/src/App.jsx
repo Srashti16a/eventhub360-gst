@@ -274,6 +274,7 @@ export default function App() {
         { name: 'Groups', view: 'groups' },
         { name: 'Directory', view: 'categories' },
         { name: 'Magic Links', view: 'magic_links' },
+        { name: 'Comm Center', view: 'comm_center' },
         { name: 'Check-in Dashboard', view: 'checkin_dashboard' }
       ]
     },
@@ -687,6 +688,8 @@ export default function App() {
             <GuestCategories />
           ) : activeView === 'magic_links' ? (
             <MagicLinks />
+          ) : activeView === 'comm_center' ? (
+            <CommunicationCenter />
           ) : activeView === 'checkin_dashboard' ? (
             <CheckinDashboard />
           ) : activeView === 'guest_profile' ? (
