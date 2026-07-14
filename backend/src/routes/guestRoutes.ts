@@ -8,6 +8,11 @@ import {
   getGuestSeating,
   getGuestNotes,
   createGuestNote,
+  updateGuestAccommodation,
+  updateGuestTransportation,
+  updateGuestPreferences,
+  createGuestCommunication,
+  updateGuestSeating,
 } from '../controllers/guestProfileController';
 import { validate } from '../middlewares/validation';
 import { createGuestSchema, updateGuestSchema, getGuestSchema, listGuestsSchema } from '../schemas/guest';
@@ -31,9 +36,15 @@ router.delete('/:id', validate(getGuestSchema), deleteGuest);
 
 router.get('/:id/profile', getGuestProfile);
 router.get('/:id/communications', getGuestCommunications);
+router.post('/:id/communications', createGuestCommunication);
 router.get('/:id/accommodation', getGuestAccommodation);
+router.put('/:id/accommodation', updateGuestAccommodation);
 router.get('/:id/transportation', getGuestTransportation);
+router.put('/:id/transportation', updateGuestTransportation);
+router.put('/:id/preferences', updateGuestPreferences);
 router.get('/:id/seating', getGuestSeating);
+router.put('/:id/seating', updateGuestSeating);
 router.get('/:id/notes', getGuestNotes);
 router.post('/:id/notes', validate(createNoteSchema), createGuestNote);
 export default router;
+
