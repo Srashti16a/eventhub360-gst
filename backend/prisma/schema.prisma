@@ -482,6 +482,7 @@ enum QRPassStatus {
   SCANNED
   REVOKED
   EXPIRED
+  PENDING
 }
 
 enum ScanStatus {
@@ -538,4 +539,14 @@ model PassDeliveryLog {
   sentAt        DateTime          @default(now())
   failureReason String?
   createdAt     DateTime          @default(now())
+}
+
+model QRPassActivityLog {
+  id          String   @id @default(uuid())
+  guestName   String
+  passId      String
+  action      String
+  timestamp   DateTime @default(now())
+  operator    String   @default("System")
+  createdAt   DateTime @default(now())
 }
