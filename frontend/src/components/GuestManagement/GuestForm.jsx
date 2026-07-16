@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 
-export default function GuestForm({ initialData, onSubmit, onCancel, saving }) {
+export default function GuestForm({ initialData, onSubmit, onCancel, saving, dietaryOnly = false }) {
   const [formData, setFormData] = useState({
     // guest table
     name: '',
@@ -23,7 +23,8 @@ export default function GuestForm({ initialData, onSubmit, onCancel, saving }) {
     seat_no: '', // seating.seat_no
 
     // meal_pref table
-    preference: '', // meal_pref.preference (Veg/Non-veg/Jain/Allergy)
+    preference: 'Non-Veg', // meal_pref.preference (Veg/Non-veg/Jain/Allergy)
+    allergies: '', // guest.allergies (text input)
 
     // assigned hotel helper
     assignedHotel: '' // visual hotel selector
@@ -34,20 +35,22 @@ export default function GuestForm({ initialData, onSubmit, onCancel, saving }) {
   const [hotels, setHotels] = useState([]);
 
   useEffect(() => {
-    fetch('/api/events')
-      .then((r) => r.json())
-      .then((res) => {
-        if (res.success) setEvents(res.data);
-      })
-      .catch((err) => console.error('Error loading events', err));
+    if (!dietaryOnly) {
+      fetch('/api/events')
+        .then((r) => r.json())
+        .then((res) => {
+          if (res.success) setEvents(res.data);
+        })
+        .catch((err) => console.error('Error loading events', err));
 
-    fetch('/api/hotels')
-      .then((r) => r.json())
-      .then((res) => {
-        if (res.success) setHotels(res.data);
-      })
-      .catch((err) => console.error('Error loading hotels', err));
-  }, []);
+      fetch('/api/hotels')
+        .then((r) => r.json())
+        .then((res) => {
+          if (res.success) setHotels(res.data);
+        })
+        .catch((err) => console.error('Error loading hotels', err));
+    }
+  }, [dietaryOnly]);
 
   useEffect(() => {
     if (initialData) {
@@ -64,7 +67,8 @@ export default function GuestForm({ initialData, onSubmit, onCancel, saving }) {
         responded_at: initialData.responded_at || '',
         table_no: initialData.table_no || '',
         seat_no: initialData.seat_no || '',
-        preference: initialData.preference || '',
+        preference: initialData.preference || 'Non-Veg',
+        allergies: initialData.allergies || '',
         assignedHotel: initialData.assignedHotel || ''
       });
     }
@@ -93,11 +97,11 @@ export default function GuestForm({ initialData, onSubmit, onCancel, saving }) {
         newErrors.email = 'Please enter a valid email address';
       }
     }
-    if (formData.phone.trim() && formData.phone.trim().length < 5) newErrors.phone = 'Phone number must be at least 5 characters';
-    
-    // Validate RSVP Pax
-    if (formData.pax < 0) {
-      newErrors.pax = 'Pax must be greater than or equal to 0';
+    if (!dietaryOnly) {
+      if (formData.phone.trim() && formData.phone.trim().length < 5) newErrors.phone = 'Phone number must be at least 5 characters';
+      if (formData.pax < 0) {
+        newErrors.pax = 'Pax must be greater than or equal to 0';
+      }
     }
 
     setErrors(newErrors);
@@ -135,39 +139,43 @@ export default function GuestForm({ initialData, onSubmit, onCancel, saving }) {
           {errors.name && <span className="form-error">{errors.name}</span>}
         </div>
 
-        <div className="form-group">
-          <label htmlFor="phone">Phone Number</label>
-          <input
-            id="phone"
-            type="tel"
-            name="phone"
-            className="form-input"
-            value={formData.phone}
-            onChange={handleChange}
-            placeholder="e.g. +1 (555) 012-3456"
-          />
-          {errors.phone && <span className="form-error">{errors.phone}</span>}
-        </div>
+        {!dietaryOnly && (
+          <div className="form-group">
+            <label htmlFor="phone">Phone Number</label>
+            <input
+              id="phone"
+              type="tel"
+              name="phone"
+              className="form-input"
+              value={formData.phone}
+              onChange={handleChange}
+              placeholder="e.g. +1 (555) 012-3456"
+            />
+            {errors.phone && <span className="form-error">{errors.phone}</span>}
+          </div>
+        )}
 
-        <div className="form-group">
-          <label htmlFor="category">Guest category</label>
-          <select
-            id="category"
-            name="category"
-            className="form-input"
-            value={formData.category}
-            onChange={handleChange}
-          >
-            <option value="VIP">VIP</option>
-            <option value="Speaker">Speaker</option>
-            <option value="Sponsor">Sponsor</option>
-            <option value="Media">Media</option>
-            <option value="Staff">Staff</option>
-            <option value="Guest">Guest</option>
-            <option value="Corporate">Corporate</option>
-            <option value="Family">Family</option>
-          </select>
-        </div>
+        {!dietaryOnly && (
+          <div className="form-group">
+            <label htmlFor="category">Guest category</label>
+            <select
+              id="category"
+              name="category"
+              className="form-input"
+              value={formData.category}
+              onChange={handleChange}
+            >
+              <option value="VIP">VIP</option>
+              <option value="Speaker">Speaker</option>
+              <option value="Sponsor">Sponsor</option>
+              <option value="Media">Media</option>
+              <option value="Staff">Staff</option>
+              <option value="Guest">Guest</option>
+              <option value="Corporate">Corporate</option>
+              <option value="Family">Family</option>
+            </select>
+          </div>
+        )}
 
         <div className="form-group">
           <label htmlFor="email">Email Address *</label>
@@ -184,198 +192,254 @@ export default function GuestForm({ initialData, onSubmit, onCancel, saving }) {
         </div>
 
         {/* ================= EVENT GUEST & GROUP DETAILS ================= */}
-        <div className="form-grid-full" style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem', marginTop: '1rem', marginBottom: '0.25rem' }}>
-          <h4 style={{ margin: 0, fontSize: '0.9rem', color: '#ff4d4f', fontFamily: 'var(--font-title)' }}>
-            Guest Group
-          </h4>
-        </div>
+        {!dietaryOnly && (
+          <>
+            <div className="form-grid-full" style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem', marginTop: '1rem', marginBottom: '0.25rem' }}>
+              <h4 style={{ margin: 0, fontSize: '0.9rem', color: '#ff4d4f', fontFamily: 'var(--font-title)' }}>
+                Guest Group
+              </h4>
+            </div>
 
-        <div className="form-group">
-          <label htmlFor="eventName">Assigned Event</label>
-          <select
-            id="eventName"
-            name="eventName"
-            className="form-input"
-            value={formData.eventName}
-            onChange={handleChange}
-          >
-            {events.length > 0 ? (
-              events.map((event) => (
-                <option key={event.id} value={event.category}>
-                  {event.category}
-                </option>
-              ))
-            ) : (
-              <>
-                <option value="Corporate Gala">Corporate Gala</option>
-                <option value="Spring Wedding">Spring Wedding</option>
-                <option value="Charity Gala">Charity Gala</option>
-                <option value="Product Launch">Product Launch</option>
-              </>
-            )}
-          </select>
-        </div>
+            <div className="form-group">
+              <label htmlFor="eventName">Assigned Event</label>
+              <select
+                id="eventName"
+                name="eventName"
+                className="form-input"
+                value={formData.eventName}
+                onChange={handleChange}
+              >
+                {events.length > 0 ? (
+                  events.map((event) => (
+                    <option key={event.id} value={event.category}>
+                      {event.category}
+                    </option>
+                  ))
+                ) : (
+                  <>
+                    <option value="Corporate Gala">Corporate Gala</option>
+                    <option value="Spring Wedding">Spring Wedding</option>
+                    <option value="Charity Gala">Charity Gala</option>
+                    <option value="Product Launch">Product Launch</option>
+                  </>
+                )}
+              </select>
+            </div>
 
-        <div className="form-group">
-          <label htmlFor="groupName">Group Label (e.g. Speakers, Bridal Party)</label>
-          <input
-            id="groupName"
-            type="text"
-            name="groupName"
-            className="form-input"
-            value={formData.groupName}
-            onChange={handleChange}
-            placeholder="e.g. Bridal Party"
-          />
-        </div>
+            <div className="form-group">
+              <label htmlFor="groupName">Group Label (e.g. Speakers, Bridal Party)</label>
+              <input
+                id="groupName"
+                type="text"
+                name="groupName"
+                className="form-input"
+                value={formData.groupName}
+                onChange={handleChange}
+                placeholder="e.g. Bridal Party"
+              />
+            </div>
 
-        <div className="form-group form-grid-full" style={{ flexDirection: 'row', alignItems: 'center', gap: '0.5rem' }}>
-          <input
-            id="invited"
-            type="checkbox"
-            name="invited"
-            className="custom-checkbox-input"
-            checked={formData.invited}
-            onChange={handleChange}
-          />
-          <label htmlFor="invited" style={{ textTransform: 'none', cursor: 'pointer', fontSize: '0.85rem' }}>
-            Invitation sent (`invited` column)
-          </label>
-        </div>
+            <div className="form-group form-grid-full" style={{ flexDirection: 'row', alignItems: 'center', gap: '0.5rem' }}>
+              <input
+                id="invited"
+                type="checkbox"
+                name="invited"
+                className="custom-checkbox-input"
+                checked={formData.invited}
+                onChange={handleChange}
+              />
+              <label htmlFor="invited" style={{ textTransform: 'none', cursor: 'pointer', fontSize: '0.85rem' }}>
+                Invitation sent (`invited` column)
+              </label>
+            </div>
+          </>
+        )}
 
         {/* ================= RSVP DETAILS ================= */}
-        <div className="form-grid-full" style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem', marginTop: '1rem', marginBottom: '0.25rem' }}>
-          <h4 style={{ margin: 0, fontSize: '0.9rem', color: '#ff4d4f', fontFamily: 'var(--font-title)' }}>
-            RSVP
-          </h4>
-        </div>
+        {!dietaryOnly && (
+          <>
+            <div className="form-grid-full" style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem', marginTop: '1rem', marginBottom: '0.25rem' }}>
+              <h4 style={{ margin: 0, fontSize: '0.9rem', color: '#ff4d4f', fontFamily: 'var(--font-title)' }}>
+                RSVP
+              </h4>
+            </div>
 
-        <div className="form-group">
-          <label htmlFor="rsvpStatus">RSVP Status</label>
-          <select
-            id="rsvpStatus"
-            name="rsvpStatus"
-            className="form-input"
-            value={formData.rsvpStatus}
-            onChange={handleChange}
-          >
-            <option value="confirmed">Confirmed</option>
-            <option value="pending">Pending</option>
-            <option value="declined">Declined</option>
-          </select>
-        </div>
+            <div className="form-group">
+              <label htmlFor="rsvpStatus">RSVP Status</label>
+              <select
+                id="rsvpStatus"
+                name="rsvpStatus"
+                className="form-input"
+                value={formData.rsvpStatus}
+                onChange={handleChange}
+              >
+                <option value="confirmed">Confirmed</option>
+                <option value="pending">Pending</option>
+                <option value="declined">Declined</option>
+              </select>
+            </div>
 
-        <div className="form-group">
-          <label htmlFor="pax">Confirmed Headcount (Pax)</label>
-          <input
-            id="pax"
-            type="number"
-            name="pax"
-            className="form-input"
-            value={formData.pax}
-            onChange={handleChange}
-            min="0"
-          />
-          {errors.pax && <span className="form-error">{errors.pax}</span>}
-        </div>
+            <div className="form-group">
+              <label htmlFor="pax">Confirmed Headcount (Pax)</label>
+              <input
+                id="pax"
+                type="number"
+                name="pax"
+                className="form-input"
+                value={formData.pax}
+                onChange={handleChange}
+                min="0"
+              />
+              {errors.pax && <span className="form-error">{errors.pax}</span>}
+            </div>
 
-        <div className="form-group">
-          <label htmlFor="responded_at">Responded At (Date)</label>
-          <input
-            id="responded_at"
-            type="date"
-            name="responded_at"
-            className="form-input"
-            value={formData.responded_at}
-            onChange={handleChange}
-          />
-        </div>
+            <div className="form-group">
+              <label htmlFor="responded_at">Responded At (Date)</label>
+              <input
+                id="responded_at"
+                type="number" // Maintain type definition consistency
+                name="responded_at"
+                className="form-input"
+                value={formData.responded_at}
+                onChange={handleChange}
+              />
+            </div>
+          </>
+        )}
 
         {/* ================= SEATING DETAILS ================= */}
-        <div className="form-grid-full" style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem', marginTop: '1rem', marginBottom: '0.25rem' }}>
-          <h4 style={{ margin: 0, fontSize: '0.9rem', color: '#ff4d4f', fontFamily: 'var(--font-title)' }}>
-            Seating
-          </h4>
-        </div>
+        {!dietaryOnly && (
+          <>
+            <div className="form-grid-full" style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem', marginTop: '1rem', marginBottom: '0.25rem' }}>
+              <h4 style={{ margin: 0, fontSize: '0.9rem', color: '#ff4d4f', fontFamily: 'var(--font-title)' }}>
+                Seating
+              </h4>
+            </div>
 
-        <div className="form-group">
-          <label htmlFor="table_no">Table Number</label>
-          <input
-            id="table_no"
-            type="text"
-            name="table_no"
-            className="form-input"
-            value={formData.table_no}
-            onChange={handleChange}
-            placeholder="e.g. T7"
-          />
-        </div>
+            <div className="form-group">
+              <label htmlFor="table_no">Table Number</label>
+              <input
+                id="table_no"
+                type="text"
+                name="table_no"
+                className="form-input"
+                value={formData.table_no}
+                onChange={handleChange}
+                placeholder="e.g. T7"
+              />
+            </div>
 
-        <div className="form-group">
-          <label htmlFor="seat_no">Seat Number</label>
-          <input
-            id="seat_no"
-            type="text"
-            name="seat_no"
-            className="form-input"
-            value={formData.seat_no}
-            onChange={handleChange}
-            placeholder="e.g. S3"
-          />
-        </div>
+            <div className="form-group">
+              <label htmlFor="seat_no">Seat Number</label>
+              <input
+                id="seat_no"
+                type="text"
+                name="seat_no"
+                className="form-input"
+                value={formData.seat_no}
+                onChange={handleChange}
+                placeholder="e.g. S3"
+              />
+            </div>
+          </>
+        )}
 
         {/* ================= MEAL DETAILS ================= */}
         <div className="form-grid-full" style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem', marginTop: '1rem', marginBottom: '0.25rem' }}>
           <h4 style={{ margin: 0, fontSize: '0.9rem', color: '#ff4d4f', fontFamily: 'var(--font-title)' }}>
-            Meal Preference
+            Meal Details
           </h4>
         </div>
 
-        <div className="form-group form-grid-full">
-          <label htmlFor="preference">Meal Preference (Veg / Non-veg / Jain / Allergy)</label>
-          <input
-            id="preference"
-            type="text"
-            name="preference"
+        <div className="form-group">
+          <label htmlFor="preference">Meal Preference</label>
+          <select
+            id="preference-select"
             className="form-input"
-            value={formData.preference}
+            value={['Veg', 'Non-Veg', 'Vegan', 'Vegetarian', 'Gluten-Free', 'Keto'].includes(formData.preference) ? formData.preference : 'Custom'}
+            onChange={(e) => {
+              const val = e.target.value;
+              if (val !== 'Custom') {
+                setFormData(prev => ({ ...prev, preference: val }));
+              } else {
+                setFormData(prev => ({ ...prev, preference: '' }));
+              }
+            }}
+          >
+            <option value="Non-Veg">Non-Veg</option>
+            <option value="Veg">Veg</option>
+            <option value="Vegan">Vegan</option>
+            <option value="Vegetarian">Vegetarian</option>
+            <option value="Gluten-Free">Gluten-Free</option>
+            <option value="Keto">Keto</option>
+            <option value="Custom">Custom...</option>
+          </select>
+        </div>
+
+        {!['Veg', 'Non-Veg', 'Vegan', 'Vegetarian', 'Gluten-Free', 'Keto'].includes(formData.preference) && (
+          <div className="form-group">
+            <label htmlFor="preference-custom">Custom Meal Preference</label>
+            <input
+              id="preference-custom"
+              type="text"
+              name="preference"
+              className="form-input"
+              value={formData.preference}
+              onChange={handleChange}
+              placeholder="e.g. Jain, Halal"
+            />
+          </div>
+        )}
+
+        <div className="form-group form-grid-full">
+          <label htmlFor="allergies">Allergies</label>
+          <input
+            id="allergies"
+            type="text"
+            name="allergies"
+            className="form-input"
+            value={formData.allergies}
             onChange={handleChange}
-            placeholder="e.g. Non-veg, No Shellfish"
+            placeholder="e.g. Nuts, Shellfish, None"
           />
         </div>
 
         {/* ================= EXTERNAL HOTEL DETAILS ================= */}
-        <div className="form-grid-full" style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem', marginTop: '1rem', marginBottom: '0.25rem' }}>
-          <h4 style={{ margin: 0, fontSize: '0.9rem', color: '#ff4d4f', fontFamily: 'var(--font-title)' }}>
-            Hotel Accommodation
-          </h4>
-        </div>
+        {!dietaryOnly && (
+          <>
+            <div className="form-grid-full" style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem', marginTop: '1rem', marginBottom: '0.25rem' }}>
+              <h4 style={{ margin: 0, fontSize: '0.9rem', color: '#ff4d4f', fontFamily: 'var(--font-title)' }}>
+                Hotel Accommodation
+              </h4>
+            </div>
 
-        <div className="form-group form-grid-full">
-          <label htmlFor="assignedHotel">Assigned Hotel</label>
-          <select
-            id="assignedHotel"
-            name="assignedHotel"
-            className="form-input"
-            value={formData.assignedHotel}
-            onChange={handleChange}
-          >
-            <option value="—">No Hotel Assigned</option>
-            {hotels.length > 0 ? (
-              hotels.map((hotel) => (
-                <option key={hotel.id} value={hotel.name}>
-                  {hotel.name}
-                </option>
-              ))
-            ) : (
-              <>
-                <option value="The Ritz-Carlton">The Ritz-Carlton</option>
-                <option value="Boutique Manor">Boutique Manor</option>
-                <option value="Hyatt Regency">Hyatt Regency</option>
-              </>
-            )}
-          </select>
-        </div>
+            <div className="form-group form-grid-full">
+              <label htmlFor="assignedHotel">Assigned Hotel</label>
+              <select
+                id="assignedHotel"
+                name="assignedHotel"
+                className="form-input"
+                value={formData.assignedHotel}
+                onChange={handleChange}
+              >
+                <option value="—">No Hotel Assigned</option>
+                {hotels.length > 0 ? (
+                  hotels.map((hotel) => (
+                    <option key={hotel.id} value={hotel.name}>
+                      {hotel.name}
+                    </option>
+                  ))
+                ) : (
+                  <>
+                    <option value="The Ritz-Carlton">The Ritz-Carlton</option>
+                    <option value="Boutique Manor">Boutique Manor</option>
+                    <option value="Hyatt Regency">Hyatt Regency</option>
+                  </>
+                )}
+              </select>
+            </div>
+          </>
+        )}
       </div>
 
       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '2rem' }}>

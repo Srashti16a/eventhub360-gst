@@ -31,9 +31,10 @@ const mapBackendGuestToFrontend = (bg, checkedInIds) => {
     pax: bg.isVip ? 2 : 1,
     table_no: bg.table ? bg.table.name : '',
     seat_no: bg.seatNumber ? bg.seatNumber.toString() : '',
-    preference: bg.isVip ? 'Non-veg' : 'Veg',
+    preference: bg.mealPreference || 'Non-Veg',
+    allergies: bg.allergies || 'None',
     assignedHotel: bg.assignedHotel ? bg.assignedHotel.name : '—',
-    checkedInAt: checkedInIds.has(bg.id) ? new Date().toISOString() : null,
+    checkedInAt: checkedInIds ? (checkedInIds.has(bg.id) ? new Date().toISOString() : null) : null,
     qr_code: `QR_${bg.id}`
   };
 };
@@ -236,7 +237,9 @@ export default function GuestManagement({ onViewGuestProfile }) {
       eventId,
       assignedHotelId,
       tableId,
-      seatNumber
+      seatNumber,
+      mealPreference: formData.preference || 'Non-Veg',
+      allergies: formData.allergies || 'None'
     };
 
     const isEdit = !!editingGuest;

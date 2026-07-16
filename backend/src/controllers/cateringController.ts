@@ -123,7 +123,20 @@ export const listCateringPreferences = async (req: Request, res: Response, next:
     }
 
     if (allergy && typeof allergy === 'string' && allergy !== 'All Allergies') {
-      where.allergies = { equals: allergy, mode: 'insensitive' };
+      if (allergy.toLowerCase() === 'none') {
+        where.OR = [
+          { allergies: { equals: 'None', mode: 'insensitive' } },
+          { allergies: { equals: '' } },
+          { allergies: null }
+        ];
+      } else if (allergy.toLowerCase() === 'has allergies') {
+        where.NOT = [
+          { allergies: { in: ['None', ''] } },
+          { allergies: null }
+        ];
+      } else {
+        where.allergies = { contains: allergy, mode: 'insensitive' };
+      }
     }
 
     if (guestCategory && typeof guestCategory === 'string' && guestCategory !== 'All Categories') {
@@ -177,6 +190,7 @@ export const listCateringPreferences = async (req: Request, res: Response, next:
       email: g.email,
       avatar: g.avatar,
       phone: g.phone,
+      status: g.status,
       mealPreference: g.mealPreference || 'Non-Veg',
       allergies: g.allergies || 'None',
       guestCategory: getGuestCategory(g),
@@ -400,7 +414,20 @@ export const exportCateringData = async (req: Request, res: Response, next: Next
     }
 
     if (allergy && typeof allergy === 'string' && allergy !== 'All Allergies') {
-      where.allergies = { equals: allergy, mode: 'insensitive' };
+      if (allergy.toLowerCase() === 'none') {
+        where.OR = [
+          { allergies: { equals: 'None', mode: 'insensitive' } },
+          { allergies: { equals: '' } },
+          { allergies: null }
+        ];
+      } else if (allergy.toLowerCase() === 'has allergies') {
+        where.NOT = [
+          { allergies: { in: ['None', ''] } },
+          { allergies: null }
+        ];
+      } else {
+        where.allergies = { contains: allergy, mode: 'insensitive' };
+      }
     }
 
     if (guestCategory && typeof guestCategory === 'string' && guestCategory !== 'All Categories') {
@@ -444,6 +471,7 @@ export const exportCateringData = async (req: Request, res: Response, next: Next
       name: g.name,
       email: g.email,
       phone: g.phone,
+      status: g.status,
       mealPreference: g.mealPreference || 'Non-Veg',
       allergies: g.allergies || 'None',
       guestCategory: getGuestCategory(g),
