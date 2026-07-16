@@ -402,7 +402,7 @@
 }
 
 .g360-status-chip.confirmed {
-  background-color: rgba(76, 175, 141, 0.15);
+  background-color: rgba(76, 175, 141, 0.1);
   color: var(--g360-emerald);
 }
 
@@ -760,7 +760,7 @@
 
 /* Concierge Notes Card */
 .g360-note-quote {
-  background-color: rgba(117, 90, 29, 0.08);
+  background-color: rgba(254, 216, 142, 0.2);
   border-left: 4px solid var(--g360-secondary);
   padding: 1rem 1.2rem;
   border-radius: 0 12px 12px 0;
@@ -852,3 +852,261 @@
   max-width: 260px;
   margin: 0;
 }
+
+/* Edit Profile Modal Styles */
+.g360-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(15, 23, 42, 0.65);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  padding: 1.5rem;
+  animation: g360FadeIn 0.2s ease-out;
+}
+
+.g360-modal {
+  background: #FFFFFF;
+  border-radius: 24px;
+  width: 100%;
+  max-width: 660px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+  border: 1px solid #E6EAF0;
+  animation: slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.g360-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.5rem 1.75rem;
+  border-bottom: 1px solid #E6EAF0;
+}
+
+.g360-modal-title {
+  font-family: 'Hanken Grotesk', sans-serif;
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: var(--g360-text-main);
+  margin: 0;
+}
+
+.g360-modal-close {
+  background: transparent;
+  border: none;
+  font-size: 1.25rem;
+  color: var(--g360-text-muted);
+  cursor: pointer;
+  padding: 0.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: all 0.2s ease;
+}
+
+.g360-modal-close:hover {
+  background-color: #F1F5F9;
+  color: var(--g360-primary);
+}
+
+.g360-modal-body {
+  padding: 1.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.g360-form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.25rem;
+}
+
+@media (max-width: 640px) {
+  .g360-form-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+.g360-form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.g360-form-label {
+  font-family: 'Inter', sans-serif;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--g360-text-main);
+}
+
+.g360-form-input,
+.g360-form-select {
+  font-family: 'Inter', sans-serif;
+  font-size: 0.95rem;
+  padding: 0.65rem 0.9rem;
+  border-radius: 12px;
+  border: 1px solid #E6EAF0;
+  background-color: #F8FAFC;
+  color: var(--g360-text-main);
+  transition: all 0.2s ease;
+  width: 100%;
+}
+
+.g360-form-input:focus,
+.g360-form-select:focus {
+  outline: none;
+  border-color: var(--g360-primary);
+  background-color: #FFFFFF;
+  box-shadow: 0 0 0 3px rgba(174, 47, 52, 0.12);
+}
+
+.g360-modal-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.85rem;
+  padding-top: 1rem;
+  border-top: 1px solid #E6EAF0;
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(15px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Outline Coral Button for Edit Actions */
+.g360-btn-outline-coral {
+  background: transparent;
+  color: var(--g360-primary);
+  border: 1.5px solid var(--g360-primary);
+  border-radius: 10px;
+  padding: 0.45rem 0.95rem;
+  font-family: var(--g360-font-body);
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  white-space: nowrap;
+}
+
+.g360-btn-outline-coral:hover {
+  background: var(--g360-primary);
+  color: #FFFFFF;
+  box-shadow: 0 4px 12px rgba(174, 47, 52, 0.2);
+  transform: translateY(-1px);
+}
+
+.g360-pref-header-title {
+  font-family: var(--g360-font-heading);
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--g360-text-main);
+  margin: 0;
+}
+
+.g360-pref-checkbox-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+}
+
+.g360-pref-checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: var(--g360-font-body);
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--g360-text-main);
+  cursor: pointer;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid #E6EAF0;
+  border-radius: 10px;
+  background: #F8FAFC;
+  transition: all 0.2s ease;
+}
+
+.g360-pref-checkbox-label:hover {
+  border-color: var(--g360-primary);
+  background: #FFFBFB;
+}
+
+.g360-pref-checkbox-label.checked {
+  border-color: var(--g360-primary);
+  background: rgba(174, 47, 52, 0.06);
+  color: var(--g360-primary);
+  font-weight: 600;
+}
+
+/* Fix 4: Edit buttons positioned at bottom of card */
+.g360-btn-card-edit {
+  border: 1px solid #ae2f34 !important;
+  color: #ae2f34 !important;
+  border-radius: 8px !important;
+  padding: 8px 16px !important;
+  font-weight: 600 !important;
+  font-size: 0.85rem !important;
+  background: transparent !important;
+  transition: all 0.2s ease !important;
+  cursor: pointer;
+}
+
+.g360-btn-card-edit:hover {
+  background: rgba(174, 47, 52, 0.08) !important;
+  transform: translateY(-1px);
+}
+
+/* Fix 7: Sentiment badge in profile header */
+.g360-sentiment-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.35rem 0.85rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.g360-sentiment-badge.pos {
+  background-color: rgba(16, 185, 129, 0.12);
+  color: #059669;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.g360-sentiment-badge.attn {
+  background-color: rgba(239, 68, 68, 0.12);
+  color: #dc2626;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.g360-sentiment-badge.await {
+  background-color: rgba(245, 158, 11, 0.12);
+  color: #d97706;
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+/* Fix 6 & 7: Pulse animation for driver radar */
+@keyframes pulse {
+  0% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+  }
+  70% {
+    transform: scale(1);
+    box-shadow: 0 0 0 16px rgba(16, 185, 129, 0);
+  }
+  100% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+  }
+}
+
+

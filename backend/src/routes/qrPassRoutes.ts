@@ -14,7 +14,10 @@ import {
   bulkActions,
   sendPass,
   updatePass,
-  deletePass
+  deletePass,
+  getHelp,
+  getNotifications,
+  getHistory
 } from '../controllers/qrPassController';
 import { validate } from '../middlewares/validation';
 import {
@@ -36,6 +39,9 @@ router.get('/recent-scans', getRecentScans);
 router.get('/security-health', getSecurityHealth);
 router.get('/export', exportPasses);
 router.get('/export-logs', exportLogs);
+router.get('/help', getHelp);
+router.get('/notifications', getNotifications);
+router.get('/history', getHistory);
 
 // Verification and batch generation
 router.post('/verify', validate(scanPassSchema), verifyPass);

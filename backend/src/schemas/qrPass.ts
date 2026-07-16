@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 const QRPassTypeEnum = z.enum(['VIP', 'ATTENDEE', 'STAFF', 'SPEAKER', 'VENDOR', 'MEDIA']);
-const QRPassStatusEnum = z.enum(['ACTIVE', 'SCANNED', 'REVOKED', 'EXPIRED']);
+const QRPassStatusEnum = z.enum(['ACTIVE', 'SCANNED', 'REVOKED', 'EXPIRED', 'PENDING']);
 const CommunicationTypeEnum = z.enum(['EMAIL', 'WHATSAPP', 'SMS', 'PHONE_CALL']);
 
 export const createQRPassSchema = z.object({
@@ -39,7 +39,7 @@ export const listQRPassSchema = z.object({
     status: z.string().optional(),
     eventId: z.string().uuid('Invalid event ID').optional(),
     page: z.string().regex(/^\d+$/).transform(Number).optional().default('1'),
-    limit: z.string().regex(/^\d+$/).transform(Number).optional().default('10'),
+    limit: z.string().regex(/^\d+$/).transform(Number).optional().default('5'),
     sortBy: z.enum(['createdAt', 'passNumber', 'status', 'passType', 'downloadCount']).optional().default('createdAt'),
     sortOrder: z.enum(['asc', 'desc']).optional().default('desc'),
   }),

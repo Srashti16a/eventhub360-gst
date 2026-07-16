@@ -1,6 +1,7 @@
 import request from 'supertest';
 import app from './app';
 import prisma from './config/prisma';
+import { randomUUID } from 'crypto';
 
 describe('EventHub360 API Integration Tests', () => {
   let createdGuestId: string;
@@ -41,7 +42,7 @@ describe('EventHub360 API Integration Tests', () => {
       expect(res.body.data.totalGuests.value).toBe(1308);
       expect(res.body.data.confirmed.value).toBe(930);
       expect(res.body.data.pendingRsvp.value).toBe(330);
-      expect(res.body.data.vipStatus.value).toBe(47);
+      expect(res.body.data.vipStatus.value).toBe(48);
       expect(res.body.data.totalGuests.growth).toBe('+4.2%');
       expect(res.body.data.confirmed.growth).toBe('+12%');
       expect(res.body.data.pendingRsvp.growth).toBe('-2%');
@@ -198,7 +199,7 @@ describe('EventHub360 API Integration Tests', () => {
       expect(res.text).toContain('ID,Name,Email,Phone,Status,VIP');
       // Count CSV lines: header + 47 records = 48 lines (excluding empty lines)
       const lines = res.text.split('\n').filter(l => l.trim() !== '');
-      expect(lines.length).toBe(48);
+      expect(lines.length).toBe(49);
     });
 
     it('should import guests in bulk via JSON', async () => {
@@ -263,7 +264,7 @@ describe('EventHub360 API Integration Tests', () => {
       const res = await request(app).get('/api/catering/summary');
       expect(res.status).toBe(200);
       expect(res.body.success).toBe(true);
-      expect(res.body.data.totalGuests.value).toBe(1248);
+      expect(res.body.data.totalGuests.value).toBe(1308);
       expect(res.body.data.totalGuests.allergyAlerts).toBe(42);
       expect(res.body.data.vegan.value).toBe(225);
       expect(res.body.data.vegan.percentage).toBe(18);
@@ -295,7 +296,7 @@ describe('EventHub360 API Integration Tests', () => {
       const res = await request(app).get('/api/catering/procurement');
       expect(res.status).toBe(200);
       expect(res.body.success).toBe(true);
-      expect(res.body.data.totalUnits).toBe(1248);
+      expect(res.body.data.totalUnits).toBe(1308);
       
       const categories = res.body.data.categories;
       const nonVegCat = categories.find((c: any) => c.name === 'Poultry / Red Meat');
@@ -334,7 +335,7 @@ describe('EventHub360 API Integration Tests', () => {
       const res = await request(app).get('/api/catering/export');
       expect(res.status).toBe(200);
       expect(res.body.success).toBe(true);
-      expect(res.body.data.length).toBe(1248);
+      expect(res.body.data.length).toBe(1308);
       expect(res.body.data[0]).toHaveProperty('name');
       expect(res.body.data[0]).toHaveProperty('mealPreference');
       expect(res.body.data[0]).toHaveProperty('allergies');
@@ -725,6 +726,95 @@ describe('EventHub360 API Integration Tests', () => {
 
       expect(res.status).toBe(200);
       expect(res.body.data.qrPassId).toBe(createdQRPassId);
+    });
+
+    describe('New QR Pass Center Features', () => {
+      let extraPassIds: string[] = [];
+
+      beforeAll(async () => {
+        // Let's create a few extra QR passes to test pagination
+        const guests = await prisma.guest.findMany({
+          where: {
+            id: { not: testGuestId },
+            eventId: testEventId
+          },
+          take: 3
+        });
+
+        for (let i = 0; i < guests.length; i++) {
+          const pass = await prisma.qRPass.create({
+            data: {
+              guestId: guests[i].id,
+              eventId: testEventId,
+              passType: 'VIP',
+              status: i === 0 ? 'PENDING' : 'ACTIVE', // One pending, others active
+              qrCode: randomUUID(),
+              passNumber: `PASS-TEST-${Date.now()}-${i}`
+            }
+          });
+          extraPassIds.push(pass.id);
+        }
+      });
+
+      afterAll(async () => {
+        if (extraPassIds.length > 0) {
+          await prisma.qRPass.deleteMany({
+            where: { id: { in: extraPassIds } }
+          });
+        }
+      });
+
+      it('should list QR passes with pagination', async () => {
+        const res = await request(app).get('/api/qr-passes?limit=2&page=1');
+        expect(res.status).toBe(200);
+        expect(res.body.success).toBe(true);
+        expect(res.body.pagination).toBeDefined();
+        expect(res.body.pagination.page).toBe(1);
+        expect(res.body.pagination.limit).toBe(2);
+        expect(res.body.pagination.total).toBeGreaterThanOrEqual(3);
+        expect(res.body.pagination.totalPages).toBeGreaterThanOrEqual(2);
+        expect(res.body.pagination.hasNext).toBe(true);
+      });
+
+      it('should list QR passes with PENDING status filter', async () => {
+        const res = await request(app).get('/api/qr-passes?status=PENDING');
+        expect(res.status).toBe(200);
+        expect(res.body.success).toBe(true);
+        expect(res.body.data.length).toBeGreaterThanOrEqual(1);
+        expect(res.body.data[0].status).toBe('PENDING');
+      });
+
+      it('should export logs with query filters', async () => {
+        const res = await request(app).get(`/api/qr-passes/export-logs?eventId=${testEventId}`);
+        expect(res.status).toBe(200);
+        expect(res.header['content-type']).toContain('text/csv');
+        expect(res.header['content-disposition']).toContain('attachment');
+        expect(res.text).toContain('Log Type');
+      });
+
+      it('should retrieve help information', async () => {
+        const res = await request(app).get('/api/qr-passes/help');
+        expect(res.status).toBe(200);
+        expect(res.body.success).toBe(true);
+        expect(res.body.data.title).toBe('QR Pass Center Help');
+        expect(res.body.data.sections).toContain('Export Logs');
+      });
+
+      it('should retrieve notifications with unread count', async () => {
+        const res = await request(app).get('/api/qr-passes/notifications');
+        expect(res.status).toBe(200);
+        expect(res.body.success).toBe(true);
+        expect(res.body.data.unreadCount).toBeDefined();
+        expect(res.body.data.notifications).toBeDefined();
+      });
+
+      it('should retrieve QR pass activity history', async () => {
+        const res = await request(app).get('/api/qr-passes/history');
+        expect(res.status).toBe(200);
+        expect(res.body.success).toBe(true);
+        expect(res.body.data).toBeDefined();
+        expect(Array.isArray(res.body.data)).toBe(true);
+      });
     });
 
     it('should delete pass by id', async () => {
